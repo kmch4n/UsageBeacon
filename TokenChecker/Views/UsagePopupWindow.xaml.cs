@@ -233,11 +233,17 @@ public partial class UsagePopupWindow : Window
         => Hide();
 
     private void Quit_Click(object sender, RoutedEventArgs e)
-        => System.Windows.Application.Current.Shutdown();
+    {
+        if (System.Windows.MessageBox.Show(
+                "Token Checker を終了しますか？", "確認",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question) == System.Windows.MessageBoxResult.Yes)
+            System.Windows.Application.Current.Shutdown();
+    }
 
     private void ClaudeLogin_Click(object sender, RoutedEventArgs e)
     {
-        var win = new LoginWindow("Claude Code", "claude auth login", _vm, new WindowsTokenSource());
+        var win = new LoginWindow("Claude Code", "claude login", _vm, new WindowsTokenSource());
         win.Show();
     }
 

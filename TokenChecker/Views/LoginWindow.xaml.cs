@@ -63,6 +63,9 @@ public partial class LoginWindow : Window
             return;
         }
 
+        // OAuth のブラウザ/ターミナル作業を妨げないよう最前面固定を解除する。
+        Topmost = false;
+
         OpenTerminalBtn.IsEnabled = false;
         DoneBtn.IsEnabled         = true;
         ShowStatus("ターミナルでログイン処理中... トークンを待機しています");
@@ -102,7 +105,7 @@ public partial class LoginWindow : Window
                 if (token != _tokenSnapshot)
                 {
                     Dispatcher.Invoke(() => ShowStatus("✓ ログイン完了！ウィンドウを閉じます..."));
-                    await Task.Delay(1400, CancellationToken.None);
+                    await Task.Delay(1400, ct);
                     Dispatcher.Invoke(() =>
                     {
                         _ = _vm.RefreshAsync();

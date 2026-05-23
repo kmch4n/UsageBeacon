@@ -21,7 +21,13 @@ public sealed class CodexAppServerClient : IAsyncDisposable
     private StreamWriter? _stdin;
     private CancellationTokenSource? _readCts;
     private bool _started;
+    private volatile int _generation;
+    private volatile string _lastStderr = "";
 
+    /// <summary>codex app-server が直近に stderr へ出力した非空行（診断用）。</summary>
+    public string LastStderr => _lastStderr;
+
+    private readonly object _writeLock = new();
     private readonly object _pendingLock = new();
     private int _nextId = 1;
     private readonly Dictionary<int, TaskCompletionSource<JsonElement>> _pending = new();
@@ -62,20 +68,27 @@ public sealed class CodexAppServerClient : IAsyncDisposable
             var exe = ResolveExecutable() ?? throw DomainError.CodexNotFound();
 
             _process = CreateProcess(exe);
+            var myGen = Interlocked.Increment(ref _generation);
             _process.EnableRaisingEvents = true;
-            _process.Exited += (_, _) => FailAll(DomainError.CodexProcessExited());
+            _process.Exited += (_, _) => { if (myGen == _generation) FailAll(DomainError.CodexProcessExited()); };
             _process.Start();
 
-            // UTF-8 NoBOM で書き込み（codex は UTF-8 を期待する）
+            // UTF-8 NoBOM で書き込み（codex は UTF-8 を期待する）。
+            // JSON-RPC は行区切りのため、改行は LF 固定にする（CRLF だと解釈側で崩れる環境がある）。
             _stdin = new StreamWriter(
                 _process.StandardInput.BaseStream,
                 new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
                 leaveOpen: true)
-            { AutoFlush = true };
+            { AutoFlush = true, NewLine = "\n" };
 
             _started  = true;
             _readCts  = new CancellationTokenSource();
-            _ = Task.Run(() => ReadLoopAsync(_process.StandardOutput, _readCts.Token), _readCts.Token);
+            var readToken = _readCts.Token;
+            var stdout    = _process.StandardOutput;
+            var stderr    = _process.StandardError;
+            _ = Task.Run(() => ReadLoopAsync(stdout, myGen, readToken), readToken);
+            // stderr を読み捨てないとパイプバッファが詰まり子プロセスがブロックしうる。
+            _ = Task.Run(() => DrainStderrAsync(stderr, readToken), readToken);
 
             // initialize ハンドシェイク
             _ = await SendRequestAsync("initialize", new
@@ -109,8 +122,11 @@ public sealed class CodexAppServerClient : IAsyncDisposable
 
     public void Stop()
     {
+        // 世代を進めて、停止対象プロセスの Exited / 読み取りループが
+        // 後続世代の pending を巻き込んで失敗させないようにする。
+        Interlocked.Increment(ref _generation);
         _readCts?.Cancel();
-        try { if (_process?.HasExited == false) _process.Kill(); } catch { }
+        try { if (_process?.HasExited == false) _process.Kill(entireProcessTree: true); } catch { }
         _process?.Dispose();
         _process  = null;
         _stdin?.Dispose();
@@ -121,7 +137,7 @@ public sealed class CodexAppServerClient : IAsyncDisposable
 
     // ── Internal I/O ────────────────────────────────────────────────────
 
-    private async Task ReadLoopAsync(StreamReader reader, CancellationToken ct)
+    private async Task ReadLoopAsync(StreamReader reader, int generation, CancellationToken ct)
     {
         try
         {
@@ -135,7 +151,22 @@ public sealed class CodexAppServerClient : IAsyncDisposable
         }
         catch (OperationCanceledException) { }
         catch { }
-        finally { FailAll(DomainError.CodexProcessExited()); }
+        finally { if (generation == _generation) FailAll(DomainError.CodexProcessExited()); }
+    }
+
+    private async Task DrainStderrAsync(StreamReader reader, CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
+                if (line == null) break;
+                if (!string.IsNullOrWhiteSpace(line)) _lastStderr = line.Trim();
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch { }
     }
 
     private void ProcessLine(string line)
@@ -188,7 +219,15 @@ public sealed class CodexAppServerClient : IAsyncDisposable
 
         var json = JsonSerializer.Serialize(
             new { jsonrpc = "2.0", id, method, @params }, JsonOpts);
-        _stdin!.WriteLine(json);
+
+        // Stop() で _stdin が null 化される競合に備えてローカルにスナップショットして検査する。
+        var stdin = _stdin;
+        if (stdin == null)
+        {
+            lock (_pendingLock) { _pending.Remove(id); }
+            throw DomainError.CodexProcessExited();
+        }
+        lock (_writeLock) { stdin.WriteLine(json); }
 
         using var timeoutCts = new CancellationTokenSource(_timeout);
         using var linked     = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
@@ -207,7 +246,9 @@ public sealed class CodexAppServerClient : IAsyncDisposable
     {
         var json = JsonSerializer.Serialize(
             new { jsonrpc = "2.0", method, @params }, JsonOpts);
-        _stdin!.WriteLine(json);
+        var stdin = _stdin;
+        if (stdin == null) return;
+        lock (_writeLock) { stdin.WriteLine(json); }
     }
 
     private void FailAll(DomainError error)
@@ -231,9 +272,10 @@ public sealed class CodexAppServerClient : IAsyncDisposable
         if (exe.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase) ||
             exe.EndsWith(".bat", StringComparison.OrdinalIgnoreCase))
         {
-            // Windows パスに '"' は使えないが、万一混入した場合にコマンドインジェクションを防ぐ
-            if (exe.Contains('"'))
-                throw new ArgumentException($"Executable path contains invalid character '\"': {exe}");
+            // cmd.exe 経由のため、ダブルクォートで括っても特別扱いが残る文字を拒否する。
+            // 引用符内でも展開される '%'（環境変数）と引用符自身 '"' が該当。
+            if (exe.IndexOfAny(['"', '%']) >= 0)
+                throw new ArgumentException($"Executable path contains an unsafe character: {exe}");
             fileName = Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe";
             args     = $"/c \"{exe}\" app-server";
         }
@@ -277,10 +319,12 @@ public sealed class CodexAppServerClient : IAsyncDisposable
         foreach (var c in _candidates)
             if (File.Exists(c)) return c;
 
-        // where コマンドで PATH から探す（拡張子を検証して意図しない実行形式を弾く）
+        // where コマンドで PATH から探す（拡張子を検証して意図しない実行形式を弾く）。
+        // %USERPROFILE% 等に偽の where.exe を置かれても拾わないよう System32 のフルパスで起動。
         try
         {
-            using var p = Process.Start(new ProcessStartInfo("where", "codex")
+            var whereExe = Path.Combine(Environment.SystemDirectory, "where.exe");
+            using var p = Process.Start(new ProcessStartInfo(whereExe, "codex")
             {
                 UseShellExecute        = false,
                 RedirectStandardOutput = true,

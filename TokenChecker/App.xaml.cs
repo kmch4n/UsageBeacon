@@ -1,6 +1,8 @@
 using System.Drawing;
 using System.Windows;
 using System.Windows.Forms;
+using TokenChecker.Models;
+using TokenChecker.Services;
 using TokenChecker.Utilities;
 using TokenChecker.ViewModels;
 using TokenChecker.Views;
@@ -34,7 +36,8 @@ public partial class App : System.Windows.Application
 
         DispatcherUnhandledException += (_, ex) =>
         {
-            System.Windows.MessageBox.Show(ex.Exception.ToString(),
+            // フルスタック（ファイルパス等の内部情報を含む）は表示せず、要約のみ出す。
+            System.Windows.MessageBox.Show(ex.Exception.Message,
                 "Token Checker - 起動エラー",
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Error);
@@ -87,17 +90,40 @@ public partial class App : System.Windows.Application
 
             _vm.SnapshotChanged += UpdateTrayIcon;
 
+            // 初回フェッチ完了後に一度だけ、未ログインのサービスがあればログイン画面を自動表示する。
+            var loginChecked = false;
+            _vm.SnapshotChanged += () =>
+            {
+                if (loginChecked || _vm!.Snapshot.FetchedAt == DateTime.MinValue) return;
+                loginChecked = true;
+                Dispatcher.BeginInvoke(PromptLoginIfNeeded);
+            };
+
             _pollCts = new CancellationTokenSource();
             _ = _vm.RunPollingLoopAsync(_pollCts.Token);
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(ex.ToString(),
+            System.Windows.MessageBox.Show(ex.Message,
                 "Token Checker - 起動エラー",
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Error);
             Shutdown(1);
         }
+    }
+
+    // ── 初回ログイン案内 ─────────────────────────────────────────────────
+
+    private void PromptLoginIfNeeded()
+    {
+        if (_vm!.LoginPrompted) return;
+        _vm.LoginPrompted = true; // 初回のみ。以降は手動ログインボタンを使う。
+
+        var snap = _vm.Snapshot;
+        if (snap.ClaudeError?.Kind == DomainErrorKind.TokenMissing)
+            new LoginWindow("Claude Code", "claude login", _vm, new WindowsTokenSource()).ShowDialog();
+        if (snap.CodexError?.Kind == DomainErrorKind.CodexRpcError)
+            new LoginWindow("Codex", "codex login", _vm).ShowDialog();
     }
 
     // ── ポップアップ開閉 ─────────────────────────────────────────────────

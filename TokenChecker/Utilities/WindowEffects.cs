@@ -79,16 +79,22 @@ public static class WindowEffects
                 AccentFlags   = 2,
                 GradientColor = (int)gradientColor,
             };
-            var ptr  = Marshal.AllocHGlobal(Marshal.SizeOf(accent));
-            Marshal.StructureToPtr(accent, ptr, false);
-            var data = new WindowCompositionAttributeData
+            var ptr = Marshal.AllocHGlobal(Marshal.SizeOf(accent));
+            try
             {
-                Attribute  = 19,   // WCA_ACCENT_POLICY
-                Data       = ptr,
-                SizeOfData = Marshal.SizeOf(accent),
-            };
-            SetWindowCompositionAttribute(hwnd, ref data);
-            Marshal.FreeHGlobal(ptr);
+                Marshal.StructureToPtr(accent, ptr, false);
+                var data = new WindowCompositionAttributeData
+                {
+                    Attribute  = 19,   // WCA_ACCENT_POLICY
+                    Data       = ptr,
+                    SizeOfData = Marshal.SizeOf(accent),
+                };
+                SetWindowCompositionAttribute(hwnd, ref data);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
         }
         catch { }
     }

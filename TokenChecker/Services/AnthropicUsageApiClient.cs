@@ -11,9 +11,12 @@ public sealed class AnthropicUsageApiClient
     private static readonly Uri UsageUrl =
         new("https://api.anthropic.com/api/oauth/usage");
 
-    private static readonly HttpClient Http = new()
+    // リダイレクトを追従すると Bearer トークンや anthropic-beta ヘッダーが
+    // 攻撃者ホストへ送られうるため明示的に無効化する。レスポンスサイズも上限を設ける。
+    private static readonly HttpClient Http = new(new SocketsHttpHandler { AllowAutoRedirect = false })
     {
-        Timeout = TimeSpan.FromSeconds(10)
+        Timeout = TimeSpan.FromSeconds(10),
+        MaxResponseContentBufferSize = 64 * 1024,
     };
 
     public async Task<AnthropicUsageDto> FetchAsync(string accessToken, CancellationToken ct = default)
@@ -26,6 +29,14 @@ public sealed class AnthropicUsageApiClient
         try
         {
             resp = await Http.SendAsync(req, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw; // 終了・キャンセルはネットワークエラーに化けさせない
+        }
+        catch (OperationCanceledException)
+        {
+            throw DomainError.Timeout(); // HttpClient.Timeout 経過
         }
         catch (Exception e)
         {

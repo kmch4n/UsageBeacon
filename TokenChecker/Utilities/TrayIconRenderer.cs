@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 
 namespace TokenChecker.Utilities;
 
@@ -8,10 +9,13 @@ namespace TokenChecker.Utilities;
 /// </summary>
 public static class TrayIconRenderer
 {
+    [DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr handle);
+
     public static Icon CreateIcon(double? claudeUtil, double? codexUtil)
     {
         const int size = 32;
-        var bmp = new Bitmap(size, size);
+        using var bmp = new Bitmap(size, size);
 
         using (var g = Graphics.FromImage(bmp))
         {
@@ -22,8 +26,18 @@ public static class TrayIconRenderer
             DrawBar(g, x: 18, width: 13, maxHeight: 26, yTop: 3, util: codexUtil);
         }
 
+        // GetHicon() のネイティブ HICON は Icon.FromHandle では解放されないため、
+        // マネージドコピーを作成してから DestroyIcon で明示的に破棄する。
         var hIcon = bmp.GetHicon();
-        return Icon.FromHandle(hIcon);
+        try
+        {
+            using var tmp = Icon.FromHandle(hIcon);
+            return (Icon)tmp.Clone();
+        }
+        finally
+        {
+            DestroyIcon(hIcon);
+        }
     }
 
     private static void DrawBar(Graphics g, int x, int width, int maxHeight, int yTop, double? util)

@@ -23,9 +23,11 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
     private PopupTransparency _popupTransparency;
     private string? _monitorDeviceName;
     private bool _startupEnabled;
+    private bool _loginPrompted;
     private DateTime _claudeCooldownUntilUtc;
     private ServiceUsage? _lastClaudeUsage;
     private bool _claudeWaitingAfterRateLimit;
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? SnapshotChanged;
@@ -97,6 +99,18 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         }
     }
 
+    /// <summary>初回起動時のログイン自動案内を一度だけ出すためのフラグ。</summary>
+    public bool LoginPrompted
+    {
+        get => _loginPrompted;
+        set
+        {
+            if (_loginPrompted == value) return;
+            _loginPrompted = value;
+            SaveSettings();
+        }
+    }
+
     public DateTime? ClaudeNextRetryAt =>
         Snapshot.ClaudeError?.Kind == DomainErrorKind.AnthropicRateLimited &&
         _claudeCooldownUntilUtc > DateTime.UtcNow
@@ -115,6 +129,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         _widgetPlacement = LoadWidgetPlacement();
         _popupTransparency = LoadPopupTransparency();
         _monitorDeviceName = LoadMonitorDeviceName();
+        _loginPrompted   = LoadLoginPrompted();
         _startupEnabled  = StartupManager.IsEnabled;
         _lastClaudeUsage = LoadClaudeUsageCache();
         var claudePollingState = LoadClaudePollingState();
@@ -153,6 +168,14 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
     }
 
     public async Task RefreshAsync(CancellationToken ct = default)
+    {
+        // ポーリングと手動更新が同時に走り _snapshot / _lastClaudeUsage を競合させないよう直列化する。
+        await _refreshGate.WaitAsync(ct);
+        try { await RefreshCoreAsync(ct); }
+        finally { _refreshGate.Release(); }
+    }
+
+    private async Task RefreshCoreAsync(CancellationToken ct)
     {
         IsLoading = true;
         try
@@ -236,6 +259,14 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "TokenChecker", "claude-polling-state.json");
 
+    // 一時ファイルに書いてから置換することで、書き込み途中の電源断による 0 バイト破損を避ける。
+    private static void AtomicWrite(string path, string content)
+    {
+        var tmp = path + ".tmp";
+        File.WriteAllText(tmp, content);
+        File.Move(tmp, path, overwrite: true);
+    }
+
     private static PollingInterval LoadSettings()
     {
         try
@@ -292,18 +323,33 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         return null;
     }
 
+    private static bool LoadLoginPrompted()
+    {
+        try
+        {
+            if (!File.Exists(SettingsPath)) return false;
+            var doc = JsonDocument.Parse(File.ReadAllText(SettingsPath));
+            if (doc.RootElement.TryGetProperty("loginPrompted", out var el) &&
+                el.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                return el.GetBoolean();
+        }
+        catch { }
+        return false;
+    }
+
     private void SaveSettings()
     {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-            File.WriteAllText(SettingsPath,
+            AtomicWrite(SettingsPath,
                 JsonSerializer.Serialize(new
                 {
                     pollingInterval = (int)_pollingInterval,
                     widgetPlacement = _widgetPlacement.ToString(),
                     popupTransparency = _popupTransparency.ToString(),
                     monitorDeviceName = _monitorDeviceName,
+                    loginPrompted = _loginPrompted,
                 }));
         }
         catch { }
@@ -325,7 +371,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(ClaudeUsageCachePath)!);
-            File.WriteAllText(ClaudeUsageCachePath, JsonSerializer.Serialize(usage));
+            AtomicWrite(ClaudeUsageCachePath, JsonSerializer.Serialize(usage));
         }
         catch { }
     }
@@ -346,7 +392,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(ClaudePollingStatePath)!);
-            File.WriteAllText(ClaudePollingStatePath, JsonSerializer.Serialize(
+            AtomicWrite(ClaudePollingStatePath, JsonSerializer.Serialize(
                 new ClaudePollingState
                 {
                     NextRequestUtc = _claudeCooldownUntilUtc,

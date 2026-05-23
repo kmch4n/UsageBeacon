@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -76,11 +77,18 @@ public sealed class WindowsTokenSource
 
             var bytes = new byte[cred.CredentialBlobSize];
             Marshal.Copy(cred.CredentialBlob, bytes, 0, bytes.Length);
-
-            // keytar は UTF-16LE で保存する
-            var json = Encoding.Unicode.GetString(bytes).TrimEnd('\0');
-            if (!json.StartsWith('{')) json = Encoding.UTF8.GetString(bytes).TrimEnd('\0');
-            return json;
+            try
+            {
+                // keytar は UTF-16LE で保存する
+                var json = Encoding.Unicode.GetString(bytes).TrimEnd('\0');
+                if (!json.StartsWith('{')) json = Encoding.UTF8.GetString(bytes).TrimEnd('\0');
+                return json;
+            }
+            finally
+            {
+                // 資格情報のコピーをメモリ上に残さない
+                CryptographicOperations.ZeroMemory(bytes);
+            }
         }
         finally
         {

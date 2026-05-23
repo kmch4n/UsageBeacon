@@ -19,7 +19,8 @@ public static class StartupManager
         }
         set
         {
-            using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true)!;
+            // Run キーが存在しないユーザーでも NRE にならないよう CreateSubKey を使う。
+            using var key = Registry.CurrentUser.CreateSubKey(RunKey, writable: true);
             if (value)
             {
                 var exe = Environment.ProcessPath;
