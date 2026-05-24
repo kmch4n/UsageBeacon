@@ -40,7 +40,7 @@ dotnet build TokenChecker.sln -c Release
 `.exe` 単体で他PCに配布したい場合は、ランタイム同梱版を発行する。
 
 ```powershell
-dotnet publish TokenChecker\TokenChecker.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish\
+dotnet publish TokenChecker\TokenChecker.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish\
 ```
 
 `publish\TokenChecker.exe` が .NET 不要で動く単一ファイルになる。
