@@ -174,9 +174,13 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         await _refreshGate.WaitAsync(ct);
         try
         {
-            // 手動更新（再ログイン直後など）は Codex のバックオフを解除して即リトライする。
-            if (force && _codex is CodexUsageProvider codex)
-                codex.ResetBackoff();
+            // 手動更新・再ログイン直後はクールダウンを解除して即リトライする。
+            if (force)
+            {
+                _claudeCooldownUntilUtc = DateTime.MinValue;
+                if (_codex is CodexUsageProvider codex)
+                    codex.ResetBackoff();
+            }
             await RefreshCoreAsync(ct);
         }
         finally { _refreshGate.Release(); }
