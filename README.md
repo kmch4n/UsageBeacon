@@ -7,7 +7,7 @@ macOS 版 [Token Checker](https://github.com/satonico/Token-Checker) の Windows
 ## 動作要件
 
 - Windows 10 / 11（64bit）
-- Claude Code CLI（`claude login` 済み）
+- Claude Code CLI（`claude auth login` 済み）
 - Codex CLI（`npm i -g @openai/codex` 後、`codex login` 済み）
 
 どちらか一方のみでも動作する。
@@ -43,7 +43,7 @@ dotnet publish TokenChecker\TokenChecker.csproj -c Release -r win-x64 --self-con
 1. 事前にターミナルでログインしておく
 
 ```powershell
-claude login
+claude auth login
 codex login
 ```
 

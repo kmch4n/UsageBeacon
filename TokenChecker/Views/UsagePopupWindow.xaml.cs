@@ -248,7 +248,7 @@ public partial class UsagePopupWindow : Window
 
     private void ClaudeLogin_Click(object sender, RoutedEventArgs e)
     {
-        var win = new LoginWindow("Claude Code", "claude login", _vm, new WindowsTokenSource());
+        var win = new LoginWindow("Claude Code", "claude auth login", _vm, new WindowsTokenSource());
         win.Show();
     }
 

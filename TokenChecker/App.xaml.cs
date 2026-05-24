@@ -121,7 +121,7 @@ public partial class App : System.Windows.Application
 
         var snap = _vm.Snapshot;
         if (snap.ClaudeError?.Kind == DomainErrorKind.TokenMissing)
-            new LoginWindow("Claude Code", "claude login", _vm, new WindowsTokenSource()).ShowDialog();
+            new LoginWindow("Claude Code", "claude auth login", _vm, new WindowsTokenSource()).ShowDialog();
         if (snap.CodexError?.Kind == DomainErrorKind.CodexRpcError)
             new LoginWindow("Codex", "codex login", _vm).ShowDialog();
     }

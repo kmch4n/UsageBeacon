@@ -26,10 +26,10 @@ public sealed class DomainError : Exception
     }
 
     public static DomainError TokenMissing() => new(DomainErrorKind.TokenMissing,
-        "Claude Code の認証情報が見つかりません。`claude login` でログインしてください。");
+        "Claude Code の認証情報が見つかりません。`claude auth login` でログインしてください。");
 
     public static DomainError AnthropicUnauthorized() => new(DomainErrorKind.AnthropicUnauthorized,
-        "Claude の認証が期限切れです。`claude login` で再ログインしてください。");
+        "Claude の認証が期限切れです。`claude auth login` で再ログインしてください。");
 
     public static DomainError AnthropicRateLimited(double? retryAfterSecs) => new(DomainErrorKind.AnthropicRateLimited,
         retryAfterSecs.HasValue

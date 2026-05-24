@@ -24,11 +24,11 @@ public partial class LoginWindow : Window
         InitializeComponent();
 
         TitleLabel.Text         = $"{service} ログイン";
-        OpenTerminalBtn.Content = $"ターミナルを開く ({cliCommand})";
+        OpenTerminalBtn.Content = $"ブラウザでログイン ({cliCommand})";
         DescLabel.Text          =
-            $"ターミナルで「{cliCommand}」を実行してログインします。\n" +
-            "下のボタンでターミナルを開いてください。\n" +
-            "ログイン完了後、このウィンドウが自動的に閉じます。";
+            "下の「ブラウザでログイン」ボタンを押すとブラウザが開きます。\n" +
+            $"（実行コマンド: {cliCommand}）\n" +
+            "ログイン完了後、このウィンドウは自動的に閉じます。";
 
         Loaded += async (_, _) =>
         {
@@ -68,7 +68,7 @@ public partial class LoginWindow : Window
 
         OpenTerminalBtn.IsEnabled = false;
         DoneBtn.IsEnabled         = true;
-        ShowStatus("ターミナルでログイン処理中... トークンを待機しています");
+        ShowStatus("ブラウザでログインしてください。完了すると自動的に閉じます。");
 
         if (_tokenSource != null)
             _ = PollForNewTokenAsync();
