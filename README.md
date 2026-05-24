@@ -74,6 +74,14 @@ Remove-Item "$env:APPDATA\TokenChecker" -Recurse -Force -ErrorAction SilentlyCon
 
 あとはビルド／ダウンロードした `TokenChecker.exe`（やクローンしたフォルダ）を削除すれば完了。Claude / Codex の認証情報は CLI 側（`claude` / `codex`）の管理なので、本アプリのアンインストールでは消さない。
 
+## 更新履歴
+
+### v0.2.0
+- 詳細ポップアップのデザインをシンプルに変更（カード形式 → セパレータ区切りのフラットレイアウト）
+
+### v0.1.0
+- 初回リリース
+
 ## ライセンス
 
 [MIT License](LICENSE) © 2026 satonico-bit
