@@ -276,6 +276,7 @@ public partial class UsagePopupWindow : Window
 
     private static string ResetLabel(DateTime resetsAt)
     {
+        if (resetsAt == DateTime.MinValue) return "直近5時間の使用なし";
         var local = resetsAt.Kind == DateTimeKind.Utc ? resetsAt.ToLocalTime() : resetsAt;
         var now   = DateTime.Now;
         if (local <= now.AddMinutes(1)) return "まもなくリセット";

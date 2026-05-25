@@ -90,10 +90,11 @@ public sealed class BucketDto
 
     public RateLimit? ToRateLimit()
     {
-        if (Utilization == null || ResetsAt == null) return null;
-        if (!DateTime.TryParse(ResetsAt, null,
-                System.Globalization.DateTimeStyles.RoundtripKind, out var date))
-            return null;
+        if (Utilization == null) return null;
+        var date = DateTime.MinValue;
+        if (ResetsAt != null)
+            DateTime.TryParse(ResetsAt, null,
+                System.Globalization.DateTimeStyles.RoundtripKind, out date);
         return new RateLimit(Utilization.Value / 100.0, date);
     }
 }

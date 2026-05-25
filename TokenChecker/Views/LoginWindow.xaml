@@ -109,6 +109,14 @@
                     Style="{StaticResource PrimaryBtn}"
                     HorizontalAlignment="Stretch"
                     Click="OpenTerminal_Click"
+                    Margin="0,0,0,6"/>
+
+            <!-- Fallback: copy command -->
+            <Button x:Name="CopyCommandBtn"
+                    Content="コマンドをコピー（自分のターミナルで実行）"
+                    Style="{StaticResource GhostBtn}"
+                    HorizontalAlignment="Stretch"
+                    Click="CopyCommand_Click"
                     Margin="0,0,0,10"/>
 
             <!-- Status area -->

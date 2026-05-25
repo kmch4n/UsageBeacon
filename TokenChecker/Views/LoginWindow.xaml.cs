@@ -26,8 +26,9 @@ public partial class LoginWindow : Window
         TitleLabel.Text         = $"{service} ログイン";
         OpenTerminalBtn.Content = $"ブラウザでログイン ({cliCommand})";
         DescLabel.Text          =
-            "下の「ブラウザでログイン」ボタンを押すとブラウザが開きます。\n" +
-            $"（実行コマンド: {cliCommand}）\n" +
+            "「ブラウザでログイン」を押すとターミナルが開きます。\n" +
+            "ブラウザが開かない・コマンドが見つからない場合は\n" +
+            "「コマンドをコピー」でご自身のターミナルに貼り付けて実行してください。\n" +
             "ログイン完了後、このウィンドウは自動的に閉じます。";
 
         Loaded += async (_, _) =>
@@ -57,9 +58,9 @@ public partial class LoginWindow : Window
                 UseShellExecute = true,
             });
         }
-        catch (Exception ex)
+        catch
         {
-            ShowStatus($"ターミナルを開けませんでした: {ex.Message}");
+            ShowStatus("ターミナルを開けませんでした。「コマンドをコピー」でご自身のターミナルに実行してください。");
             return;
         }
 
@@ -72,6 +73,14 @@ public partial class LoginWindow : Window
 
         if (_tokenSource != null)
             _ = PollForNewTokenAsync();
+    }
+
+    private void CopyCommand_Click(object sender, RoutedEventArgs e)
+    {
+        try { System.Windows.Clipboard.SetText(_cliCommand); }
+        catch { }
+        ShowStatus($"コピーしました: {_cliCommand}\nご自身のターミナルに貼り付けて実行してください。");
+        DoneBtn.IsEnabled = true;
     }
 
     private void Done_Click(object sender, RoutedEventArgs e)
