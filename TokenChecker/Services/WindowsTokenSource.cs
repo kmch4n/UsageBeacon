@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -61,7 +62,70 @@ public sealed class WindowsTokenSource
             catch { }
         }
 
+        // 3) WSL ファイルシステムにフォールバック（WSL 内にのみ claude がある場合）
+        foreach (var path in GetWslCredentialPaths())
+        {
+            if (!File.Exists(path)) continue;
+            try
+            {
+                var json = await File.ReadAllTextAsync(path, ct);
+                var token = ExtractToken(json);
+                if (token != null) return token;
+            }
+            catch { }
+        }
+
         throw DomainError.TokenMissing();
+    }
+
+    private static IEnumerable<string> GetWslCredentialPaths()
+    {
+        string[] distros;
+        string wslUser;
+        try
+        {
+            using var p = Process.Start(new ProcessStartInfo("wsl.exe", "--list --quiet")
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute        = false,
+                CreateNoWindow         = true,
+                StandardOutputEncoding = Encoding.Unicode,
+            });
+            if (p == null) yield break;
+            var raw = p.StandardOutput.ReadToEnd();
+            p.WaitForExit(3000);
+            distros = raw.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                         .Select(d => d.Trim().Replace("\0", ""))
+                         .Where(d => !string.IsNullOrWhiteSpace(d))
+                         .ToArray();
+            if (distros.Length == 0) yield break;
+        }
+        catch { yield break; }
+
+        try
+        {
+            using var p = Process.Start(new ProcessStartInfo("wsl.exe", "-- whoami")
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute        = false,
+                CreateNoWindow         = true,
+            });
+            if (p == null) yield break;
+            wslUser = p.StandardOutput.ReadToEnd().Trim();
+            p.WaitForExit(3000);
+            if (string.IsNullOrWhiteSpace(wslUser)) yield break;
+        }
+        catch { yield break; }
+
+        foreach (var distro in distros)
+        {
+            // Windows 11 は \\wsl.localhost\、Windows 10 は \\wsl$\ を使う
+            foreach (var prefix in new[] { $@"\\wsl.localhost\{distro}", $@"\\wsl$\{distro}" })
+            {
+                yield return Path.Combine(prefix, "home", wslUser, ".claude", ".credentials.json");
+                yield return Path.Combine(prefix, "home", wslUser, ".claude", "credentials.json");
+            }
+        }
     }
 
     // ── Windows Credential Manager (P/Invoke) ────────────────────────────

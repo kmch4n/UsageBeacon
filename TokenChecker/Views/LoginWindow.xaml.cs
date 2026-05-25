@@ -27,8 +27,8 @@ public partial class LoginWindow : Window
         OpenTerminalBtn.Content = $"ブラウザでログイン ({cliCommand})";
         DescLabel.Text          =
             "「ブラウザでログイン」を押すとターミナルが開きます。\n" +
-            "ブラウザが開かない・コマンドが見つからない場合は\n" +
-            "「コマンドをコピー」でご自身のターミナルに貼り付けて実行してください。\n" +
+            "WSL（Ubuntu）にのみインストールしている場合は「WSL」ボタンをご利用ください。\n" +
+            "ブラウザが開かない場合は「コマンドをコピー」でご自身のターミナルに貼り付けて実行してください。\n" +
             "ログイン完了後、このウィンドウは自動的に閉じます。";
 
         Loaded += async (_, _) =>
@@ -70,6 +70,31 @@ public partial class LoginWindow : Window
         OpenTerminalBtn.IsEnabled = false;
         DoneBtn.IsEnabled         = true;
         ShowStatus("ブラウザでログインしてください。完了すると自動的に閉じます。");
+
+        if (_tokenSource != null)
+            _ = PollForNewTokenAsync();
+    }
+
+    private void OpenWsl_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo("cmd.exe", $"/k wsl -- {_cliCommand}")
+            {
+                UseShellExecute = true,
+            });
+        }
+        catch
+        {
+            ShowStatus("WSLを開けませんでした。WSL（Ubuntu等）がインストールされているか確認してください。");
+            return;
+        }
+
+        Topmost = false;
+        OpenTerminalBtn.IsEnabled = false;
+        OpenWslBtn.IsEnabled      = false;
+        DoneBtn.IsEnabled         = true;
+        ShowStatus("WSLターミナルでログインしてください。完了すると自動的に閉じます。");
 
         if (_tokenSource != null)
             _ = PollForNewTokenAsync();
