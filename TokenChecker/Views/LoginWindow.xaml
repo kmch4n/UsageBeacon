@@ -104,11 +104,31 @@
                        FontSize="11" TextWrapping="Wrap" LineHeight="17"
                        Margin="0,0,0,14"/>
 
-            <!-- Open terminal button -->
-            <Button x:Name="OpenTerminalBtn"
-                    Style="{StaticResource PrimaryBtn}"
+            <!-- Open terminal button + WSL button -->
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="4"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button x:Name="OpenTerminalBtn"
+                        Grid.Column="0"
+                        Style="{StaticResource PrimaryBtn}"
+                        HorizontalAlignment="Stretch"
+                        Click="OpenTerminal_Click"/>
+                <Button x:Name="OpenWslBtn"
+                        Grid.Column="2"
+                        Content="WSL"
+                        Style="{StaticResource GhostBtn}"
+                        Click="OpenWsl_Click"/>
+            </Grid>
+
+            <!-- Fallback: copy command -->
+            <Button x:Name="CopyCommandBtn"
+                    Content="コマンドをコピー（自分のターミナルで実行）"
+                    Style="{StaticResource GhostBtn}"
                     HorizontalAlignment="Stretch"
-                    Click="OpenTerminal_Click"
+                    Click="CopyCommand_Click"
                     Margin="0,0,0,10"/>
 
             <!-- Status area -->

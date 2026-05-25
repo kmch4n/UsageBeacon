@@ -71,8 +71,8 @@ public partial class TaskbarWidget : Window
             {
                 // 仮想デスクトップが切り替わった → 現在のデスクトップへ移動して再表示
                 VirtualDesktopHelper.MoveToCurrentDesktop(hwnd);
-                ShowWindow(hwnd, SW_SHOWNA);
             }
+            ShowWindow(hwnd, SW_SHOWNA);
             ReassertTopmost();
             if (++_positionTick % 5 == 0)
                 PositionOnSelectedTaskbar(_vm.WidgetPlacement);

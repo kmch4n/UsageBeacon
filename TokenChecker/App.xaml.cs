@@ -68,14 +68,12 @@ public partial class App : System.Windows.Application
                     PositionPopup();
             };
 
-            // フォーカスが外れたら（外側クリック等）自動で閉じる
+            // フォーカスが外れたら自動で閉じる。
             _popup.Deactivated += (_, _) =>
             {
-                if (_popup is { IsVisible: true })
-                {
-                    _popup.Hide();
-                    _popupHiddenAt = DateTime.UtcNow;
-                }
+                if (_popup is not { IsVisible: true }) return;
+                _popup.Hide();
+                _popupHiddenAt = DateTime.UtcNow;
             };
 
             // ── トレイアイコン（右クリックメニュー用）
