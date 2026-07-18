@@ -96,11 +96,11 @@ Delete the downloaded executable or cloned repository afterward. Claude and Code
 
 ## Development
 
-Contributions are welcome. Run Debug tests and both Debug and Release builds before submitting changes. Report credential-related vulnerabilities privately rather than through a public issue.
+Contributions are welcome. See [CONTRIBUTING](docs/CONTRIBUTING.md) for the development workflow, [SECURITY](docs/SECURITY.md) for vulnerability reporting, and [CHANGELOG](docs/CHANGELOG.md) for notable changes.
 
 ## Attribution
 
-UsageBeacon is based on [Token Checker for Windows](https://github.com/satonico/Token-Checker-win) by satonico224, which in turn ports the macOS [Token Checker](https://github.com/satonico/Token-Checker) experience to Windows. The original copyright notice and MIT License are preserved in [LICENSE](LICENSE).
+UsageBeacon is based on [Token Checker for Windows](https://github.com/satonico/Token-Checker-win) by satonico224, which in turn ports the macOS [Token Checker](https://github.com/satonico/Token-Checker) experience to Windows. The original copyright notice and MIT License are preserved in [LICENSE](LICENSE); additional attribution is documented in [NOTICE](docs/NOTICE.md).
 
 The UsageBeacon maintainers are grateful for the upstream design and implementation. References to the upstream projects are for attribution and history only and do not imply endorsement of this fork.
 
