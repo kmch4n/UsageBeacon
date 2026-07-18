@@ -117,8 +117,12 @@
                         <TextBlock Text="✦ " Style="{StaticResource Title}" Foreground="#D07A42"/>
                         <TextBlock Text="Claude Code" Style="{StaticResource Title}"/>
                     </StackPanel>
-                    <Button HorizontalAlignment="Right" Content="ログイン"
-                            Style="{StaticResource LinkBtn}" Click="ClaudeLogin_Click"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="ClaudeIntegrationBtn" Content="連携"
+                                Style="{StaticResource LinkBtn}" Click="ClaudeIntegration_Click"/>
+                        <Button Content="ログイン"
+                                Style="{StaticResource LinkBtn}" Click="ClaudeLogin_Click"/>
+                    </StackPanel>
                 </Grid>
 
                 <TextBlock x:Name="ClaudeLoading" Text="取得中…" Style="{StaticResource Label}"/>
@@ -149,6 +153,8 @@
                         <TextBlock x:Name="ClaudeSonnetPct" HorizontalAlignment="Right"
                                    FontSize="11"/>
                     </Grid>
+                    <TextBlock x:Name="ClaudeFreshness" Style="{StaticResource Tiny}"
+                               Margin="0,5,0,0"/>
                 </StackPanel>
 
                 <Border x:Name="ClaudeError" Visibility="Collapsed"
@@ -223,7 +229,7 @@
                     <ComboBox x:Name="IntervalPicker" HorizontalAlignment="Right" Width="80"
                               SelectionChanged="IntervalPicker_SelectionChanged"/>
                 </Grid>
-                <TextBlock Text="Claude / Codex の最短更新間隔は 2 分" Style="{StaticResource Tiny}"
+                <TextBlock Text="Claude API は最短30分 / Codex は選択した間隔" Style="{StaticResource Tiny}"
                            Margin="0,0,0,6"/>
                 <Grid Margin="0,0,0,6">
                     <TextBlock Text="ログイン時に自動起動" Style="{StaticResource Label}"

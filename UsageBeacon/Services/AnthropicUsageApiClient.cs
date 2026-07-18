@@ -6,29 +6,46 @@ using UsageBeacon.Models;
 
 namespace UsageBeacon.Services;
 
-public sealed class AnthropicUsageApiClient
+public interface IAnthropicUsageApiClient
+{
+    Task<AnthropicUsageDto> FetchAsync(
+        string accessToken,
+        CancellationToken ct = default);
+}
+
+public sealed class AnthropicUsageApiClient : IAnthropicUsageApiClient
 {
     private static readonly Uri UsageUrl =
         new("https://api.anthropic.com/api/oauth/usage");
 
     // リダイレクトを追従すると Bearer トークンや anthropic-beta ヘッダーが
     // 攻撃者ホストへ送られうるため明示的に無効化する。レスポンスサイズも上限を設ける。
-    private static readonly HttpClient Http = new(new SocketsHttpHandler { AllowAutoRedirect = false })
+    private static readonly HttpClient SharedHttp = new(new SocketsHttpHandler { AllowAutoRedirect = false })
     {
         Timeout = TimeSpan.FromSeconds(10),
         MaxResponseContentBufferSize = 64 * 1024,
     };
+
+    private readonly HttpClient _http;
+    private readonly TimeProvider _timeProvider;
+
+    public AnthropicUsageApiClient(HttpClient? http = null, TimeProvider? timeProvider = null)
+    {
+        _http = http ?? SharedHttp;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+    }
 
     public async Task<AnthropicUsageDto> FetchAsync(string accessToken, CancellationToken ct = default)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, UsageUrl);
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         req.Headers.Add("anthropic-beta", "oauth-2025-04-20");
+        req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         HttpResponseMessage resp;
         try
         {
-            resp = await Http.SendAsync(req, ct);
+            resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -43,29 +60,39 @@ public sealed class AnthropicUsageApiClient
             throw DomainError.Network(e.Message);
         }
 
-        switch ((int)resp.StatusCode)
+        using (resp)
         {
-            case 200: break;
-            case 401: throw DomainError.AnthropicUnauthorized();
-            case 429:
-                double? retryAfter = null;
-                if (resp.Headers.TryGetValues("Retry-After", out var vals))
-                    retryAfter = double.TryParse(vals.FirstOrDefault(), out var s) ? s : null;
-                throw DomainError.AnthropicRateLimited(retryAfter);
-            default:
-                throw DomainError.AnthropicHttp((int)resp.StatusCode);
-        }
+            switch ((int)resp.StatusCode)
+            {
+                case 200: break;
+                case 401: throw DomainError.AnthropicUnauthorized();
+                case 429: throw DomainError.AnthropicRateLimited(GetRetryAfterSeconds(resp));
+                default: throw DomainError.AnthropicHttp((int)resp.StatusCode);
+            }
 
-        var body = await resp.Content.ReadAsStringAsync(ct);
-        try
-        {
-            return JsonSerializer.Deserialize<AnthropicUsageDto>(body, JsonOpts)
-                   ?? throw DomainError.Decoding("Anthropic usage: null");
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            try
+            {
+                return JsonSerializer.Deserialize<AnthropicUsageDto>(body, JsonOpts)
+                       ?? throw DomainError.Decoding("Anthropic usage: null");
+            }
+            catch (JsonException e)
+            {
+                throw DomainError.Decoding($"Anthropic usage: {e.Message}");
+            }
         }
-        catch (JsonException e)
+    }
+
+    private double? GetRetryAfterSeconds(HttpResponseMessage response)
+    {
+        var retryAfter = response.Headers.RetryAfter;
+        if (retryAfter?.Delta is { } delta) return Math.Max(0, delta.TotalSeconds);
+        if (retryAfter?.Date is { } date)
         {
-            throw DomainError.Decoding($"Anthropic usage: {e.Message}");
+            var now = _timeProvider.GetUtcNow();
+            return Math.Max(0, (date - now).TotalSeconds);
         }
+        return null;
     }
 
     private static readonly JsonSerializerOptions JsonOpts = new()

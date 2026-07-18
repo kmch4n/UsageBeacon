@@ -11,6 +11,7 @@ namespace UsageBeacon.Views;
 public partial class UsagePopupWindow : Window
 {
     private readonly UsageViewModel _vm;
+    private readonly ClaudeStatusLineIntegration _claudeIntegration = new();
     private bool _pickerReady;
     private bool _transparencyPickerReady;
 
@@ -25,6 +26,7 @@ public partial class UsagePopupWindow : Window
         SetupIntervalPicker();
         SetupTransparencyPicker();
         StartupChk.IsChecked = vm.StartupEnabled;
+        SyncClaudeIntegrationButton();
         vm.PropertyChanged  += (_, _) => Dispatcher.Invoke(Refresh);
 
         Refresh();
@@ -61,6 +63,7 @@ public partial class UsagePopupWindow : Window
             ClaudeLoading.Visibility = Visibility.Visible;
             ClaudeContent.Visibility = Visibility.Collapsed;
             ClaudeError.Visibility   = Visibility.Collapsed;
+            ClaudeFreshness.Visibility = Visibility.Collapsed;
             return;
         }
 
@@ -87,6 +90,11 @@ public partial class UsagePopupWindow : Window
             ClaudeError.Visibility   = Visibility.Collapsed;
         }
         var usage = snap.ClaudeUsage!;
+        ClaudeFreshness.Visibility = Visibility.Visible;
+        ClaudeFreshness.Text = snap.ClaudeFetchedAtUtc is { } fetchedAt &&
+                               fetchedAt > DateTime.MinValue
+            ? $"取得: {fetchedAt.ToLocalTime():M/d HH:mm} / {ClaudeSourceLabel(snap.ClaudeSource)}"
+            : "取得時刻不明（旧キャッシュ）";
 
         if (usage.FiveHour is { } fh)
         {
@@ -172,7 +180,7 @@ public partial class UsagePopupWindow : Window
     private void RefreshFooter()
     {
         if (_vm.Snapshot.FetchedAt > DateTime.MinValue)
-            FetchedAtLabel.Text = $"更新: {_vm.Snapshot.FetchedAt:HH:mm:ss}";
+            FetchedAtLabel.Text = $"最終確認: {_vm.Snapshot.FetchedAt:HH:mm:ss}";
 
         RefreshBtn.IsEnabled = !_vm.IsLoading;
     }
@@ -252,6 +260,44 @@ public partial class UsagePopupWindow : Window
         win.Show();
     }
 
+    private void ClaudeIntegration_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_claudeIntegration.IsEnabled)
+            {
+                if (!_claudeIntegration.Disable())
+                {
+                    System.Windows.MessageBox.Show(
+                        "Claude Code の設定が連携後に変更されています。現在の設定を保護するため、自動解除しませんでした。",
+                        "UsageBeacon",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    return;
+                }
+            }
+            else
+            {
+                var result = System.Windows.MessageBox.Show(
+                    "Claude Code の status line に UsageBeacon bridge を追加します。既存の status line は保持され、bridge 実行後にそのまま呼び出されます。続行しますか？",
+                    "Claude Code 連携",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+                if (result != MessageBoxResult.Yes) return;
+                _claudeIntegration.Enable();
+            }
+            SyncClaudeIntegrationButton();
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"Claude Code 連携の更新に失敗しました。\n{ex.Message}",
+                "UsageBeacon",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
     private void CodexLogin_Click(object sender, RoutedEventArgs e)
     {
         var win = new LoginWindow("Codex", "codex login", _vm);
@@ -273,6 +319,18 @@ public partial class UsagePopupWindow : Window
         v < 0.75 ? MediaColor.FromRgb(0x4C, 0xAF, 0x50) :
         v < 0.90 ? MediaColor.FromRgb(0xFF, 0xC1, 0x07) :
                    MediaColor.FromRgb(0xF4, 0x43, 0x36));
+
+    private static string ClaudeSourceLabel(UsageDataSource? source) => source switch
+    {
+        UsageDataSource.ClaudeCodeStatusLine => "Claude Code",
+        UsageDataSource.OAuthApi => "Usage API",
+        _ => "キャッシュ",
+    };
+
+    private void SyncClaudeIntegrationButton()
+    {
+        ClaudeIntegrationBtn.Content = _claudeIntegration.IsEnabled ? "連携解除" : "連携";
+    }
 
     private static string ResetLabel(DateTime resetsAt)
     {

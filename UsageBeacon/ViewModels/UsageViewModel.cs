@@ -11,7 +11,8 @@ namespace UsageBeacon.ViewModels;
 
 public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
 {
-    private static readonly TimeSpan ClaudeMinimumInterval = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan ClaudeMinimumInterval = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan ClaudeNativeUsageFreshness = TimeSpan.FromMinutes(30);
 
     private readonly IUsageProvider _claude;
     private readonly IUsageProvider _codex;
@@ -26,6 +27,8 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool _loginPrompted;
     private DateTime _claudeCooldownUntilUtc;
     private ServiceUsage? _lastClaudeUsage;
+    private DateTime? _lastClaudeFetchedAtUtc;
+    private UsageDataSource? _lastClaudeSource;
     private ServiceUsage? _lastCodexUsage;
     private bool _claudeWaitingAfterRateLimit;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
@@ -133,7 +136,16 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         _loginPrompted   = LoadLoginPrompted();
         try { StartupManager.MigrateLegacyRegistration(); } catch { }
         _startupEnabled  = StartupManager.IsEnabled;
-        _lastClaudeUsage = LoadClaudeUsageCache();
+        var claudeUsageCache = LoadClaudeUsageCache();
+        var nativeUsageCache = ClaudeNativeUsageStore.Load();
+        var latestClaudeUsage = claudeUsageCache;
+        if (nativeUsageCache != null &&
+            (latestClaudeUsage == null ||
+             nativeUsageCache.FetchedAtUtc > latestClaudeUsage.FetchedAtUtc))
+            latestClaudeUsage = nativeUsageCache;
+        _lastClaudeUsage = latestClaudeUsage?.Usage;
+        _lastClaudeFetchedAtUtc = latestClaudeUsage?.FetchedAtUtc;
+        _lastClaudeSource = latestClaudeUsage?.Source;
         _lastCodexUsage  = LoadCodexUsageCache();
         var claudePollingState = LoadClaudePollingState();
         _claudeCooldownUntilUtc = claudePollingState?.NextRequestUtc ?? DateTime.MinValue;
@@ -141,7 +153,11 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         if (!_claudeWaitingAfterRateLimit &&
             _claudeCooldownUntilUtc > DateTime.UtcNow.Add(ClaudeMinimumInterval))
             _claudeCooldownUntilUtc = DateTime.UtcNow.Add(ClaudeMinimumInterval);
-        var waitingForClaudeRetry = _claudeWaitingAfterRateLimit &&
+        var hasFreshNativeUsage =
+            _lastClaudeSource == UsageDataSource.ClaudeCodeStatusLine &&
+            _lastClaudeFetchedAtUtc > DateTime.UtcNow.Subtract(ClaudeNativeUsageFreshness);
+        var waitingForClaudeRetry = !hasFreshNativeUsage &&
+                                    _claudeWaitingAfterRateLimit &&
                                     _claudeCooldownUntilUtc > DateTime.UtcNow;
         if (_lastClaudeUsage != null || _lastCodexUsage != null || waitingForClaudeRetry)
         {
@@ -149,6 +165,8 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
             {
                 ClaudeUsage = _lastClaudeUsage,
                 ClaudeError = waitingForClaudeRetry ? DomainError.AnthropicRateLimited(null) : null,
+                ClaudeFetchedAtUtc = _lastClaudeFetchedAtUtc,
+                ClaudeSource = _lastClaudeSource,
                 CodexUsage  = _lastCodexUsage,
                 FetchedAt = DateTime.MinValue,
             };
@@ -177,27 +195,42 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         await _refreshGate.WaitAsync(ct);
         try
         {
-            // 手動更新・再ログイン直後はクールダウンを解除して即リトライする。
-            if (force)
-            {
-                _claudeCooldownUntilUtc = DateTime.MinValue;
-                if (_codex is CodexUsageProvider codex)
-                    codex.ResetBackoff();
-            }
-            await RefreshCoreAsync(ct);
+            if (force && _codex is CodexUsageProvider codex)
+                codex.ResetBackoff();
+            await RefreshCoreAsync(ct, force);
         }
         finally { _refreshGate.Release(); }
     }
 
-    private async Task RefreshCoreAsync(CancellationToken ct)
+    private async Task RefreshCoreAsync(CancellationToken ct, bool force)
     {
         IsLoading = true;
         try
         {
-            var fetchClaude = DateTime.UtcNow >= _claudeCooldownUntilUtc;
+            var nowUtc = DateTime.UtcNow;
+            var nativeUsage = ClaudeNativeUsageStore.Load();
+            if (nativeUsage != null &&
+                (!_lastClaudeFetchedAtUtc.HasValue ||
+                 nativeUsage.FetchedAtUtc > _lastClaudeFetchedAtUtc.Value))
+            {
+                _lastClaudeUsage = nativeUsage.Usage;
+                _lastClaudeFetchedAtUtc = nativeUsage.FetchedAtUtc;
+                _lastClaudeSource = nativeUsage.Source;
+                SaveClaudeUsageCache(nativeUsage);
+            }
+            var hasFreshNativeUsage =
+                _lastClaudeSource == UsageDataSource.ClaudeCodeStatusLine &&
+                _lastClaudeFetchedAtUtc > nowUtc.Subtract(ClaudeNativeUsageFreshness);
+            var fetchClaude = !hasFreshNativeUsage && ClaudePollingPolicy.ShouldFetch(
+                nowUtc,
+                _claudeCooldownUntilUtc,
+                _claudeWaitingAfterRateLimit,
+                force);
             var claudeTask = fetchClaude
                 ? FetchSafe(_claude, ct)
-                : Task.FromResult((Snapshot.ClaudeUsage, Snapshot.ClaudeError));
+                : Task.FromResult((
+                    _lastClaudeUsage,
+                    hasFreshNativeUsage ? null : Snapshot.ClaudeError));
             var codexTask  = FetchSafe(_codex,  ct);
             await Task.WhenAll(claudeTask, codexTask);
 
@@ -208,17 +241,16 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
                 if (cu != null)
                 {
                     _claudeWaitingAfterRateLimit = false;
-                    _claudeCooldownUntilUtc = DateTime.UtcNow.Add(ClaudeMinimumInterval);
+                    _claudeCooldownUntilUtc = nowUtc.Add(ClaudeMinimumInterval);
                     SaveClaudePollingState();
                 }
                 else if (ce?.Kind == DomainErrorKind.AnthropicRateLimited)
                 {
                     _claudeWaitingAfterRateLimit = true;
-                    var serverDelay = ce.RetryAfterSeconds is > 0
-                        ? TimeSpan.FromSeconds(ce.RetryAfterSeconds.Value)
-                        : TimeSpan.Zero;
-                    _claudeCooldownUntilUtc = DateTime.UtcNow.Add(
-                        serverDelay > ClaudeMinimumInterval ? serverDelay : ClaudeMinimumInterval);
+                    _claudeCooldownUntilUtc = ClaudePollingPolicy.NextRequestAfterRateLimit(
+                        nowUtc,
+                        ce.RetryAfterSeconds,
+                        ClaudeMinimumInterval);
                     SaveClaudePollingState();
                 }
                 else
@@ -229,10 +261,15 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
                 }
             }
             // 一時的なエラー時は直前に取得できた値を表示し続ける（常に数字を出すため）。
-            if (cu != null)
+            if (fetchClaude && cu != null)
             {
                 _lastClaudeUsage = cu;
-                SaveClaudeUsageCache(cu);
+                _lastClaudeFetchedAtUtc = nowUtc;
+                _lastClaudeSource = UsageDataSource.OAuthApi;
+                SaveClaudeUsageCache(new UsageCacheEntry(
+                    cu,
+                    nowUtc,
+                    UsageDataSource.OAuthApi));
             }
             else if (ce != null && _lastClaudeUsage != null && IsTransient(ce.Kind))
             {
@@ -252,6 +289,8 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
             Snapshot = new UsageSnapshot
             {
                 ClaudeUsage = cu, ClaudeError = ce,
+                ClaudeFetchedAtUtc = _lastClaudeFetchedAtUtc,
+                ClaudeSource = _lastClaudeSource,
                 CodexUsage  = xu, CodexError  = xe,
                 FetchedAt   = DateTime.Now,
             };
@@ -387,23 +426,36 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         catch { }
     }
 
-    private static ServiceUsage? LoadClaudeUsageCache()
+    private static UsageCacheEntry? LoadClaudeUsageCache()
     {
         try
         {
-            return File.Exists(ClaudeUsageCachePath)
-                ? JsonSerializer.Deserialize<ServiceUsage>(File.ReadAllText(ClaudeUsageCachePath))
-                : null;
+            if (!File.Exists(ClaudeUsageCachePath)) return null;
+            var json = File.ReadAllText(ClaudeUsageCachePath);
+            try
+            {
+                var entry = JsonSerializer.Deserialize<UsageCacheEntry>(json);
+                if (entry?.Usage != null) return entry;
+            }
+            catch (JsonException) { }
+
+            var legacyUsage = JsonSerializer.Deserialize<ServiceUsage>(json);
+            return legacyUsage == null
+                ? null
+                : new UsageCacheEntry(
+                    legacyUsage,
+                    DateTime.MinValue,
+                    UsageDataSource.OAuthApi);
         }
         catch { return null; }
     }
 
-    private static void SaveClaudeUsageCache(ServiceUsage usage)
+    private static void SaveClaudeUsageCache(UsageCacheEntry entry)
     {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(ClaudeUsageCachePath)!);
-            AtomicWrite(ClaudeUsageCachePath, JsonSerializer.Serialize(usage));
+            AtomicWrite(ClaudeUsageCachePath, JsonSerializer.Serialize(entry));
         }
         catch { }
     }

@@ -14,12 +14,18 @@ namespace UsageBeacon.Services;
 /// keytar が CRED_TYPE_GENERIC で保存した値を P/Invoke で取得する。
 /// 見つからない場合は %USERPROFILE%\.claude\credentials.json にフォールバック。
 /// </summary>
-public sealed class WindowsTokenSource
+public sealed class WindowsTokenSource : IClaudeCredentialSource
 {
     private const string ServiceName = "Claude Code-credentials";
 
     public async Task<string> ReadAccessTokenAsync(CancellationToken ct = default)
+        => (await ReadCredentialAsync(ct)).AccessToken;
+
+    public async Task<ClaudeCredential> ReadCredentialAsync(CancellationToken ct = default)
     {
+        var now = DateTimeOffset.UtcNow;
+        ClaudeCredential? expiredCredential = null;
+
         // 1) Windows 資格情報マネージャーを試す（複数のターゲット名）
         var username = Environment.UserName;
         var targets = new[]
@@ -34,8 +40,9 @@ public sealed class WindowsTokenSource
             var json = TryReadCredential(target);
             if (json != null)
             {
-                var token = ExtractToken(json);
-                if (token != null) return token;
+                var credential = ParseCredential(json, $"credential-manager:{target}");
+                if (credential?.IsUsableAt(now) == true) return credential;
+                expiredCredential = PreferRefreshable(expiredCredential, credential);
             }
         }
 
@@ -56,9 +63,11 @@ public sealed class WindowsTokenSource
             try
             {
                 var json = await File.ReadAllTextAsync(path, ct);
-                var token = ExtractToken(json);
-                if (token != null) return token;
+                var credential = ParseCredential(json, $"file:{Path.GetFileName(path)}");
+                if (credential?.IsUsableAt(now) == true) return credential;
+                expiredCredential = PreferRefreshable(expiredCredential, credential);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch { }
         }
 
@@ -69,13 +78,28 @@ public sealed class WindowsTokenSource
             try
             {
                 var json = await File.ReadAllTextAsync(path, ct);
-                var token = ExtractToken(json);
-                if (token != null) return token;
+                var credential = ParseCredential(json, "wsl-file");
+                if (credential?.IsUsableAt(now) == true) return credential;
+                expiredCredential = PreferRefreshable(expiredCredential, credential);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch { }
         }
 
+        if (expiredCredential != null) return expiredCredential;
         throw DomainError.TokenMissing();
+    }
+
+    private static ClaudeCredential? PreferRefreshable(
+        ClaudeCredential? current,
+        ClaudeCredential? candidate)
+    {
+        if (candidate == null) return current;
+        if (current == null) return candidate;
+        return string.IsNullOrWhiteSpace(current.RefreshToken) &&
+               !string.IsNullOrWhiteSpace(candidate.RefreshToken)
+            ? candidate
+            : current;
     }
 
     private static IEnumerable<string> GetWslCredentialPaths()
@@ -160,13 +184,23 @@ public sealed class WindowsTokenSource
         }
     }
 
-    private static string? ExtractToken(string json)
+    internal static ClaudeCredential? ParseCredential(string json, string source)
     {
         try
         {
             var payload = JsonSerializer.Deserialize<KeychainPayload>(json);
-            var token = payload?.ClaudeAiOauth?.AccessToken;
-            return string.IsNullOrEmpty(token) ? null : token;
+            var oauth = payload?.ClaudeAiOauth;
+            if (string.IsNullOrWhiteSpace(oauth?.AccessToken)) return null;
+
+            DateTimeOffset? expiresAt = oauth.ExpiresAt.HasValue
+                ? DateTimeOffset.FromUnixTimeMilliseconds(oauth.ExpiresAt.Value)
+                : null;
+            return new ClaudeCredential(
+                oauth.AccessToken,
+                oauth.RefreshToken,
+                expiresAt,
+                oauth.Scopes ?? [],
+                source);
         }
         catch { return null; }
     }
@@ -211,5 +245,8 @@ file sealed class KeychainPayload
 
 file sealed class OAuthPayload
 {
-    [JsonPropertyName("accessToken")] public string? AccessToken { get; init; }
+    [JsonPropertyName("accessToken")]  public string? AccessToken  { get; init; }
+    [JsonPropertyName("refreshToken")] public string? RefreshToken { get; init; }
+    [JsonPropertyName("expiresAt")]    public long?   ExpiresAt    { get; init; }
+    [JsonPropertyName("scopes")]       public string[]? Scopes     { get; init; }
 }
