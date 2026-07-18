@@ -1,113 +1,113 @@
-# Token Checker for Windows
+# UsageBeacon
 
-タスクバーに Claude Code と Codex の使用率を常時表示する Windows アプリ。
+UsageBeacon is a lightweight Windows app that keeps Claude Code and Codex usage visible on the taskbar. Click the widget to see usage windows, reset times, refresh controls, and local settings.
 
-macOS 版 [Token Checker](https://github.com/satonico/Token-Checker) の Windows 移植版。
+> [!IMPORTANT]
+> UsageBeacon is an independent, unofficial community fork of [satonico/Token-Checker-win](https://github.com/satonico/Token-Checker-win). It is not affiliated with or endorsed by the upstream maintainer, Anthropic, or OpenAI. The fork exists to continue Windows-focused maintenance and development while preserving clear credit for the original work.
 
-## 動作要件
+## Features
 
-- Windows 10 / 11（64bit）
-- Claude Code CLI（`claude auth login` 済み）
-- Codex CLI（`npm i -g @openai/codex` 後、`codex login` 済み）
+- Taskbar widget for Claude Code and Codex usage
+- Detailed five-hour and weekly usage windows
+- Reset-time countdowns and manual refresh
+- Windows and WSL Claude credential discovery
+- Codex CLI discovery, including nvm-windows installations
+- Multi-monitor and virtual desktop support
+- Optional startup registration and configurable polling
+- Local caching that keeps the last successful values visible during transient failures
 
-どちらか一方のみでも動作する。
+Either Claude Code or Codex can be used independently; both are not required.
 
-## インストール
+## Requirements
 
-### 方法A: exe をダウンロード（推奨・無設定）
+- Windows 10 or Windows 11, 64-bit
+- Claude Code CLI with `claude auth login`, if Claude usage is needed
+- Codex CLI with `codex login`, if Codex usage is needed
 
-[Releases](https://github.com/satonico/Token-Checker-win/releases) から `TokenChecker.exe` をダウンロードしてダブルクリックするだけ。.NET ランタイムを同梱しているため、**.NET のインストールは不要**。
+The prebuilt self-contained executable does not require a separate .NET installation. Building from source requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
-> **「Windows によって PC が保護されました」と表示された場合**
-> 署名のないアプリをネットからダウンロードすると Windows SmartScreen が警告を出します（マルウェアという意味ではありません）。次のいずれかで起動できます。
-> - 警告画面の「**詳細情報**」→「**実行**」をクリック
-> - または exe を右クリック →「プロパティ」→「**ブロックの解除**」にチェック → OK
->
-> 警告を一切出したくない場合は、方法B でソースから自分でビルドした exe を使う（自分でビルドした exe には警告が出ない）。
+## Install
 
-### 方法B: ソースからビルド
+### Download a release
 
-開発者向け。先に [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) が必要（`winget install Microsoft.DotNet.SDK.8` でも可。インストール後は PowerShell を開き直す）。
+Download `UsageBeacon.exe` from the [Releases page](https://github.com/kmch4n/UsageBeacon/releases) and run it.
+
+Windows SmartScreen may warn about an unsigned executable. Review the release source and checks before choosing **More info** and **Run anyway**. Building from source is available for users who prefer not to run an unsigned download.
+
+### Build from source
 
 ```powershell
-git clone https://github.com/satonico/Token-Checker-win.git
-cd Token-Checker-win
-dotnet build TokenChecker.sln -c Release
+git clone https://github.com/kmch4n/UsageBeacon.git
+cd UsageBeacon
+dotnet build UsageBeacon.sln -c Release
 ```
 
-出力先: `TokenChecker\bin\Release\net8.0-windows\TokenChecker.exe`
+The application is written to:
 
-`.exe` 単体で他PCに配布したい場合は、ランタイム同梱版を発行する。
-
-```powershell
-dotnet publish TokenChecker\TokenChecker.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish\
+```text
+UsageBeacon\bin\Release\net8.0-windows\UsageBeacon.exe
 ```
 
-`publish\TokenChecker.exe` が .NET 不要で動く単一ファイルになる。
-
-## 使い方
-
-1. 事前にターミナルでログインしておく
+Create a self-contained, single-file build with:
 
 ```powershell
-claude auth login
-codex login
+dotnet publish UsageBeacon\UsageBeacon.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish\
 ```
 
-2. `TokenChecker.exe` を起動するとタスクバー上にウィジェットが表示される
-3. ウィジェットをクリックするとポップアップで詳細（使用率・リセット時間・更新間隔設定）が開く
+## Usage
 
-## Ubuntu（WSL）に Claude をインストールしている場合
+1. Sign in to the CLIs you want to monitor:
 
-Windows の PowerShell / コマンドプロンプトでは `claude` コマンドが使えず、WSL（Ubuntu 等）の中にのみ Claude Code をインストールしている場合の手順。
+   ```powershell
+   claude auth login
+   codex login
+   ```
 
-### ログイン方法
+2. Start `UsageBeacon.exe`.
+3. Click the taskbar widget to open the detailed usage popup.
+4. Use the tray menu for refresh, monitor switching, and exit controls.
 
-アプリ起動後、ポップアップ右上の「**ログイン**」を押すとログインウィンドウが開く。
+### Claude Code in WSL
 
-- **「ブラウザでログイン」ボタン** → Windows の PATH にある `claude` を使う（通常の Windows インストール向け）
-- **「WSL」ボタン** → WSL 内の `claude` を使う。押すと `wsl -- claude auth login` を実行するターミナルが開き、ブラウザ経由でログインできる
+If Claude Code is installed only inside WSL, open the login window in UsageBeacon and select **WSL**. The app launches `claude auth login` in an interactive WSL shell and then discovers the credential file from the WSL filesystem.
 
-「WSL」ボタンでログインすると、認証情報は WSL 内（`~/.claude/.credentials.json`）に保存される。アプリは WSL のファイルシステムを自動で参照するため、**ログイン完了後はそのまま使用率が表示される**。
+## Data and privacy
 
-### 動作確認済み環境
+- Claude credentials are read locally from Windows Credential Manager, known Claude credential files, or WSL. The access token is sent only to Anthropic's usage endpoint.
+- Codex usage is read through the locally installed `codex app-server`; UsageBeacon does not parse or store the Codex access token.
+- Settings and usage caches are stored under `%APPDATA%\UsageBeacon`.
+- UsageBeacon does not include telemetry or analytics.
 
-| 環境 | 動作 |
-|---|---|
-| Windows に直接 `claude` をインストール | 「ブラウザでログイン」ボタンで通常ログイン |
-| WSL（Ubuntu 等）にのみ `claude` をインストール | 「WSL」ボタンでログイン、以降は自動で認証情報を読み取り |
+When upgrading from Token Checker for Windows, UsageBeacon attempts to migrate `%APPDATA%\TokenChecker` and the legacy Windows startup entry automatically. If migration is blocked, it continues using the existing data directory rather than discarding settings.
 
-> WSL2 + Windows 11 環境での動作を確認している。Windows 10 + WSL2 でもブラウザが自動で開く場合は同様に動作する。
+## Uninstall
 
-## アンインストール
-
-PowerShell で以下を順に実行する（対象が無くてもエラーにならない）。
+Exit UsageBeacon, then remove its startup entries and local data if desired:
 
 ```powershell
-# 1. アプリを終了（起動中だとファイルがロックされ削除に失敗するため）
-Stop-Process -Name TokenChecker -Force -ErrorAction SilentlyContinue
-
-# 2. 自動起動の登録を削除（登録が無い場合はスキップ）
+Stop-Process -Name UsageBeacon -Force -ErrorAction SilentlyContinue
+reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v UsageBeacon /f 2>$null
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v TokenChecker /f 2>$null
-
-# 3. 設定・キャッシュを削除（フォルダが無い場合はスキップ）
+Remove-Item "$env:APPDATA\UsageBeacon" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item "$env:APPDATA\TokenChecker" -Recurse -Force -ErrorAction SilentlyContinue
 ```
 
-あとはビルド／ダウンロードした `TokenChecker.exe`（やクローンしたフォルダ）を削除すれば完了。Claude / Codex の認証情報は CLI 側（`claude` / `codex`）の管理なので、本アプリのアンインストールでは消さない。
+Delete the downloaded executable or cloned repository afterward. Claude and Codex credentials are managed by their respective CLIs and are not removed by these steps.
 
-## 更新履歴
+## Development
 
-### v0.2.0
-- 詳細ポップアップのデザインをシンプルに変更（カード形式 → セパレータ区切りのフラットレイアウト）
+Contributions are welcome. Run Debug tests and both Debug and Release builds before submitting changes. Report credential-related vulnerabilities privately rather than through a public issue.
 
-### v0.1.0
-- 初回リリース
+## Attribution
 
-## ライセンス
+UsageBeacon is based on [Token Checker for Windows](https://github.com/satonico/Token-Checker-win) by satonico224, which in turn ports the macOS [Token Checker](https://github.com/satonico/Token-Checker) experience to Windows. The original copyright notice and MIT License are preserved in [LICENSE](LICENSE).
 
-[MIT License](LICENSE) © 2026 satonico224
+The UsageBeacon maintainers are grateful for the upstream design and implementation. References to the upstream projects are for attribution and history only and do not imply endorsement of this fork.
 
-## 免責事項
+## License
 
-本ソフトウェアは現状有姿 (as-is) で提供されるものであり、動作・安全性・正確性について一切の保証を行わない。本ソフトウェアの利用に起因して発生したいかなる損害（データ損失、アカウント停止、トークン漏洩、セキュリティインシデント等を含むがこれに限らない）についても、作者は一切の責任を負わない。利用者自身の責任において使用すること。
+Licensed under the [MIT License](LICENSE).
+
+## Disclaimer
+
+UsageBeacon is provided **as is**, without warranty. Usage data may be delayed, incomplete, or affected by changes to third-party CLIs and APIs. You are responsible for reviewing the software and protecting your credentials before use.

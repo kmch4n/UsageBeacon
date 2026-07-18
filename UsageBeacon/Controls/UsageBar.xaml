@@ -1,0 +1,10 @@
+<UserControl x:Class="UsageBeacon.Controls.UsageBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="6">
+    <Grid x:Name="Root">
+        <Rectangle x:Name="Track" RadiusX="3" RadiusY="3" Fill="#404040"/>
+        <Rectangle x:Name="Fill"  RadiusX="3" RadiusY="3"
+                   HorizontalAlignment="Left" Width="0"/>
+    </Grid>
+</UserControl>
