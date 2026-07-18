@@ -41,6 +41,8 @@ Add behavior-based xUnit tests under `UsageBeacon.Tests`. For platform or UI cha
 
 Claude retrieval changes should cover OAuth success and refresh, HTTP 401 and 429 responses, `Retry-After` handling, cache freshness, native status line input, and preservation of an existing Claude Code status line command. Tests and reports must use synthetic credentials and paths.
 
+User-facing text must use the localization resources rather than C# or XAML literals. Keep neutral English and every translation resource in sync, preserve format placeholders, and verify runtime switching and layout with long English strings. See [Localization](LOCALIZATION.md) for the translation workflow.
+
 ## Pull requests
 
 Keep each pull request focused. Describe the user-visible effect, fallback behavior, security impact, and verification performed. Include screenshots for visible UI changes.

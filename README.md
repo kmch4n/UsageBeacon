@@ -10,6 +10,7 @@ UsageBeacon is a lightweight Windows app that keeps Claude Code and Codex usage 
 - Taskbar widget for Claude Code and Codex usage
 - Detailed five-hour and weekly usage windows
 - Optional Claude Code native usage integration without extra usage API requests
+- Runtime-selectable English and Japanese interface with system-language detection
 - Reset-time countdowns and manual refresh
 - Windows and WSL Claude credential discovery
 - Codex CLI discovery, including nvm-windows installations
@@ -68,6 +69,8 @@ dotnet publish UsageBeacon\UsageBeacon.csproj -c Release -r win-x64 --self-conta
 3. Click the taskbar widget to open the detailed usage popup.
 4. Use the tray menu for refresh, monitor switching, and exit controls.
 
+Choose **System default**, **English**, or **Japanese** from the language setting in the popup. Changes apply immediately to open windows and the tray menu. Unsupported system languages fall back to English.
+
 For more reliable Claude updates, select the integration button next to Claude Code. UsageBeacon then receives native rate-limit values from Claude Code while preserving an existing status line command. See [Claude usage retrieval](docs/CLAUDE_USAGE.md) for behavior, privacy, and fallback details.
 
 ### Claude Code in WSL
@@ -100,7 +103,7 @@ Delete the downloaded executable or cloned repository afterward. Claude and Code
 
 ## Development
 
-Contributions are welcome. See [CONTRIBUTING](docs/CONTRIBUTING.md) for the development workflow, [Claude usage retrieval](docs/CLAUDE_USAGE.md) for the Claude data-source design, [SECURITY](docs/SECURITY.md) for vulnerability reporting, and [CHANGELOG](docs/CHANGELOG.md) for notable changes.
+Contributions are welcome. See [CONTRIBUTING](docs/CONTRIBUTING.md) for the development workflow, [localization](docs/LOCALIZATION.md) for translation guidance, [Claude usage retrieval](docs/CLAUDE_USAGE.md) for the Claude data-source design, [SECURITY](docs/SECURITY.md) for vulnerability reporting, and [CHANGELOG](docs/CHANGELOG.md) for notable changes.
 
 ## Attribution
 

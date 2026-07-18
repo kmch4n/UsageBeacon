@@ -53,3 +53,12 @@
 - Reason: The OAuth usage endpoint applies strict request limits and can remain unavailable while first-party Claude surfaces still display usage. Native rate-limit data arrives with normal Claude Code responses and requires no additional usage request.
 - Consequences: Status line integration must be opt-in, preserve and forward an existing command, discard unrelated session metadata, and restore settings only when doing so cannot overwrite later user changes. OAuth fallback must honor server cooldowns and refresh expired access tokens without rewriting credential storage.
 - Evidence: [`docs/CLAUDE_USAGE.md`](../docs/CLAUDE_USAGE.md), [`UsageBeacon/Services/ClaudeStatusLineIntegration.cs`](../UsageBeacon/Services/ClaudeStatusLineIntegration.cs), and [`UsageBeacon/ViewModels/UsageViewModel.cs`](../UsageBeacon/ViewModels/UsageViewModel.cs).
+
+## D-007: Use runtime localization with English as the neutral language
+
+- Date: 2026-07-18
+- Status: Active
+- Decision: Store user-facing text in .NET resource files, support English and Japanese runtime switching, follow a supported Windows UI language by default, and fall back to English for unsupported languages.
+- Reason: A fixed Japanese interface and mixed-language production source limited accessibility and made additional translations expensive.
+- Consequences: Production C# and XAML must not contain translated UI literals. Source comments and diagnostics remain English. Every translation must contain the same keys and preserve format placeholders. A new language requires one resource file and one language catalog entry.
+- Evidence: [`docs/LOCALIZATION.md`](../docs/LOCALIZATION.md), [`UsageBeacon/Localization/LocalizationService.cs`](../UsageBeacon/Localization/LocalizationService.cs), and [`UsageBeacon/Resources/Strings.resx`](../UsageBeacon/Resources/Strings.resx).

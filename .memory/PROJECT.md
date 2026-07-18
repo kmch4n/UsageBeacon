@@ -23,7 +23,8 @@ Evidence: [`README.md`](../README.md), [`docs/NOTICE.md`](../docs/NOTICE.md), an
 ## Language conventions
 
 - Repository-facing documentation, code comments, commit messages, Issues, and pull requests are written in English.
-- The current user-facing application UI is Japanese. Preserve that language unless localization is explicitly introduced.
+- The application UI supports English and Japanese at runtime, follows the supported Windows UI language by default, and falls back to English.
+- User-facing text belongs in .NET resource files. Adding a language requires a translated resource file and one language catalog entry.
 
 ## Security boundaries
 

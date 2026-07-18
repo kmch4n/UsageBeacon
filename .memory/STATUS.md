@@ -20,12 +20,13 @@ Remote facts are drift-prone and must be verified with `git remote -v` before re
 
 ## Last validation
 
-The Claude usage reliability changes were validated on 2026-07-18:
+The runtime localization changes were validated on 2026-07-18:
 
-- `dotnet test UsageBeacon.sln -c Debug`: 17 passed, 0 failed.
+- `dotnet test UsageBeacon.sln -c Debug`: 27 passed, 0 failed.
 - `dotnet build UsageBeacon.sln -c Debug`: 0 warnings, 0 errors.
 - `dotnet build UsageBeacon.sln -c Release`: 0 warnings, 0 errors when built to an alternate output path.
-- The status line integration test executed the embedded PowerShell bridge, parsed synthetic native rate-limit data, and verified that session paths were not persisted.
-- A manual smoke test of the alternate Release build observed Claude usage retrieval after enabling the Claude Code integration.
+- A self-contained win-x64 single-file publish completed and produced one executable containing the localization resources.
+- Automated tests verified English and Japanese resource-key and format-placeholder parity, runtime language changes, localized domain errors, unsupported-language fallback, and legacy settings compatibility.
+- Manual English and Japanese popup layout verification remains pending because a previous UsageBeacon build was running during validation.
 
-The ordinary Release output path was locked by a running UsageBeacon process during the final check. When this occurs, close the running application with user awareness or use an alternate `BaseOutputPath`; do not treat the file lock as a compilation failure.
+When a running UsageBeacon process locks an output path or the single-instance mutex, use an alternate output directory for automated validation. Stop the running application only with user awareness before interactive validation.

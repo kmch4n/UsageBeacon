@@ -37,7 +37,7 @@ Do not track outputs from `bin/`, `obj/`, or `publish/`.
 
 ## Project Conventions
 
-Follow the global agent rules for formatting, naming, encoding, Git operations, and commit messages. Preserve nullable reference types, use the `Async` suffix for asynchronous methods, and follow the existing XAML layout. Repository documentation is written in English. The user-facing UI is currently Japanese; keep UI additions consistent unless localization is explicitly requested.
+Follow the global agent rules for formatting, naming, encoding, Git operations, and commit messages. Preserve nullable reference types, use the `Async` suffix for asynchronous methods, and follow the existing XAML layout. Repository documentation and source comments are written in English. User-facing text must use the localization resources; English and Japanese are currently supported with English as the neutral fallback language.
 
 ## Repository Memory
 
