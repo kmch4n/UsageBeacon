@@ -5,10 +5,10 @@ Last verified: 2026-07-18
 ## Git and naming state
 
 - The active development branch is `main`.
-- The `fork` remote currently points to `https://github.com/kmch4n/Token-Checker-win.git`.
+- The `fork` remote points to `https://github.com/kmch4n/UsageBeacon.git`.
 - The `origin` remote points to `https://github.com/satonico/Token-Checker-win`.
 - Product, solution, projects, namespaces, and executable have been renamed to UsageBeacon.
-- The GitHub repository itself has not yet been renamed. The README already uses the intended `kmch4n/UsageBeacon` clone and release URLs, so those links depend on completing the repository rename or being corrected.
+- The GitHub repository has been renamed to `kmch4n/UsageBeacon`, matching the clone and release URLs in the README.
 
 Remote facts are drift-prone and must be verified with `git remote -v` before relying on them.
 
