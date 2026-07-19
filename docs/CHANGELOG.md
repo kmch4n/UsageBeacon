@@ -24,6 +24,15 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 - Persisted rotated OAuth credentials safely so authentication survives application and Windows restarts.
 - Prevented refresh attempts for credential sources that cannot safely store rotated tokens.
 
+### Fixed
+
+- Renewed an unpersisted rotated credential from its own refresh token instead of reusing the stale on-disk token.
+- Kept the background polling loop alive when a UI subscriber fails.
+- Fetched Claude usage immediately after a restart when a cooldown is active but no cached usage exists.
+- Forwarded a preserved status line command through cmd.exe so its quoting and syntax survive on machines with other shells installed.
+- Reduced idle CPU usage by caching taskbar UI Automation measurements and rescanning only on geometry changes.
+- Showed "no recent usage" instead of "Reset soon" when Codex reports no reset time.
+
 ## Upstream history
 
 Changes made before the UsageBeacon rename belong to the history of [satonico/Token-Checker-win](https://github.com/satonico/Token-Checker-win) and this repository's Git history.

@@ -43,6 +43,16 @@ The restart authentication fix was validated on 2026-07-19:
 
 Live restart validation with a real credential remains pending. The currently stale refresh token may require one final `claude auth login` before the new build can persist the next rotated credential.
 
+## Issue fix validation (#1-#6)
+
+The fixes for GitHub issues #1 through #6 were validated on 2026-07-19:
+
+- `dotnet test UsageBeacon.sln -c Debug`: 50 passed, 0 failed.
+- `dotnet build UsageBeacon.sln -c Debug` and `-c Release`: 0 warnings, 0 errors.
+- New automated coverage: chained refresh from an expired pending credential, adoption of a replaced on-disk credential, polling-loop survival of subscriber exceptions, cooldown behavior with and without cached usage, executed status-line-bridge forwarding with a quoted path, Codex DTO parsing of missing `resetsAt` and fractional `usedPercent`, and the UI Automation rescan policy.
+
+Manual verification remains pending for: widget placement in every display mode after the UI Automation caching change, live status line forwarding with a real user-configured command, and a live expired-pending-credential renewal.
+
 ## Local artifact cleanup
 
 Local generated outputs were cleaned on 2026-07-19. The legacy `TokenChecker/` build tree, project and test `bin/` and `obj/` trees, and non-`latest` publish directories were removed. The only retained executable is `publish/latest/UsageBeacon.exe`. Generated outputs are recoverable by rebuilding; the removed local directories were not versioned repository content.
