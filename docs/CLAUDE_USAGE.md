@@ -11,7 +11,7 @@ Select the integration button next to Claude Code in the UsageBeacon popup to en
 1. embeds a local PowerShell bridge under `%APPDATA%\UsageBeacon`;
 2. records the existing Claude Code status line configuration locally;
 3. updates `~/.claude/settings.json` to call the bridge;
-4. forwards the same input to the original status line command after extracting rate-limit values.
+4. forwards the same input to the original status line command after extracting rate-limit values. The command runs through `cmd.exe`, matching how Claude Code executes status line commands on Windows, so its own quoting and syntax are preserved.
 
 The bridge stores only the five-hour and seven-day percentages, reset times, source, and observation time. It does not store the working directory, transcript path, session identifier, prompt content, or token values from the status line input.
 

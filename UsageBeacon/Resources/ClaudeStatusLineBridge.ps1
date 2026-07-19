@@ -53,11 +53,28 @@ try {
 } catch { }
 
 if (-not [string]::IsNullOrWhiteSpace($originalCommand)) {
-    $bash = Get-Command bash -ErrorAction SilentlyContinue
-    if ($null -ne $bash) {
-        $inputJson | & $bash.Source -lc $originalCommand
-    } else {
-        $inputJson | & ([ScriptBlock]::Create($originalCommand))
+    # Forward through cmd.exe, matching how Claude Code itself executes status
+    # line commands on Windows. Probing for bash or executing the string as a
+    # PowerShell script block would change the command's semantics. Exactly one
+    # quote pair is added around the command so that cmd.exe /s strips it and
+    # preserves the command's own internal quoting; ProcessStartInfo.Arguments
+    # is used because per-token argument passing would re-escape those quotes.
+    $comSpec = $env:ComSpec
+    if ([string]::IsNullOrWhiteSpace($comSpec)) { $comSpec = "cmd.exe" }
+    $psi = [Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = $comSpec
+    $psi.Arguments = "/d /s /c ""$originalCommand"""
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardInput = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
+    $forward = [Diagnostics.Process]::Start($psi)
+    $forward.StandardInput.Write($inputJson)
+    $forward.StandardInput.Close()
+    $forwardOutput = $forward.StandardOutput.ReadToEnd()
+    $forward.WaitForExit()
+    if (-not [string]::IsNullOrWhiteSpace($forwardOutput)) {
+        Write-Output $forwardOutput.TrimEnd()
     }
 } elseif ($null -ne $payload.rate_limits) {
     $fiveHour = $payload.rate_limits.five_hour.used_percentage
