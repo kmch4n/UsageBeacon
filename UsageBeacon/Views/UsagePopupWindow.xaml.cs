@@ -94,6 +94,8 @@ public partial class UsagePopupWindow : Window
         Resources["HoverBg"]         = Argb(dark ? 0x18FFFFFFu : 0x18000000u);
         Resources["PressedBg"]       = Argb(dark ? 0x28FFFFFFu : 0x28000000u);
         Resources["ComboBg"]         = Argb(dark ? 0x14FFFFFFu : 0x14000000u);
+        // Opaque because the dropdown floats over arbitrary desktop content.
+        Resources["MenuBg"]          = Argb(dark ? 0xFF2A2A2Au : 0xFFFFFFFFu);
         Resources["ErrorBg"]         = Argb(dark ? 0x22FF9800u : 0x14FF9800u);
         Resources["ErrorText"]       = Rgb(dark ? 0xFFB74Du : 0xFF9800u);
         Resources["UsageTrackBrush"] = Rgb(dark ? 0x3A3A3Au : 0x404040u);

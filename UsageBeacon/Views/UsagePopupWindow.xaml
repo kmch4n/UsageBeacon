@@ -26,6 +26,7 @@
         <SolidColorBrush x:Key="HoverBg"          Color="#18000000"/>
         <SolidColorBrush x:Key="PressedBg"        Color="#28000000"/>
         <SolidColorBrush x:Key="ComboBg"          Color="#14000000"/>
+        <SolidColorBrush x:Key="MenuBg"           Color="#FFFFFFFF"/>
         <SolidColorBrush x:Key="UsageTrackBrush"  Color="#404040"/>
 
         <Style x:Key="Title" TargetType="TextBlock">
@@ -70,13 +71,93 @@
             </Setter>
         </Style>
 
+        <!-- The default ComboBox template paints a system-colored chrome and
+             dropdown that ignore theme brushes, so both are re-templated. -->
         <Style TargetType="ComboBox">
-            <Setter Property="Background"      Value="{DynamicResource ComboBg}"/>
             <Setter Property="Foreground"      Value="{DynamicResource SecondaryText}"/>
-            <Setter Property="BorderBrush"     Value="{DynamicResource BorderBrush2}"/>
-            <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize"        Value="11"/>
             <Setter Property="Padding"         Value="6,3"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton Focusable="False" ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
+                                                      RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Bg"
+                                                Background="{DynamicResource ComboBg}"
+                                                BorderBrush="{DynamicResource BorderBrush2}"
+                                                BorderThickness="1"
+                                                CornerRadius="4">
+                                            <Path HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                  Margin="0,0,8,0"
+                                                  Data="M 0 0 L 3.5 4 L 7 0 Z"
+                                                  Fill="{DynamicResource SecondaryText}"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bg" Property="Background"
+                                                        Value="{DynamicResource HoverBg}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter Margin="7,3,20,3"
+                                              HorizontalAlignment="Left" VerticalAlignment="Center"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              IsHitTestVisible="False"/>
+                            <Popup x:Name="PART_Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Placement="Bottom"
+                                   StaysOpen="False">
+                                <Border Background="{DynamicResource MenuBg}"
+                                        BorderBrush="{DynamicResource BorderBrush2}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Margin="0,2,0,0"
+                                        MinWidth="{TemplateBinding ActualWidth}"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+            <Setter Property="FontSize"   Value="11"/>
+            <Setter Property="Padding"    Value="7,4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Bg" Background="Transparent"
+                                CornerRadius="3" Margin="2,1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bg" Property="Background"
+                                        Value="{DynamicResource HoverBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bg" Property="Background"
+                                        Value="{DynamicResource PressedBg}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="CheckBox">

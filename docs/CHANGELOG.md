@@ -33,6 +33,7 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 - Forwarded a preserved status line command through cmd.exe so its quoting and syntax survive on machines with other shells installed.
 - Reduced idle CPU usage by caching taskbar UI Automation measurements and rescanning only on geometry changes.
 - Showed "no recent usage" instead of "Reset soon" when Codex reports no reset time.
+- Restyled the settings drop-downs so their box and list follow the selected theme instead of staying white.
 
 ### Removed
 
