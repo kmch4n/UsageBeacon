@@ -63,3 +63,12 @@
 - Reason: A fixed Japanese interface and mixed-language production source limited accessibility and made additional translations expensive.
 - Consequences: Production C# and XAML must not contain translated UI literals. Source comments and diagnostics remain English. Every translation must contain the same keys and preserve format placeholders. A new language requires one resource file and one language catalog entry.
 - Evidence: [`docs/LOCALIZATION.md`](../docs/LOCALIZATION.md), [`UsageBeacon/Localization/LocalizationService.cs`](../UsageBeacon/Localization/LocalizationService.cs), and [`UsageBeacon/Resources/Strings.resx`](../UsageBeacon/Resources/Strings.resx).
+
+## D-008: Keep the notification-area icon static
+
+- Date: 2026-07-19
+- Status: Active
+- Decision: Use the packaged UsageBeacon icon in the Windows notification area instead of rendering Claude and Codex utilization as two dynamic bars.
+- Reason: The dynamic bar icon was unreliable and duplicated usage information already available in the taskbar widget, popup, and tray tooltip.
+- Consequences: The tray icon must continue to provide popup access, localized commands, usage tooltip text, and exit control, but it must not be regenerated when usage changes.
+- Evidence: [`UsageBeacon/App.xaml.cs`](../UsageBeacon/App.xaml.cs) and [`docs/CHANGELOG.md`](../docs/CHANGELOG.md).

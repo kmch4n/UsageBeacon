@@ -56,3 +56,7 @@ Manual verification remains pending for: widget placement in every display mode 
 ## Local artifact cleanup
 
 Local generated outputs were cleaned on 2026-07-19. The legacy `TokenChecker/` build tree, project and test `bin/` and `obj/` trees, and non-`latest` publish directories were removed. The only retained executable is `publish/latest/UsageBeacon.exe`. Generated outputs are recoverable by rebuilding; the removed local directories were not versioned repository content.
+
+## Static notification-area icon validation
+
+The dynamic usage-bar tray icon was removed on 2026-07-19 while retaining the tray menu, popup access, localized tooltip, and exit control. Validation completed with 37 passing tests, warning-free Debug and Release builds, a self-contained win-x64 single-file publish, and a successful startup from `publish/latest/UsageBeacon.exe` using the packaged static icon.

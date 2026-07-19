@@ -33,6 +33,10 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 - Reduced idle CPU usage by caching taskbar UI Automation measurements and rescanning only on geometry changes.
 - Showed "no recent usage" instead of "Reset soon" when Codex reports no reset time.
 
+### Removed
+
+- Removed the dynamic system-tray usage bars and retained a stable application icon for tray navigation.
+
 ## Upstream history
 
 Changes made before the UsageBeacon rename belong to the history of [satonico/Token-Checker-win](https://github.com/satonico/Token-Checker-win) and this repository's Git history.

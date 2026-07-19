@@ -20,6 +20,7 @@ Evidence: [`README.md`](../README.md), [`docs/NOTICE.md`](../docs/NOTICE.md), an
 - GitHub Issue Forms and pull request templates belong under `.github/`.
 - API and Windows integration code must remain outside views and follow the existing `Providers/`, `Services/`, and `Utilities/` boundaries.
 - Claude usage retrieval prefers native Claude Code status line data and uses the OAuth usage endpoint as a rate-limited fallback.
+- The notification-area icon is static. Usage values remain available in its tooltip, the taskbar widget, and the popup; do not restore dynamic tray-icon rendering without a new reliability review.
 
 ## Language conventions
 
