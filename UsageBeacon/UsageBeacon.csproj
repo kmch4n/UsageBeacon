@@ -12,6 +12,7 @@
     <ApplicationIcon>Resources\tray.ico</ApplicationIcon>
     <Platforms>AnyCPU</Platforms>
     <NeutralLanguage>en</NeutralLanguage>
+    <Version>1.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Resources\tray.ico" />

@@ -2,7 +2,9 @@
 
 All notable user-visible changes to UsageBeacon will be documented in this file.
 
-## Unreleased
+## 1.0.0 - 2026-07-20
+
+First release under the UsageBeacon name. Version numbering restarts at 1.0.0 because this fork diverged from upstream before its v0.3.0 and v0.4.0 releases and does not contain them.
 
 ### Added
 

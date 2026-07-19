@@ -9,6 +9,7 @@ Last verified: 2026-07-20
 - The `origin` remote points to `https://github.com/satonico/Token-Checker-win`.
 - Product, solution, projects, namespaces, and executable have been renamed to UsageBeacon.
 - The GitHub repository has been renamed to `kmch4n/UsageBeacon`, matching the clone and release URLs in the README.
+- Release v1.0.0 (2026-07-20) is the first fork release. Fork versioning restarts at 1.0.0: the fork diverged from upstream after its v0.2.0, so upstream tags v0.3.0 and v0.4.0 are not ancestors of `main` and continuing that numbering would misrepresent the contents. Repository topics were set on the same date.
 
 Remote facts are drift-prone and must be verified with `git remote -v` before relying on them.
 
