@@ -27,6 +27,76 @@ public sealed class UsageViewModelTests
         await vm.DisposeAsync();
     }
 
+    [Fact]
+    public async Task RefreshAsync_FetchesClaude_WhenCooldownActiveButNoCachedUsage()
+    {
+        using var directory = new TempDirectory();
+        WritePollingState(directory.Path, DateTime.UtcNow.AddMinutes(20), wasRateLimited: false);
+        var claude = new StubUsageProvider();
+        var vm = CreateViewModel(directory.Path, claude);
+
+        await vm.RefreshAsync();
+
+        Assert.Equal(1, claude.CallCount);
+        Assert.NotNull(vm.Snapshot.ClaudeUsage);
+        await vm.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task RefreshAsync_HonorsRateLimitCooldown_WhenNoCachedUsage()
+    {
+        using var directory = new TempDirectory();
+        WritePollingState(directory.Path, DateTime.UtcNow.AddMinutes(20), wasRateLimited: true);
+        var claude = new StubUsageProvider();
+        var vm = CreateViewModel(directory.Path, claude);
+
+        await vm.RefreshAsync();
+
+        Assert.Equal(0, claude.CallCount);
+        // The user sees an explicit waiting state instead of endless loading.
+        Assert.Equal(DomainErrorKind.AnthropicRateLimited, vm.Snapshot.ClaudeError?.Kind);
+        await vm.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task RefreshAsync_SkipsClaude_WhenCooldownActiveAndCacheExists()
+    {
+        using var directory = new TempDirectory();
+        WritePollingState(directory.Path, DateTime.UtcNow.AddMinutes(20), wasRateLimited: false);
+        WriteClaudeUsageCache(directory.Path, utilization: 0.42);
+        var claude = new StubUsageProvider();
+        var vm = CreateViewModel(directory.Path, claude);
+
+        await vm.RefreshAsync();
+
+        Assert.Equal(0, claude.CallCount);
+        Assert.Equal(0.42, vm.Snapshot.ClaudeUsage?.FiveHour?.Utilization);
+        await vm.DisposeAsync();
+    }
+
+    private static void WritePollingState(
+        string directory,
+        DateTime nextRequestUtc,
+        bool wasRateLimited)
+        => File.WriteAllText(
+            Path.Combine(directory, "claude-polling-state.json"),
+            System.Text.Json.JsonSerializer.Serialize(new
+            {
+                NextRequestUtc = nextRequestUtc,
+                WasRateLimited = wasRateLimited,
+            }));
+
+    private static void WriteClaudeUsageCache(string directory, double utilization)
+        => File.WriteAllText(
+            Path.Combine(directory, "claude-usage-cache.json"),
+            System.Text.Json.JsonSerializer.Serialize(new UsageCacheEntry(
+                new ServiceUsage(
+                    new RateLimit(utilization, DateTime.Now.AddHours(1)),
+                    null,
+                    null),
+                DateTime.UtcNow.AddMinutes(-10),
+                UsageDataSource.OAuthApi)));
+
     private static UsageViewModel CreateViewModel(
         string directory,
         IUsageProvider claude,

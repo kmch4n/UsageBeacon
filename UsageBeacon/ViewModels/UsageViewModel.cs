@@ -266,11 +266,14 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
             var hasFreshNativeUsage =
                 _lastClaudeSource == UsageDataSource.ClaudeCodeStatusLine &&
                 _lastClaudeFetchedAtUtc > nowUtc.Subtract(ClaudeNativeUsageFreshness);
+            // With no cached usage the cooldown would leave the UI on an
+            // indefinite loading state, so treat that case like a manual
+            // refresh. Rate-limit cooldowns still win inside ShouldFetch.
             var fetchClaude = !hasFreshNativeUsage && ClaudePollingPolicy.ShouldFetch(
                 nowUtc,
                 _claudeCooldownUntilUtc,
                 _claudeWaitingAfterRateLimit,
-                force);
+                force || _lastClaudeUsage == null);
             var claudeTask = fetchClaude
                 ? FetchSafe(_claude, ct)
                 : Task.FromResult((
