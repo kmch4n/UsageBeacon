@@ -1,6 +1,6 @@
 # Project Memory
 
-Last reviewed: 2026-07-18
+Last reviewed: 2026-07-19
 
 ## Identity
 
@@ -30,6 +30,8 @@ Evidence: [`README.md`](../README.md), [`docs/NOTICE.md`](../docs/NOTICE.md), an
 
 - Never commit Claude or Codex credentials, tokens, local caches, or machine-specific paths.
 - Credential discovery, WSL integration, startup registration, local cache handling, command execution, and network clients are security-sensitive.
+- OAuth refresh may update only supported local Windows credential files. Updates must preserve unknown JSON fields and file access rules, compare the previously read OAuth state before replacement, and never copy credentials into UsageBeacon caches or logs.
+- Credential Manager and WSL credential sources are read-only until source-specific persistence is implemented; rotating a refresh token without being able to save it is prohibited.
 - Claude status line integration is opt-in, must preserve an existing command, and must persist only rate-limit values and observation metadata.
 - Public bug reports must direct vulnerability reports to the repository security policy.
 

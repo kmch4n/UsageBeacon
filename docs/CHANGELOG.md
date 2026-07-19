@@ -21,6 +21,8 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 - Recorded Claude cache freshness and data source only after successful retrieval.
 - Moved user-facing text into extensible .NET localization resources and standardized production source comments in English.
 - Replaced language-dependent taskbar clock detection with geometry-based detection.
+- Persisted rotated OAuth credentials safely so authentication survives application and Windows restarts.
+- Prevented refresh attempts for credential sources that cannot safely store rotated tokens.
 
 ## Upstream history
 

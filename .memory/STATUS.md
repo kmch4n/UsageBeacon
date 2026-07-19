@@ -1,6 +1,6 @@
 # Current Repository Status
 
-Last verified: 2026-07-18
+Last verified: 2026-07-19
 
 ## Git and naming state
 
@@ -30,3 +30,15 @@ The runtime localization changes were validated on 2026-07-18:
 - Manual English and Japanese popup layout verification remains pending because a previous UsageBeacon build was running during validation.
 
 When a running UsageBeacon process locks an output path or the single-instance mutex, use an alternate output directory for automated validation. Stop the running application only with user awareness before interactive validation.
+
+## OAuth credential persistence validation
+
+The restart authentication fix was validated on 2026-07-19:
+
+- `dotnet test UsageBeacon.sln -c Debug --no-restore`: 37 passed, 0 failed.
+- `dotnet build UsageBeacon.sln -c Debug --no-restore`: 0 warnings, 0 errors.
+- `dotnet build UsageBeacon.sln -c Release --no-restore`: 0 warnings, 0 errors.
+- A self-contained win-x64 single-file publish completed in `publish/latest`.
+- Automated tests cover rotated and unrotated refresh tokens, restart-equivalent provider recreation, unsupported credential sources, concurrent fetches, pending credentials after persistence failure, full OAuth-state conflicts, malformed and locked files, unknown JSON fields, UTF-8 without BOM, file access rules, and temporary-file cleanup.
+
+Live restart validation with a real credential remains pending. The currently stale refresh token may require one final `claude auth login` before the new build can persist the next rotated credential.

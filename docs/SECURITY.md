@@ -14,4 +14,6 @@ Include the affected version, reproduction steps, expected impact, and any sugge
 
 The optional Claude Code integration changes the local `~/.claude/settings.json` status line command after explicit user confirmation. It preserves the previous status line configuration locally and forwards input to that command. Reports about this integration must redact status line input because it can contain local paths and session metadata, even though UsageBeacon persists only rate-limit values and timestamps.
 
+OAuth refresh can update Claude Code's local Windows credential file because a successful refresh may rotate the refresh token. UsageBeacon updates only known OAuth fields, preserves unknown fields and file access rules, verifies that the previously read OAuth state has not changed, and uses replacement with a temporary backup. It does not copy credentials into its own cache or logs. Credential Manager and WSL sources remain read-only until source-specific safe writers exist.
+
 UsageBeacon is an independent, unofficial fork. Reports that affect the upstream project should also be coordinated responsibly with the upstream maintainer when appropriate.

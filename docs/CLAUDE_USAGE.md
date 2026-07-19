@@ -29,7 +29,18 @@ When recent native rate-limit data is unavailable, UsageBeacon calls Anthropic's
 - Cached usage is written only after a successful response.
 - The UI identifies the data source and the last successful observation time.
 
-UsageBeacon refreshes an expired OAuth access token in memory by using the refresh token and the same OAuth request format as the installed Claude Code client. It does not rewrite Claude credential storage. If refresh fails, sign in again with `claude auth login`.
+UsageBeacon refreshes an expired OAuth access token by using the refresh token and the same OAuth request format as the installed Claude Code client. A successful refresh can rotate the refresh token, so UsageBeacon writes the refreshed OAuth fields back only when the credential came from a supported local Windows credential file.
+
+The update follows these safety rules:
+
+- only the access token, refresh token, expiry, and scopes are changed;
+- unrelated root and OAuth fields are preserved;
+- the original OAuth state must still match before replacement, so a concurrent sign-in or refresh is not overwritten;
+- a same-directory temporary file, inherited access rules, a backup, and atomic file replacement protect the original file;
+- credentials are never written to UsageBeacon's usage cache or logs;
+- a refreshed credential remains available in memory if persistence temporarily fails, and persistence is retried during the same process lifetime.
+
+UsageBeacon does not refresh credentials read from Windows Credential Manager or WSL because it cannot safely persist a rotated refresh token to those sources yet. If refresh cannot be completed safely, sign in again with `claude auth login`. A concurrent non-cooperating process can still change the credential file between the final comparison and replacement; UsageBeacon treats persistence as best-effort and never falls back to an ordinary overwrite.
 
 ## Troubleshooting
 
