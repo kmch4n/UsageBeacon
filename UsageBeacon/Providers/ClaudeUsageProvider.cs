@@ -54,8 +54,12 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         {
             await TryPersistPendingUpdateAsync();
             var now = DateTimeOffset.UtcNow;
-            var credential = _pendingUpdate?.Refreshed.IsUsableAt(now) == true
-                ? _pendingUpdate.Refreshed
+            var pending = _pendingUpdate;
+            if (pending != null && !pending.Refreshed.IsUsableAt(now))
+                return await RenewExpiredPendingCredentialAsync(pending, now, ct);
+
+            var credential = pending?.Refreshed.IsUsableAt(now) == true
+                ? pending.Refreshed
                 : _cachedCredential?.IsUsableAt(now) == true
                     ? _cachedCredential
                     : await _credentialSource.ReadCredentialAsync(ct);
@@ -71,6 +75,45 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         {
             _credentialGate.Release();
         }
+    }
+
+    // The refresh token held by an unpersisted pending update is newer than the
+    // one still on disk; refreshing the on-disk token would reuse an
+    // already-rotated refresh token and can invalidate the whole grant.
+    private async Task<CredentialLease> RenewExpiredPendingCredentialAsync(
+        PendingCredentialUpdate pending,
+        DateTimeOffset now,
+        CancellationToken ct)
+    {
+        ClaudeCredential? latest = null;
+        try
+        {
+            latest = await _credentialSource.ReadCredentialAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (DomainError)
+        {
+            // Fall back to the pending credential when the source is unreadable.
+        }
+
+        if (latest != null && !HasSameOAuthState(latest, pending.Original))
+        {
+            // The source changed underneath us (re-login or an external
+            // refresh); the on-disk state is now the newest authority.
+            _pendingUpdate = null;
+            if (latest.IsUsableAt(now))
+            {
+                _cachedCredential = latest;
+                return new CredentialLease(latest, WasRefreshed: false);
+            }
+
+            return await RefreshAndPersistAsync(latest, ct);
+        }
+
+        return await RefreshAndPersistAsync(pending.Refreshed, ct);
     }
 
     private async Task<ClaudeCredential> GetCredentialAfterUnauthorizedAsync(
@@ -130,7 +173,15 @@ public sealed class ClaudeUsageProvider : IUsageProvider
             throw;
         }
 
-        _pendingUpdate = new PendingCredentialUpdate(credential, refreshed);
+        // When chain-refreshing an unpersisted pending credential, keep the
+        // credential still on disk as the persistence original so a later
+        // successful write still matches the file content.
+        var persistedOriginal =
+            _pendingUpdate != null &&
+            HasSameOAuthState(_pendingUpdate.Refreshed, credential)
+                ? _pendingUpdate.Original
+                : credential;
+        _pendingUpdate = new PendingCredentialUpdate(persistedOriginal, refreshed);
         _cachedCredential = refreshed;
         await TryPersistPendingUpdateAsync();
         return new CredentialLease(refreshed, WasRefreshed: true);
