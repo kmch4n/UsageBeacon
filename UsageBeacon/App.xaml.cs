@@ -17,7 +17,7 @@ public partial class App : System.Windows.Application
     private UsagePopupWindow?        _popup;
     private UsageViewModel?          _vm;
     private CancellationTokenSource? _pollCts;
-    private Icon?                    _prevIcon;
+    private Icon?                    _trayIcon;
     private Mutex?                   _singleInstanceMutex;
     private Mutex?                   _legacyInstanceMutex;
     private DateTime                 _popupHiddenAt;
@@ -97,11 +97,12 @@ public partial class App : System.Windows.Application
             };
 
             // Tray icon and context menu.
+            _trayIcon = LoadTrayIcon();
             _tray = new NotifyIcon
             {
                 Visible     = true,
                 Text        = "UsageBeacon",
-                Icon        = TrayIconRenderer.CreateIcon(null, null),
+                Icon        = _trayIcon,
                 ContextMenuStrip = BuildContextMenu(),
             };
             _tray.MouseClick += OnTrayClick;
@@ -112,7 +113,7 @@ public partial class App : System.Windows.Application
                 tipText: LocalizationService.Get("TrayRunningText"),
                 tipIcon: ToolTipIcon.Info);
 
-            _vm.SnapshotChanged += UpdateTrayIcon;
+            _vm.SnapshotChanged += UpdateTrayTooltip;
             LocalizationService.LanguageChanged += OnLanguageChanged;
 
             // Check sign-in once after the first fetch, then show the popup.
@@ -280,21 +281,21 @@ public partial class App : System.Windows.Application
             Dispatcher.Invoke(TogglePopup);
     }
 
-    private void UpdateTrayIcon()
+    private static Icon LoadTrayIcon()
+    {
+        var resource = GetResourceStream(
+            new Uri("pack://application:,,,/Resources/tray.ico"))
+            ?? throw new InvalidOperationException("The tray icon resource is missing.");
+        using var stream = resource.Stream;
+        using var icon = new Icon(stream);
+        return (Icon)icon.Clone();
+    }
+
+    private void UpdateTrayTooltip()
     {
         Dispatcher.Invoke(() =>
         {
-            var snap       = _vm!.Snapshot;
-            var claudeUtil = snap.ClaudeUsage?.FiveHour?.Utilization ?? snap.ClaudeUsage?.Weekly?.Utilization;
-            var codexUtil  = snap.CodexUsage?.FiveHour?.Utilization  ?? snap.CodexUsage?.Weekly?.Utilization;
-
-            var newIcon = TrayIconRenderer.CreateIcon(claudeUtil, codexUtil);
-            var old = _prevIcon;
-            _tray!.Icon = newIcon;
-            _prevIcon = newIcon;
-            old?.Dispose();
-
-            _tray.Text = BuildTooltip();
+            if (_tray != null) _tray.Text = BuildTooltip();
         });
     }
 
@@ -328,7 +329,7 @@ public partial class App : System.Windows.Application
         _pollCts?.Cancel();
         LocalizationService.LanguageChanged -= OnLanguageChanged;
         _tray?.Dispose();
-        _prevIcon?.Dispose();
+        _trayIcon?.Dispose();
         if (_vm != null) await _vm.DisposeAsync();
         try { _singleInstanceMutex?.ReleaseMutex(); } catch (ApplicationException) { }
         try { _legacyInstanceMutex?.ReleaseMutex(); } catch (ApplicationException) { }
