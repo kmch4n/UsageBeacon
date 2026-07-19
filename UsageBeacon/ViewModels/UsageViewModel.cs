@@ -211,13 +211,24 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     public async Task RunPollingLoopAsync(CancellationToken ct)
     {
-        await RefreshAsync(ct);
         while (!ct.IsCancellationRequested)
         {
             try
             {
-                await Task.Delay(PollingInterval.ToTimeSpan(), ct);
                 await RefreshAsync(ct);
+            }
+            catch (OperationCanceledException) { break; }
+            catch
+            {
+                // SnapshotChanged and PropertyChanged subscribers marshal to the
+                // UI thread with Dispatcher.Invoke, whose exceptions are
+                // rethrown on this thread. A failing subscriber or any other
+                // unexpected error must not stop future refreshes.
+            }
+
+            try
+            {
+                await Task.Delay(PollingInterval.ToTimeSpan(), ct);
             }
             catch (OperationCanceledException) { break; }
         }
