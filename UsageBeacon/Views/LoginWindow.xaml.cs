@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Media;
 using UsageBeacon.Localization;
 using UsageBeacon.Models;
 using UsageBeacon.Services;
 using UsageBeacon.Utilities;
 using UsageBeacon.ViewModels;
+using MediaColor = System.Windows.Media.Color;
 
 namespace UsageBeacon.Views;
 
@@ -27,19 +29,54 @@ public partial class LoginWindow : Window
         _vm          = vm;
 
         InitializeComponent();
+        ApplyTheme();
         LocalizationService.LanguageChanged += OnLanguageChanged;
-        Closed += (_, _) => LocalizationService.LanguageChanged -= OnLanguageChanged;
+        ThemeService.ThemeChanged += OnThemeChanged;
+        Closed += (_, _) =>
+        {
+            LocalizationService.LanguageChanged -= OnLanguageChanged;
+            ThemeService.ThemeChanged -= OnThemeChanged;
+        };
         ApplyLocalization();
 
         Loaded += async (_, _) =>
         {
-            WindowEffects.Apply(this);
+            WindowEffects.Apply(this, lightMode: !ThemeService.IsDark);
             await SnapshotCurrentTokenAsync();
         };
     }
 
     private void OnLanguageChanged()
         => Dispatcher.Invoke(ApplyLocalization);
+
+    private void OnThemeChanged()
+        => Dispatcher.Invoke(() =>
+        {
+            ApplyTheme();
+            // Re-applying only updates DWM attributes and the accent policy,
+            // which is safe on a live window handle.
+            if (IsLoaded)
+                WindowEffects.Apply(this, lightMode: !ThemeService.IsDark);
+        });
+
+    private void ApplyTheme()
+    {
+        var dark = ThemeService.IsDark;
+        Resources["SurfaceBrush"]  = Argb(dark ? 0xE8202020u : 0xE8F5F5F5u);
+        Resources["BorderBrush2"]  = Argb(dark ? 0x28FFFFFFu : 0x28000000u);
+        Resources["PrimaryText"]   = Rgb(dark ? 0xF0F0F0u : 0x1A1A1Au);
+        Resources["SecondaryText"] = Rgb(dark ? 0x909090u : 0x707070u);
+        Resources["GhostHoverBg"]  = Argb(dark ? 0x18FFFFFFu : 0x18000000u);
+        Resources["DisabledBtnBg"] = Argb(dark ? 0x20FFFFFFu : 0x20000000u);
+        Resources["DisabledBtnFg"] = Rgb(dark ? 0x505050u : 0xA0A0A0u);
+        Resources["StatusBg"]      = Argb(dark ? 0x0AFFFFFFu : 0x0A000000u);
+    }
+
+    private static SolidColorBrush Rgb(uint color) => new(MediaColor.FromRgb(
+        (byte)(color >> 16), (byte)(color >> 8), (byte)color));
+
+    private static SolidColorBrush Argb(uint color) => new(MediaColor.FromArgb(
+        (byte)(color >> 24), (byte)(color >> 16), (byte)(color >> 8), (byte)color));
 
     private void ApplyLocalization()
     {

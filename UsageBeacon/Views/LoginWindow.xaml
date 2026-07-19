@@ -18,6 +18,10 @@
         <SolidColorBrush x:Key="PrimaryText"   Color="#F0F0F0"/>
         <SolidColorBrush x:Key="SecondaryText" Color="#909090"/>
         <SolidColorBrush x:Key="AccentBrush"   Color="#0078D4"/>
+        <SolidColorBrush x:Key="GhostHoverBg"  Color="#18FFFFFF"/>
+        <SolidColorBrush x:Key="DisabledBtnBg" Color="#20FFFFFF"/>
+        <SolidColorBrush x:Key="DisabledBtnFg" Color="#505050"/>
+        <SolidColorBrush x:Key="StatusBg"      Color="#0AFFFFFF"/>
 
         <Style x:Key="PrimaryBtn" TargetType="Button">
             <Setter Property="Background"      Value="{StaticResource AccentBrush}"/>
@@ -41,8 +45,8 @@
                                 <Setter TargetName="Bg" Property="Background" Value="#0064B0"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Bg" Property="Background" Value="#20FFFFFF"/>
-                                <Setter Property="Foreground" Value="#505050"/>
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource DisabledBtnBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource DisabledBtnFg}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -52,7 +56,7 @@
 
         <Style x:Key="GhostBtn" TargetType="Button">
             <Setter Property="Background"      Value="Transparent"/>
-            <Setter Property="Foreground"      Value="{StaticResource SecondaryText}"/>
+            <Setter Property="Foreground"      Value="{DynamicResource SecondaryText}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor"          Value="Hand"/>
             <Setter Property="Padding"         Value="10,7"/>
@@ -66,8 +70,8 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#18FFFFFF"/>
-                                <Setter Property="Foreground" Value="{StaticResource PrimaryText}"/>
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource GhostHoverBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -77,9 +81,9 @@
     </Window.Resources>
 
     <Border Margin="12,8,12,12"
-            Background="{StaticResource SurfaceBrush}"
+            Background="{DynamicResource SurfaceBrush}"
             CornerRadius="12"
-            BorderBrush="{StaticResource BorderBrush2}"
+            BorderBrush="{DynamicResource BorderBrush2}"
             BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect Color="#000000" BlurRadius="24"
@@ -94,13 +98,13 @@
                            Fill="{StaticResource AccentBrush}"
                            Margin="0,2,8,0" VerticalAlignment="Top"/>
                 <TextBlock x:Name="TitleLabel"
-                           Foreground="{StaticResource PrimaryText}"
+                           Foreground="{DynamicResource PrimaryText}"
                            FontSize="14" FontWeight="SemiBold"/>
             </StackPanel>
 
             <!-- Description -->
             <TextBlock x:Name="DescLabel"
-                       Foreground="{StaticResource SecondaryText}"
+                       Foreground="{DynamicResource SecondaryText}"
                        FontSize="11" TextWrapping="Wrap" LineHeight="17"
                        Margin="0,0,0,14"/>
 
@@ -132,10 +136,10 @@
 
             <!-- Status area -->
             <Border x:Name="StatusArea" Visibility="Collapsed"
-                    Background="#0AFFFFFF" CornerRadius="6"
+                    Background="{DynamicResource StatusBg}" CornerRadius="6"
                     Padding="10,7" Margin="0,0,0,10">
                 <TextBlock x:Name="StatusLabel"
-                           Foreground="{StaticResource SecondaryText}"
+                           Foreground="{DynamicResource SecondaryText}"
                            FontSize="10" TextWrapping="Wrap"/>
             </Border>
 
