@@ -55,6 +55,9 @@ public sealed class DashboardViewModel
         ScanDirectory(cache, _claudeProjectsDirectory, ClaudeTranscriptReader.ParseFile, cancellationToken);
         ScanDirectory(cache, _codexSessionsDirectory, CodexSessionReader.ParseFile, cancellationToken);
 
+        // After the scan so entries that aged out during this run are dropped in
+        // the same pass, and before the save so the smaller form is what persists.
+        cache.Prune(DateTime.UtcNow.AddDays(-UsageLogCache.RetentionDays));
         cache.Save();
 
         var today = DateOnly.FromDateTime(

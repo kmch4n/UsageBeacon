@@ -99,6 +99,47 @@ public sealed class DashboardViewModelTests
         Assert.Empty(data.Models);
     }
 
+    [Fact]
+    public async Task LoadAsync_PrunesCachedEntriesOlderThanTheRetentionWindow()
+    {
+        using var directory = new TempDirectory();
+        var claudeDir = Directory.CreateDirectory(Path.Combine(directory.Path, "claude")).FullName;
+        var recent = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        var ancient = DateTime.UtcNow.AddDays(-200).ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+
+        File.WriteAllText(
+            Path.Combine(claudeDir, "recent.jsonl"),
+            """
+            {"type":"assistant","timestamp":"__TS__","requestId":"req_1","message":{"id":"msg_1","model":"claude-fable-5","usage":{"input_tokens":1000000,"cache_read_input_tokens":0,"output_tokens":0}}}
+            """.Replace("__TS__", recent) + Environment.NewLine);
+        File.WriteAllText(
+            Path.Combine(claudeDir, "ancient.jsonl"),
+            """
+            {"type":"assistant","timestamp":"__TS__","requestId":"req_2","message":{"id":"msg_2","model":"claude-fable-5","usage":{"input_tokens":1000000,"cache_read_input_tokens":0,"output_tokens":0}}}
+            """.Replace("__TS__", ancient) + Environment.NewLine);
+
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        var vm = new DashboardViewModel(
+            Pricing,
+            claudeProjectsDirectory: claudeDir,
+            codexSessionsDirectory: Path.Combine(directory.Path, "no-codex"),
+            cachePath: cachePath,
+            timeZone: TimeZoneInfo.Utc);
+
+        var data = await vm.LoadAsync(CancellationToken.None);
+
+        Assert.Equal(10m, data.Today.ClaudeCostUsd);
+
+        var cutoff = DateTime.UtcNow.AddDays(-UsageLogCache.RetentionDays);
+        var cached = UsageLogCache.Load(cachePath)
+            .AllEntries()
+            .SelectMany(pair => pair.Value)
+            .ToList();
+
+        Assert.Single(cached);
+        Assert.All(cached, entry => Assert.True(entry.TimestampUtc >= cutoff));
+    }
+
     private sealed class TempDirectory : IDisposable
     {
         private readonly DirectoryInfo _directory =

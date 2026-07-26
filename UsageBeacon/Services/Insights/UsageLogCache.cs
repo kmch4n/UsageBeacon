@@ -17,6 +17,9 @@ public sealed class UsageLogCache
 {
     private const int SchemaVersion = 1;
 
+    /// <summary>Days of parsed history the cache keeps before entries are dropped.</summary>
+    public const int RetentionDays = 180;
+
     private readonly string _cachePath;
     private readonly Dictionary<string, CachedFile> _files;
 
@@ -68,6 +71,25 @@ public sealed class UsageLogCache
         var entries = parser(path);
         _files[path] = new CachedFile(length, lastWriteUtc, entries.ToList());
         return entries;
+    }
+
+    /// <summary>
+    /// Drops cached entries older than the cutoff so the cache reaches a bounded
+    /// steady state. The per-file record itself is kept with its original length
+    /// and write time: removing it would make <see cref="GetEntries"/> reparse a
+    /// file that may be hundreds of megabytes on every scan, only to discard the
+    /// whole result again. Dropping entries is idempotent, and a later reparse
+    /// simply re-ingests raw entries that the existing identity dedupe handles.
+    /// </summary>
+    public void Prune(DateTime cutoffUtc)
+    {
+        foreach (var path in _files.Keys.ToList())
+        {
+            var file = _files[path];
+            var kept = file.Entries.Where(entry => entry.TimestampUtc >= cutoffUtc).ToList();
+            if (kept.Count == file.Entries.Count) continue;
+            _files[path] = file with { Entries = kept };
+        }
     }
 
     /// <summary>All cached entries, including those of files deleted since.</summary>
