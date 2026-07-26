@@ -7,6 +7,7 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 ### Added
 
 - Usage dashboard window showing estimated USD costs for today, the last 7 days, and the last 30 days, with a daily chart and per-model breakdown computed from local Claude Code and Codex session logs.
+- Local crash log at `%LOCALAPPDATA%\UsageBeacon\logs\crash.log` for unhandled exceptions. It is size-capped, redacted for local paths, account name, and credential-shaped values, and is never transmitted.
 
 ### Changed
 

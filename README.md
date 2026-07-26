@@ -82,8 +82,8 @@ If Claude Code is installed only inside WSL, open the login window in UsageBeaco
 - Claude credentials are read locally from Windows Credential Manager, known Claude credential files, or WSL. OAuth credentials are sent only to Anthropic's token and usage endpoints as required for refresh and retrieval.
 - The optional Claude Code bridge stores only rate-limit percentages, reset times, source, and observation time. Other status line session metadata is discarded.
 - Codex usage is read through the locally installed `codex app-server`; UsageBeacon does not parse or store the Codex access token.
-- Settings and usage caches are stored under `%APPDATA%\UsageBeacon`.
-- UsageBeacon does not include telemetry or analytics.
+- Settings and usage caches are stored under `%APPDATA%\UsageBeacon`. The dashboard's parse cache, the optional price override, and crash logs are stored under `%LOCALAPPDATA%\UsageBeacon`.
+- UsageBeacon does not include telemetry or analytics. Unhandled exceptions are written only to `%LOCALAPPDATA%\UsageBeacon\logs\crash.log`, a size-capped local file that is never transmitted. Records are redacted for your profile path, your account name, and credential-shaped values before being written.
 
 When upgrading from Token Checker for Windows, UsageBeacon attempts to migrate `%APPDATA%\TokenChecker` and the legacy Windows startup entry automatically. If migration is blocked, it continues using the existing data directory rather than discarding settings.
 
@@ -97,6 +97,7 @@ reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v UsageBeacon /
 reg delete "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /v TokenChecker /f 2>$null
 Remove-Item "$env:APPDATA\UsageBeacon" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item "$env:APPDATA\TokenChecker" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:LOCALAPPDATA\UsageBeacon" -Recurse -Force -ErrorAction SilentlyContinue
 ```
 
 Delete the downloaded executable or cloned repository afterward. Claude and Codex credentials are managed by their respective CLIs and are not removed by these steps.

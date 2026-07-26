@@ -78,5 +78,9 @@ body:
       id: diagnostics
       attributes:
           label: Additional context
-          description: Add sanitized logs, screenshots, or other context. Remove usernames, local paths, credentials, and tokens.
+          description: >-
+              Add sanitized logs, screenshots, or other context. If the application crashed, attach
+              the relevant record from %LOCALAPPDATA%\UsageBeacon\logs\crash.log; it is already
+              redacted for your account name, profile path, and credential-shaped values. Review it
+              before pasting and remove anything else you do not want to share.
           render: shell
