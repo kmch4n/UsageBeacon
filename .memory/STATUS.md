@@ -64,6 +64,20 @@ The runtime light and dark theme support (D-009) was validated on 2026-07-20:
 
 Manual verification remains pending for: visual appearance of the popup and login window in both themes, live switching while the popup is open, following a Windows app-theme change while "System" is selected, and dark-theme contrast at high transparency levels.
 
+## Usage dashboard validation
+
+The usage dashboard (D-010) was implemented on 2026-07-20:
+
+- `dotnet test UsageBeacon.sln -c Debug`: 97 passed, 0 failed.
+- `dotnet build UsageBeacon.sln -c Debug` and `-c Release`: 0 warnings, 0 errors.
+- Automated coverage: Claude transcript parsing (usage extraction, cache-creation split fallback, synthetic/malformed skips, within-file dedupe), Codex cumulative-delta parsing (over-count guard, baseline reset, model tracking), pricing resolution (exact, dash-boundary prefix, unknown models, override merge, cost arithmetic), local-day bucketing and 7/30-day windows, cross-file dedupe determinism, cache reuse/invalidation/retention-of-deleted-files/corruption/schema-version handling, and end-to-end view-model aggregation over temp log directories.
+
+Manual verification remains pending for: dashboard visuals in both themes and languages, and refresh behavior while logs are being written.
+
+A three-agent verification pass on 2026-07-20 confirmed measurement accuracy empirically: Codex reader sums matched the final cumulative `total_token_usage` of three large real rollout files exactly; Claude 30-day per-model costs matched ccusage to the cent for opus/haiku models (Codex-side deltas vs ccusage stem from ccusage excluding reasoning tokens from output — our counts match the session files and OpenAI billing semantics); cold scan of the ~1 GB corpus took ~3.1 s. Fixes applied from the review: per-file error isolation in the scan, atomic cache save, case-insensitive cache reload, `gpt-5.1-codex-mini` and `gpt-5.4` price entries, and `claude-sonnet-5` at the official introductory price.
+
+Pending price change: raise `claude-sonnet-5` in `UsageBeacon/Resources/model-pricing.json` from the introductory $2/$10 (cache 2.50/4/0.20) to the standard $3/$15 (cache 3.75/6/0.30) after 2026-08-31.
+
 ## Local artifact cleanup
 
 Local generated outputs were cleaned on 2026-07-19. The legacy `TokenChecker/` build tree, project and test `bin/` and `obj/` trees, and non-`latest` publish directories were removed. The only retained executable is `publish/latest/UsageBeacon.exe`. Generated outputs are recoverable by rebuilding; the removed local directories were not versioned repository content.

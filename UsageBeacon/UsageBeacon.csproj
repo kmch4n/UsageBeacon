@@ -16,6 +16,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Resources\tray.ico" />
+    <Resource Include="Resources\model-pricing.json" />
     <EmbeddedResource Include="Resources\ClaudeStatusLineBridge.ps1" />
   </ItemGroup>
 </Project>

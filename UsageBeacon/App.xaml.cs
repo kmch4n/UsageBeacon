@@ -15,6 +15,7 @@ public partial class App : System.Windows.Application
     private NotifyIcon?              _tray;
     private TaskbarWidget?           _widget;
     private UsagePopupWindow?        _popup;
+    private DashboardWindow?         _dashboard;
     private UsageViewModel?          _vm;
     private CancellationTokenSource? _pollCts;
     private Icon?                    _trayIcon;
@@ -80,6 +81,7 @@ public partial class App : System.Windows.Application
             _popup = new UsagePopupWindow(_vm);
             _popup.MonitorSwitchRequested += CycleMonitor;
             _popup.PlacementSwitchRequested += ToggleWidgetPlacement;
+            _popup.DashboardRequested += OpenDashboard;
             _popup.UpdatePlacementLabel(_vm.WidgetPlacement);
             _popup.UpdateMonitorLabel(_targetScreenIndex, System.Windows.Forms.Screen.AllScreens.Length);
             _popup.SizeChanged += (_, _) =>
@@ -251,6 +253,21 @@ public partial class App : System.Windows.Application
             PositionPopup();
     }
 
+    // Usage dashboard.
+
+    private void OpenDashboard()
+    {
+        if (_dashboard is { IsLoaded: true })
+        {
+            _dashboard.Activate();
+            return;
+        }
+        _dashboard = new DashboardWindow();
+        _dashboard.Closed += (_, _) => _dashboard = null;
+        _dashboard.Show();
+        _dashboard.Activate();
+    }
+
     // Tray icon.
 
     private ContextMenuStrip BuildContextMenu()
@@ -259,6 +276,7 @@ public partial class App : System.Windows.Application
         menu.Items.Add(LocalizationService.Get("TrayShowHide"), null, (_, _) => Dispatcher.Invoke(TogglePopup));
         menu.Items.Add(LocalizationService.Get("TrayRefreshNow"), null, (_, _) => _ = _vm!.RefreshAsync(force: true));
         menu.Items.Add(LocalizationService.Get("TraySwitchMonitor"), null, (_, _) => Dispatcher.Invoke(CycleMonitor));
+        menu.Items.Add(LocalizationService.Get("DashboardTitle"), null, (_, _) => Dispatcher.Invoke(OpenDashboard));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(LocalizationService.Get("CommonExit"), null, (_, _) => Dispatcher.Invoke(() => Shutdown()));
         return menu;

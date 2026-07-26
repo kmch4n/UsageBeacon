@@ -23,6 +23,7 @@ public partial class UsagePopupWindow : Window
 
     public event Action? MonitorSwitchRequested;
     public event Action? PlacementSwitchRequested;
+    public event Action? DashboardRequested;
 
     public UsagePopupWindow(UsageViewModel vm)
     {
@@ -71,6 +72,8 @@ public partial class UsagePopupWindow : Window
         PositionLabel.Text = LocalizationService.Get("SettingsPosition");
         LanguageLabel.Text = LocalizationService.Get("SettingsLanguage");
         ThemeLabel.Text = LocalizationService.Get("SettingsTheme");
+        DashboardLabel.Text = LocalizationService.Get("DashboardTitle");
+        DashboardBtn.Content = LocalizationService.Get("DashboardOpen");
         QuitBtn.Content = LocalizationService.Get("CommonExit");
 
         SetupIntervalPicker();
@@ -421,6 +424,9 @@ public partial class UsagePopupWindow : Window
 
     private void StartupChk_Changed(object sender, RoutedEventArgs e)
         => _vm.StartupEnabled = StartupChk.IsChecked == true;
+
+    private void Dashboard_Click(object sender, RoutedEventArgs e)
+        => DashboardRequested?.Invoke();
 
     private void Monitor_Click(object sender, RoutedEventArgs e)
         => MonitorSwitchRequested?.Invoke();

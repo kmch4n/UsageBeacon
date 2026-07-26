@@ -90,4 +90,26 @@
   <data name="TrayClaudeWeekly" xml:space="preserve"><value>Claude 7d: {0}%</value></data>
   <data name="TrayCodexFiveHour" xml:space="preserve"><value>Codex 5h: {0}%</value></data>
   <data name="TrayCodexWeekly" xml:space="preserve"><value>Codex 7d: {0}%</value></data>
+  <data name="DashboardTitle" xml:space="preserve"><value>Usage dashboard</value></data>
+  <data name="DashboardOpen" xml:space="preserve"><value>Open</value></data>
+  <data name="DashboardRefresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="DashboardScanning" xml:space="preserve"><value>Scanning session logs…</value></data>
+  <data name="DashboardScanFailed" xml:space="preserve"><value>Could not read the session logs.</value></data>
+  <data name="DashboardNoData" xml:space="preserve"><value>No Claude Code or Codex session logs were found on this computer.</value></data>
+  <data name="DashboardToday" xml:space="preserve"><value>Today</value></data>
+  <data name="DashboardLast7Days" xml:space="preserve"><value>Last 7 days</value></data>
+  <data name="DashboardLast30Days" xml:space="preserve"><value>Last 30 days</value></data>
+  <data name="DashboardTokens" xml:space="preserve"><value>Input {0} / Output {1} tokens</value></data>
+  <data name="DashboardChartTitle" xml:space="preserve"><value>Estimated cost per day (last 30 days)</value></data>
+  <data name="DashboardTableTitle" xml:space="preserve"><value>By model (last 30 days)</value></data>
+  <data name="DashboardColModel" xml:space="preserve"><value>Model</value></data>
+  <data name="DashboardColService" xml:space="preserve"><value>Service</value></data>
+  <data name="DashboardColInput" xml:space="preserve"><value>Input</value></data>
+  <data name="DashboardColCached" xml:space="preserve"><value>Cached</value></data>
+  <data name="DashboardColOutput" xml:space="preserve"><value>Output</value></data>
+  <data name="DashboardColCost" xml:space="preserve"><value>Est. cost</value></data>
+  <data name="DashboardUnknownModels" xml:space="preserve"><value>No pricing data for: {0} (excluded from cost estimates)</value></data>
+  <data name="DashboardDisclaimer" xml:space="preserve"><value>Costs are API-price equivalents estimated from local session logs. Subscription plans do not bill per token.</value></data>
+  <data name="DashboardPricesAsOf" xml:space="preserve"><value>Prices as of {0}</value></data>
+  <data name="DashboardLastScan" xml:space="preserve"><value>Scanned {0}</value></data>
 </root>

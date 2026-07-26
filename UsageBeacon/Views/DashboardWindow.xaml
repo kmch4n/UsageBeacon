@@ -1,0 +1,250 @@
+<Window x:Class="UsageBeacon.Views.DashboardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="UsageBeacon"
+        Width="800" Height="680" MinWidth="680" MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBg}">
+    <Window.Resources>
+        <!-- Light defaults; ApplyTheme() overwrites these at runtime (D-009). -->
+        <SolidColorBrush x:Key="WindowBg" Color="#FFF2F2F2"/>
+        <SolidColorBrush x:Key="CardBg" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="PrimaryText" Color="#1A1A1A"/>
+        <SolidColorBrush x:Key="SecondaryText" Color="#454545"/>
+        <SolidColorBrush x:Key="TertiaryText" Color="#707070"/>
+        <SolidColorBrush x:Key="BorderBrush2" Color="#28000000"/>
+        <SolidColorBrush x:Key="HoverBg" Color="#18000000"/>
+        <SolidColorBrush x:Key="PressedBg" Color="#28000000"/>
+        <!-- Theme-invariant service colors (D-009). -->
+        <SolidColorBrush x:Key="ClaudeBrush" Color="#D07A42"/>
+        <SolidColorBrush x:Key="CodexBrush" Color="#7A8EE0"/>
+
+        <Style x:Key="H1" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+        </Style>
+        <Style x:Key="CardTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryText}"/>
+        </Style>
+        <Style x:Key="Cost" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="24"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+            <Setter Property="Margin" Value="0,4,0,4"/>
+        </Style>
+        <Style x:Key="Tiny" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{DynamicResource TertiaryText}"/>
+        </Style>
+        <Style x:Key="Cell" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+            <Setter Property="Margin" Value="0,3,0,3"/>
+        </Style>
+        <Style x:Key="CellHeader" TargetType="TextBlock" BasedOn="{StaticResource Cell}">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryText}"/>
+        </Style>
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource CardBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush2}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="14,10"/>
+        </Style>
+        <Style x:Key="LinkBtn" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource HoverBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource PressedBg}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18,14,18,12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock x:Name="TitleText" Style="{StaticResource H1}" VerticalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock x:Name="LastScanText" Style="{StaticResource Tiny}"
+                           VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <Button x:Name="RefreshBtn" Style="{StaticResource LinkBtn}"
+                        Click="Refresh_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <TextBlock x:Name="StatusText" Grid.Row="1" Style="{StaticResource CardTitle}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Visibility="Collapsed"/>
+
+        <ScrollViewer x:Name="ContentScroll" Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+            <StackPanel>
+                <!-- Period cards -->
+                <UniformGrid Columns="3">
+                    <Border Style="{StaticResource Card}" Margin="0,0,5,0">
+                        <StackPanel>
+                            <TextBlock x:Name="TodayTitle" Style="{StaticResource CardTitle}"/>
+                            <TextBlock x:Name="TodayCost" Style="{StaticResource Cost}"/>
+                            <TextBlock x:Name="TodaySplit" Style="{StaticResource Tiny}"/>
+                            <TextBlock x:Name="TodayTokens" Style="{StaticResource Tiny}"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="5,0">
+                        <StackPanel>
+                            <TextBlock x:Name="WeekTitle" Style="{StaticResource CardTitle}"/>
+                            <TextBlock x:Name="WeekCost" Style="{StaticResource Cost}"/>
+                            <TextBlock x:Name="WeekSplit" Style="{StaticResource Tiny}"/>
+                            <TextBlock x:Name="WeekTokens" Style="{StaticResource Tiny}"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="5,0,0,0">
+                        <StackPanel>
+                            <TextBlock x:Name="MonthTitle" Style="{StaticResource CardTitle}"/>
+                            <TextBlock x:Name="MonthCost" Style="{StaticResource Cost}"/>
+                            <TextBlock x:Name="MonthSplit" Style="{StaticResource Tiny}"/>
+                            <TextBlock x:Name="MonthTokens" Style="{StaticResource Tiny}"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <!-- Daily chart -->
+                <Border Style="{StaticResource Card}" Margin="0,10,0,0">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <TextBlock x:Name="ChartTitle" Style="{StaticResource CardTitle}"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Rectangle Width="9" Height="9" Fill="{StaticResource ClaudeBrush}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="Claude Code" Style="{StaticResource Tiny}"
+                                           Margin="4,0,10,0"/>
+                                <Rectangle Width="9" Height="9" Fill="{StaticResource CodexBrush}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="Codex" Style="{StaticResource Tiny}" Margin="4,0,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Height="130">
+                            <ItemsControl x:Name="ChartHost" VerticalAlignment="Bottom"
+                                          HorizontalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Width="18" VerticalAlignment="Bottom"
+                                                    Background="Transparent"
+                                                    ToolTip="{Binding Tooltip}">
+                                            <Rectangle Height="{Binding CodexHeight}"
+                                                       Fill="{StaticResource CodexBrush}" Margin="2,0"/>
+                                            <Rectangle Height="{Binding ClaudeHeight}"
+                                                       Fill="{StaticResource ClaudeBrush}" Margin="2,0"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                        <Rectangle Height="1" Fill="{DynamicResource BorderBrush2}"/>
+                        <Grid Margin="0,3,0,0">
+                            <TextBlock x:Name="ChartStartLabel" Style="{StaticResource Tiny}"/>
+                            <TextBlock x:Name="ChartEndLabel" Style="{StaticResource Tiny}"
+                                       HorizontalAlignment="Right"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Per-model table -->
+                <Border Style="{StaticResource Card}" Margin="0,10,0,0">
+                    <StackPanel>
+                        <TextBlock x:Name="TableTitle" Style="{StaticResource CardTitle}"
+                                   Margin="0,0,0,6"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="95"/>
+                                <ColumnDefinition Width="95"/>
+                                <ColumnDefinition Width="95"/>
+                                <ColumnDefinition Width="85"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="ColModel" Grid.Column="0" Style="{StaticResource CellHeader}"/>
+                            <TextBlock x:Name="ColService" Grid.Column="1" Style="{StaticResource CellHeader}"/>
+                            <TextBlock x:Name="ColInput" Grid.Column="2" Style="{StaticResource CellHeader}"
+                                       TextAlignment="Right"/>
+                            <TextBlock x:Name="ColCached" Grid.Column="3" Style="{StaticResource CellHeader}"
+                                       TextAlignment="Right"/>
+                            <TextBlock x:Name="ColOutput" Grid.Column="4" Style="{StaticResource CellHeader}"
+                                       TextAlignment="Right"/>
+                            <TextBlock x:Name="ColCost" Grid.Column="5" Style="{StaticResource CellHeader}"
+                                       TextAlignment="Right"/>
+                        </Grid>
+                        <Rectangle Height="1" Fill="{DynamicResource BorderBrush2}" Margin="0,2"/>
+                        <!-- Plain ItemsControl rows: the default DataGrid chrome cannot follow the theme. -->
+                        <ItemsControl x:Name="ModelRows">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="95"/>
+                                            <ColumnDefinition Width="95"/>
+                                            <ColumnDefinition Width="95"/>
+                                            <ColumnDefinition Width="85"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Model}"
+                                                   Style="{StaticResource Cell}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Service}"
+                                                   Style="{StaticResource Cell}"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Input}"
+                                                   Style="{StaticResource Cell}" TextAlignment="Right"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding Cached}"
+                                                   Style="{StaticResource Cell}" TextAlignment="Right"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding Output}"
+                                                   Style="{StaticResource Cell}" TextAlignment="Right"/>
+                                        <TextBlock Grid.Column="5" Text="{Binding Cost}"
+                                                   Style="{StaticResource Cell}" TextAlignment="Right"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Notes -->
+                <TextBlock x:Name="UnknownNote" Style="{StaticResource Tiny}" Margin="2,10,2,0"
+                           TextWrapping="Wrap" Visibility="Collapsed"/>
+                <TextBlock x:Name="DisclaimerText" Style="{StaticResource Tiny}" Margin="2,6,2,0"
+                           TextWrapping="Wrap"/>
+                <TextBlock x:Name="PricesAsOfText" Style="{StaticResource Tiny}" Margin="2,2,2,4"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>

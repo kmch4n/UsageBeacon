@@ -348,10 +348,15 @@
                     <ComboBox x:Name="LanguagePicker" HorizontalAlignment="Right" Width="130"
                               SelectionChanged="LanguagePicker_SelectionChanged"/>
                 </Grid>
-                <Grid>
+                <Grid Margin="0,0,0,6">
                     <TextBlock x:Name="ThemeLabel" Style="{StaticResource Label}" VerticalAlignment="Center"/>
                     <ComboBox x:Name="ThemePicker" HorizontalAlignment="Right" Width="130"
                               SelectionChanged="ThemePicker_SelectionChanged"/>
+                </Grid>
+                <Grid>
+                    <TextBlock x:Name="DashboardLabel" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                    <Button x:Name="DashboardBtn" HorizontalAlignment="Right"
+                            Style="{StaticResource LinkBtn}" Click="Dashboard_Click"/>
                 </Grid>
             </StackPanel>
 
