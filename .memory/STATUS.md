@@ -1,6 +1,6 @@
 # Current Repository Status
 
-Last verified: 2026-07-20
+Last verified: 2026-07-27
 
 ## Git and naming state
 
@@ -77,6 +77,25 @@ Manual verification remains pending for: dashboard visuals in both themes and la
 A three-agent verification pass on 2026-07-20 confirmed measurement accuracy empirically: Codex reader sums matched the final cumulative `total_token_usage` of three large real rollout files exactly; Claude 30-day per-model costs matched ccusage to the cent for opus/haiku models (Codex-side deltas vs ccusage stem from ccusage excluding reasoning tokens from output — our counts match the session files and OpenAI billing semantics); cold scan of the ~1 GB corpus took ~3.1 s. Fixes applied from the review: per-file error isolation in the scan, atomic cache save, case-insensitive cache reload, `gpt-5.1-codex-mini` and `gpt-5.4` price entries, and `claude-sonnet-5` at the official introductory price.
 
 Pending price change: raise `claude-sonnet-5` in `UsageBeacon/Resources/model-pricing.json` from the introductory $2/$10 (cache 2.50/4/0.20) to the standard $3/$15 (cache 3.75/6/0.30) after 2026-08-31.
+
+## Backend hardening validation
+
+A backend-only hardening pass (no UI changes) was completed on 2026-07-27:
+
+- `dotnet test UsageBeacon.sln -c Debug`: 133 passed, 0 failed (97 before the pass).
+- `dotnet build UsageBeacon.sln -c Debug` and `-c Release`: 0 warnings, 0 errors.
+- Fixed defect: the dashboard scan aborted entirely when any log subdirectory was unreadable, because `Directory.EnumerateFiles` with a `SearchOption` overload uses `EnumerationOptions.Compatible` (`IgnoreInaccessible = false`) and raises the failure from `MoveNext`, outside the guard that only wrapped the enumerator's creation. Reproduced with a deny ACE before the fix and confirmed skipped after it. The call now passes explicit `EnumerationOptions`, and `ResilientFileEnumeration` guards the residual mid-iteration `IOException` class.
+- Cache retention (D-011): entries older than 180 days are dropped after each scan.
+- Crash logging (D-012): verified against the built assembly by writing a real exception whose message embedded the profile path and an `sk-ant-` key; the record contained `%USERPROFILE%` and `<redacted>` and neither original value.
+- CI and release automation (D-013): both workflow files parse, and the tag/version gate was dry-run locally against `UsageBeacon.csproj` (`1.0.0` matches tag `v1.0.0`).
+
+Insights pipeline measured on 2026-07-27 against the real corpus (Claude 136 files / 276 MB, Codex 244 files / 833 MB) by invoking `DashboardViewModel` directly from the Debug build:
+
+- Cold scan 9.50 s, warm scan 0.20 s, cache file 5.55 MB.
+- The earlier "~3.1 s cold scan" figure was measured differently and is not comparable; treat 9.50 s as the current baseline for a Debug build with this corpus.
+- The 5.55 MB cache confirms that unbounded growth was not yet material. The 180-day window is a cheap safety valve rather than an urgent fix, and the constant can be revisited against this number.
+
+Manual verification remains pending for: dashboard visuals in both themes and languages, refresh behavior while logs are being written, a real crash producing `%LOCALAPPDATA%\UsageBeacon\logs\crash.log` in the running application, and a live run of the release workflow against a throwaway tag.
 
 ## Local artifact cleanup
 
