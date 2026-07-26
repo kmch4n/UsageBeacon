@@ -8,6 +8,10 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 - Usage dashboard window showing estimated USD costs for today, the last 7 days, and the last 30 days, with a daily chart and per-model breakdown computed from local Claude Code and Codex session logs.
 
+### Fixed
+
+- The usage dashboard no longer fails to load when a session log directory cannot be read. Unreadable directories are skipped instead of ending the whole scan.
+
 ## 1.0.0 - 2026-07-20
 
 First release under the UsageBeacon name. Version numbering restarts at 1.0.0 because this fork diverged from upstream before its v0.3.0 and v0.4.0 releases and does not contain them.

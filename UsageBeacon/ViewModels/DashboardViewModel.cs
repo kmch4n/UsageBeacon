@@ -1,6 +1,7 @@
 using System.IO;
 using UsageBeacon.Models.Insights;
 using UsageBeacon.Services.Insights;
+using UsageBeacon.Utilities;
 
 namespace UsageBeacon.ViewModels;
 
@@ -84,18 +85,23 @@ public sealed class DashboardViewModel
         }
     }
 
+    // The SearchOption overload of EnumerateFiles uses EnumerationOptions.Compatible,
+    // which sets IgnoreInaccessible to false; an unreadable directory then aborts the
+    // whole traversal from MoveNext instead of being skipped.
+    private static readonly EnumerationOptions LogEnumerationOptions = new()
+    {
+        RecurseSubdirectories = true,
+        IgnoreInaccessible    = true,
+    };
+
     private static IEnumerable<string> EnumerateLogs(string directory)
     {
-        if (!Directory.Exists(directory)) yield break;
-        IEnumerable<string> files;
-        try
-        {
-            files = Directory.EnumerateFiles(directory, "*.jsonl", SearchOption.AllDirectories);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            yield break;
-        }
-        foreach (var file in files) yield return file;
+        if (!Directory.Exists(directory)) return Array.Empty<string>();
+
+        // IgnoreInaccessible covers access failures; the guard covers the rest
+        // (a disconnected share, a path that grew too long) so one unreadable
+        // corner cannot discard the entries already collected in this scan.
+        return ResilientFileEnumeration.IgnoringFileSystemErrors(
+            () => Directory.EnumerateFiles(directory, "*.jsonl", LogEnumerationOptions));
     }
 }
