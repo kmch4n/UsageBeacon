@@ -1,0 +1,58 @@
+name: Release
+
+on:
+    push:
+        tags: ["v*"]
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: 8.0.x
+
+            # Fail before doing any work if the tag and the project version disagree,
+            # so a published asset can never claim a version it was not built from.
+            - name: Verify the tag matches the project version
+              shell: pwsh
+              run: |
+                  $tag = "${{ github.ref_name }}"
+                  $expected = $tag.TrimStart("v")
+                  $version = ([xml](Get-Content UsageBeacon/UsageBeacon.csproj)).Project.PropertyGroup.Version
+                  if ($version -ne $expected) {
+                      throw "Tag $tag does not match <Version> $version in UsageBeacon.csproj."
+                  }
+                  Write-Host "Tag $tag matches version $version."
+
+            - name: Test
+              run: dotnet test UsageBeacon.sln -c Debug
+
+            - name: Publish
+              run: >-
+                  dotnet publish UsageBeacon/UsageBeacon.csproj -c Release -r win-x64
+                  --self-contained true -p:PublishSingleFile=true
+                  -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+
+            - name: Compute the checksum
+              shell: pwsh
+              run: |
+                  $hash = (Get-FileHash publish/UsageBeacon.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+                  "$hash  UsageBeacon.exe" | Out-File publish/UsageBeacon.exe.sha256 -Encoding ascii
+                  Get-Content publish/UsageBeacon.exe.sha256
+
+            # The GitHub CLI is preinstalled on the runner, so no third-party
+            # action and no secret beyond the automatic token are involved.
+            - name: Create the release
+              shell: pwsh
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: >-
+                  gh release create "${{ github.ref_name }}"
+                  publish/UsageBeacon.exe publish/UsageBeacon.exe.sha256
+                  --title "${{ github.ref_name }}" --generate-notes

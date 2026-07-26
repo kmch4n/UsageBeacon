@@ -34,7 +34,15 @@ The prebuilt self-contained executable does not require a separate .NET installa
 
 Download `UsageBeacon.exe` from the [Releases page](https://github.com/kmch4n/UsageBeacon/releases) and run it.
 
-Windows SmartScreen may warn about an unsigned executable. Review the release source and checks before choosing **More info** and **Run anyway**. Building from source is available for users who prefer not to run an unsigned download.
+Each release is built by GitHub Actions from the tagged source and ships with a SHA-256 checksum. Verify the download before running it:
+
+```powershell
+Get-FileHash .\UsageBeacon.exe -Algorithm SHA256
+```
+
+Compare the result with `UsageBeacon.exe.sha256` on the release page.
+
+Windows SmartScreen may warn about an unsigned executable. Review the release source and the checksum before choosing **More info** and **Run anyway**. Building from source is available for users who prefer not to run an unsigned download.
 
 ### Build from source
 

@@ -1,0 +1,29 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+
+jobs:
+    build:
+        # Both projects target net8.0-windows, so a Windows runner is required.
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: 8.0.x
+
+            - name: Restore
+              run: dotnet restore UsageBeacon.sln
+
+            - name: Build (Debug)
+              run: dotnet build UsageBeacon.sln -c Debug --no-restore
+
+            - name: Build (Release)
+              run: dotnet build UsageBeacon.sln -c Release --no-restore
+
+            - name: Test
+              run: dotnet test UsageBeacon.sln -c Debug --no-build
