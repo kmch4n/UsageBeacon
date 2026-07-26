@@ -8,6 +8,10 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 - Usage dashboard window showing estimated USD costs for today, the last 7 days, and the last 30 days, with a daily chart and per-model breakdown computed from local Claude Code and Codex session logs.
 
+### Changed
+
+- The usage dashboard's parse cache now keeps 180 days of history and drops older entries, so the cache reaches a bounded size instead of growing indefinitely. Displayed figures are unaffected.
+
 ### Fixed
 
 - The usage dashboard no longer fails to load when a session log directory cannot be read. Unreadable directories are skipped instead of ending the whole scan.

@@ -17,6 +17,12 @@ WSL-side logs are not scanned in this version.
 
 Parsed results are cached at `%LOCALAPPDATA%\UsageBeacon\insights-cache.json`, keyed by file path, size, and write time, so only new or changed logs are reparsed. Entries of deleted log files are retained on purpose: Claude Code prunes transcripts after roughly 30 days (`cleanupPeriodDays`), so the cache is the primary source for older days. Deleting the cache file forces a full rescan and loses days whose logs were already pruned.
 
+### Retention
+
+Cached entries older than 180 days are dropped at the end of each scan so the cache reaches a bounded steady state. The per-file record is kept even when all of its entries are dropped, because removing it would make the next scan reparse a file that may be hundreds of megabytes and then discard the whole result.
+
+The retention window is far outside the 30 days the dashboard displays, so pruning never changes a visible number. If a log file that was already pruned from the cache is later modified, it is reparsed in full and its still-recent entries return normally; identity deduplication makes that safe.
+
 ## Cost estimation
 
 Costs are **API-price equivalents**: tokens multiplied by published per-million-token API prices. Subscription plans (Claude Pro/Max, ChatGPT Plus/Pro) do not bill per token, so the numbers represent what the same usage would have cost on the API, not an invoice.
