@@ -21,12 +21,26 @@ public partial class App : System.Windows.Application
     private Icon?                    _trayIcon;
     private Mutex?                   _singleInstanceMutex;
     private Mutex?                   _legacyInstanceMutex;
+    private CrashLogWriter?          _crashLog;
     private DateTime                 _popupHiddenAt;
     private int                      _targetScreenIndex;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Wired first so the single-instance and settings work below, which runs
+        // before DispatcherUnhandledException is attached, is still covered.
+        _crashLog = new CrashLogWriter();
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            if (args.ExceptionObject is Exception ex) _crashLog?.Write("AppDomain", ex);
+        };
+        // Backstop for fire-and-forget refreshes, whose RefreshCoreAsync has no
+        // catch-all of its own. SetObserved is not called: on .NET 8 an unobserved
+        // exception no longer ends the process, so logging must stay behavior-neutral.
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+            _crashLog?.Write("TaskScheduler", args.Exception);
 
         var settingsStore = new AppSettingsStore();
         LocalizationService.SetLanguage(settingsStore.Load().UiLanguage);
@@ -57,7 +71,9 @@ public partial class App : System.Windows.Application
 
         DispatcherUnhandledException += (_, ex) =>
         {
-            // Show only the exception summary because a full stack can expose local paths.
+            _crashLog?.Write("Dispatcher", ex.Exception);
+            // Show only the exception summary because a full stack can expose local
+            // paths; the redacted stack goes to the crash log instead.
             System.Windows.MessageBox.Show(ex.Exception.Message,
                 LocalizationService.Get("AppStartupErrorTitle"),
                 System.Windows.MessageBoxButton.OK,
@@ -139,6 +155,7 @@ public partial class App : System.Windows.Application
         }
         catch (Exception ex)
         {
+            _crashLog?.Write("Startup", ex);
             System.Windows.MessageBox.Show(ex.Message,
                 LocalizationService.Get("AppStartupErrorTitle"),
                 System.Windows.MessageBoxButton.OK,

@@ -8,7 +8,16 @@ public static class AppDataPaths
     private const string CurrentDirectoryName = "UsageBeacon";
     private const string LegacyDirectoryName = "TokenChecker";
 
+    /// <summary>Roaming storage for settings and usage state.</summary>
     public static string DirectoryPath { get; } = ResolveDirectoryPath();
+
+    /// <summary>
+    /// Machine-local storage for caches and crash logs. There is no legacy
+    /// migration here because TokenChecker never wrote to this location.
+    /// </summary>
+    public static string LocalDirectoryPath { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        CurrentDirectoryName);
 
     private static string ResolveDirectoryPath()
     {
