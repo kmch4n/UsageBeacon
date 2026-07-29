@@ -265,11 +265,22 @@ public sealed class CrashLogWriterTests
     public void Write_DoesNotThrow_WhenRedactionTimesOut()
     {
         using var directory = new TempDirectory();
-        var writer = new CrashLogWriter(Path.Combine(directory.Path, "logs"));
+        var writer = new CrashLogWriter(
+            Path.Combine(directory.Path, "logs"),
+            () => new DateTime(2026, 7, 29, 1, 2, 3, DateTimeKind.Utc),
+            _ => throw new RegexMatchTimeoutException());
+        var secret = PathologicalRedactionInput();
 
         // RegexMatchTimeoutException derives from TimeoutException, so an outer
         // guard that only catches IO failures would let it escape a dying process.
-        writer.Write("Dispatcher", new InvalidOperationException(PathologicalRedactionInput()));
+        writer.Write("Dispatcher", new InvalidOperationException(secret));
+
+        var text = File.ReadAllText(writer.CurrentFilePath);
+        Assert.Contains("Redaction timed out; original crash details omitted.", text);
+        Assert.Contains(typeof(InvalidOperationException).FullName!, text);
+        Assert.DoesNotContain(secret, text);
+        Assert.DoesNotContain("Authorization:", text);
+        Assert.DoesNotContain("Dispatcher", text);
     }
 
     private static string PathologicalRedactionInput() =>

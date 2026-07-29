@@ -45,13 +45,23 @@ public sealed class CrashLogWriter
     };
 
     private readonly Func<DateTime> _utcNow;
+    private readonly Func<string, string> _redact;
 
     public CrashLogWriter(string? directoryPath = null, Func<DateTime>? utcNow = null)
+        : this(directoryPath, utcNow, Redact)
+    {
+    }
+
+    internal CrashLogWriter(
+        string? directoryPath,
+        Func<DateTime>? utcNow,
+        Func<string, string> redact)
     {
         // Deliberately no directory creation: a healthy install never grows a logs folder.
         DirectoryPath = directoryPath ?? Path.Combine(AppDataPaths.LocalDirectoryPath, "logs");
         CurrentFilePath = Path.Combine(DirectoryPath, CurrentFileName);
         _utcNow = utcNow ?? (() => DateTime.UtcNow);
+        _redact = redact;
     }
 
     public string DirectoryPath { get; }
@@ -63,7 +73,16 @@ public sealed class CrashLogWriter
     {
         try
         {
-            var record = Redact(FormatRecord(source, exception));
+            string record;
+            try
+            {
+                record = _redact(FormatRecord(source, exception));
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                record = FormatRedactionFailure(exception);
+            }
+
             Directory.CreateDirectory(DirectoryPath);
             RotateIfNeeded();
             File.AppendAllText(CurrentFilePath, record, Utf8NoBom);
@@ -104,38 +123,24 @@ public sealed class CrashLogWriter
         // Word-boundary anchored: an ordinary short account name such as "Max"
         // also occurs inside .NET namespaces, and a substring replace would
         // corrupt the stack trace this log exists to preserve.
-        try
-        {
-            return Regex.Replace(
-                text,
-                $@"(?<![A-Za-z0-9_]){Regex.Escape(user)}(?![A-Za-z0-9_])",
-                "%USER%",
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
-                RedactionTimeout);
-        }
-        catch (RegexMatchTimeoutException)
-        {
-            return text;
-        }
+        return Regex.Replace(
+            text,
+            $@"(?<![A-Za-z0-9_]){Regex.Escape(user)}(?![A-Za-z0-9_])",
+            "%USER%",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+            RedactionTimeout);
     }
 
     private static string ReplaceSecrets(Regex pattern, string text)
     {
-        try
+        return pattern.Replace(text, match =>
         {
-            return pattern.Replace(text, match =>
-            {
-                // Keep the key name so the log still says which value was masked.
-                var separator = match.Value.IndexOfAny(new[] { ':', '=' });
-                return separator > 0
-                    ? match.Value[..(separator + 1)] + " <redacted>"
-                    : "<redacted>";
-            });
-        }
-        catch (RegexMatchTimeoutException)
-        {
-            return text;
-        }
+            // Keep the key name so the log still says which value was masked.
+            var separator = match.Value.IndexOfAny(new[] { ':', '=' });
+            return separator > 0
+                ? match.Value[..(separator + 1)] + " <redacted>"
+                : "<redacted>";
+        });
     }
 
     private static string Truncate(string text)
@@ -146,6 +151,16 @@ public sealed class CrashLogWriter
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
         var header = $"==== {_utcNow():yyyy-MM-ddTHH:mm:ss.fffZ} | {source} | UsageBeacon {version} | {Environment.OSVersion} ====";
         return header + Environment.NewLine + exception + Environment.NewLine + Environment.NewLine;
+    }
+
+    private string FormatRedactionFailure(Exception exception)
+    {
+        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
+        var exceptionType = exception.GetType().FullName ?? "unknown";
+        var header = $"==== {_utcNow():yyyy-MM-ddTHH:mm:ss.fffZ} | CrashLogWriter | UsageBeacon {version} ====";
+        return header + Environment.NewLine +
+               $"Redaction timed out; original crash details omitted. Exception type: {exceptionType}" +
+               Environment.NewLine + Environment.NewLine;
     }
 
     private void RotateIfNeeded()
