@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -22,14 +23,29 @@ public sealed record ModelPricing(
 /// </summary>
 public sealed class ModelPricingCatalog
 {
-    private readonly Dictionary<string, ModelPricing> _models;
+    private readonly Dictionary<string, IReadOnlyList<PricingPeriod>> _models;
 
     public string AsOf { get; }
 
     public ModelPricingCatalog(string asOf, IReadOnlyDictionary<string, ModelPricing> models)
+        : this(
+            asOf,
+            models.ToDictionary(
+                pair => pair.Key,
+                pair => (IReadOnlyList<PricingPeriod>)
+                    [new PricingPeriod(DateTime.MinValue, pair.Value)],
+                StringComparer.OrdinalIgnoreCase))
+    {
+    }
+
+    private ModelPricingCatalog(
+        string asOf,
+        IReadOnlyDictionary<string, IReadOnlyList<PricingPeriod>> models)
     {
         AsOf = asOf;
-        _models = new Dictionary<string, ModelPricing>(models, StringComparer.OrdinalIgnoreCase);
+        _models = new Dictionary<string, IReadOnlyList<PricingPeriod>>(
+            models,
+            StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -38,17 +54,34 @@ public sealed class ModelPricingCatalog
     /// (so "gpt-5" matches "gpt-5-codex" but never "gpt-5.5").
     /// </summary>
     public ModelPricing? Resolve(string model)
+        => Resolve(model, DateTime.MaxValue);
+
+    /// <summary>Resolves the rate effective at the usage event timestamp.</summary>
+    public ModelPricing? Resolve(string model, DateTime timestampUtc)
+    {
+        var schedule = ResolveSchedule(model);
+        if (schedule is null) return null;
+
+        for (var i = schedule.Count - 1; i >= 0; i--)
+        {
+            if (schedule[i].EffectiveFromUtc <= timestampUtc)
+                return schedule[i].Pricing;
+        }
+        return null;
+    }
+
+    private IReadOnlyList<PricingPeriod>? ResolveSchedule(string model)
     {
         if (_models.TryGetValue(model, out var exact)) return exact;
 
-        ModelPricing? best = null;
+        IReadOnlyList<PricingPeriod>? best = null;
         var bestLength = -1;
-        foreach (var (key, pricing) in _models)
+        foreach (var (key, schedule) in _models)
         {
             if (key.Length <= bestLength || key.Length >= model.Length) continue;
             if (!model.StartsWith(key, StringComparison.OrdinalIgnoreCase)) continue;
             if (model[key.Length] != '-') continue;
-            best = pricing;
+            best = schedule;
             bestLength = key.Length;
         }
         return best;
@@ -57,7 +90,7 @@ public sealed class ModelPricingCatalog
     /// <summary>Estimated USD cost of one entry, or null for unknown models.</summary>
     public decimal? TryGetCost(TokenUsageEntry entry)
     {
-        var pricing = Resolve(entry.Model);
+        var pricing = Resolve(entry.Model, entry.TimestampUtc);
         if (pricing is null) return null;
         return (entry.InputTokens * pricing.Input +
                 entry.CachedInputTokens * pricing.CachedInput +
@@ -87,9 +120,9 @@ public sealed class ModelPricingCatalog
             var overlay = ParseDocument(File.ReadAllText(overridePath));
             if (overlay is null) return catalog;
 
-            var merged = new Dictionary<string, ModelPricing>(
+            var merged = new Dictionary<string, IReadOnlyList<PricingPeriod>>(
                 catalog._models, StringComparer.OrdinalIgnoreCase);
-            foreach (var (key, pricing) in overlay._models) merged[key] = pricing;
+            foreach (var (key, schedule) in overlay._models) merged[key] = schedule;
             var asOf = string.IsNullOrEmpty(overlay.AsOf) ? catalog.AsOf : overlay.AsOf;
             return new ModelPricingCatalog(asOf, merged);
         }
@@ -102,9 +135,113 @@ public sealed class ModelPricingCatalog
 
     internal static ModelPricingCatalog? ParseDocument(string json)
     {
-        var document = JsonSerializer.Deserialize<PricingDocument>(json);
-        if (document?.Models is null) return null;
-        return new ModelPricingCatalog(document.AsOf ?? "", document.Models);
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object ||
+                !root.TryGetProperty("models", out var modelsElement) ||
+                modelsElement.ValueKind != JsonValueKind.Object)
+                return null;
+
+            var asOf = root.TryGetProperty("asOf", out var asOfElement) &&
+                       asOfElement.ValueKind == JsonValueKind.String
+                ? asOfElement.GetString() ?? ""
+                : "";
+            var models = new Dictionary<string, IReadOnlyList<PricingPeriod>>(
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var modelProperty in modelsElement.EnumerateObject())
+            {
+                if (string.IsNullOrWhiteSpace(modelProperty.Name) ||
+                    !TryParseSchedule(modelProperty.Value, out var schedule))
+                    return null;
+                models[modelProperty.Name] = schedule;
+            }
+            return new ModelPricingCatalog(asOf, models);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static bool TryParseSchedule(
+        JsonElement element,
+        out IReadOnlyList<PricingPeriod> schedule)
+    {
+        schedule = [];
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            if (!TryParsePricing(element, out var pricing)) return false;
+            schedule = [new PricingPeriod(DateTime.MinValue, pricing)];
+            return true;
+        }
+        if (element.ValueKind != JsonValueKind.Array) return false;
+
+        var periods = new List<PricingPeriod>();
+        foreach (var periodElement in element.EnumerateArray())
+        {
+            if (periodElement.ValueKind != JsonValueKind.Object ||
+                !periodElement.TryGetProperty("effectiveFrom", out var effectiveElement) ||
+                effectiveElement.ValueKind != JsonValueKind.String ||
+                !TryParseEffectiveFrom(effectiveElement.GetString(), out var effectiveFromUtc) ||
+                !TryParsePricing(periodElement, out var pricing))
+                return false;
+            periods.Add(new PricingPeriod(effectiveFromUtc, pricing));
+        }
+        if (periods.Count == 0) return false;
+
+        periods.Sort((left, right) => left.EffectiveFromUtc.CompareTo(right.EffectiveFromUtc));
+        if (periods.Zip(periods.Skip(1), (left, right) =>
+                left.EffectiveFromUtc == right.EffectiveFromUtc).Any(equal => equal))
+            return false;
+        schedule = periods;
+        return true;
+    }
+
+    private static bool TryParsePricing(JsonElement element, out ModelPricing pricing)
+    {
+        pricing = null!;
+        try
+        {
+            var parsed = element.Deserialize<ModelPricing>();
+            if (parsed is null ||
+                parsed.Input < 0 ||
+                parsed.CachedInput < 0 ||
+                parsed.CacheWrite5m < 0 ||
+                parsed.CacheWrite1h < 0 ||
+                parsed.Output < 0)
+                return false;
+            pricing = parsed;
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static bool TryParseEffectiveFrom(string? value, out DateTime effectiveFromUtc)
+    {
+        if (DateTime.TryParseExact(
+                value,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out effectiveFromUtc))
+            return true;
+
+        if (DateTimeOffset.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind,
+                out var parsed))
+        {
+            effectiveFromUtc = parsed.UtcDateTime;
+            return true;
+        }
+        effectiveFromUtc = default;
+        return false;
     }
 
     private static string ReadEmbeddedJson()
@@ -116,7 +253,7 @@ public sealed class ModelPricingCatalog
         return reader.ReadToEnd();
     }
 
-    private sealed record PricingDocument(
-        [property: JsonPropertyName("asOf")] string? AsOf,
-        [property: JsonPropertyName("models")] Dictionary<string, ModelPricing>? Models);
+    private sealed record PricingPeriod(
+        DateTime EffectiveFromUtc,
+        ModelPricing Pricing);
 }

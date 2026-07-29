@@ -32,7 +32,7 @@ Vendor semantics differ and are normalized during parsing:
 - Anthropic: `input_tokens`, cache writes (5m/1h), and cache reads are disjoint buckets, each billed at its own rate.
 - OpenAI: `input_tokens` includes `cached_input_tokens` (billed as `(input - cached) + cached x cached rate`) and `output_tokens` already includes reasoning tokens.
 
-The built-in price table is an embedded resource (`Resources/model-pricing.json`) with an "as of" date shown in the dashboard. Some values, notably for the newest models, are sourced from third-party price trackers rather than official price pages and may lag price changes. `claude-sonnet-5` uses the official introductory price ($2/$10) that applies until 2026-08-31 and must be raised to the standard $3/$15 afterwards. Models without a table entry are excluded from cost totals and listed in a notice; their token counts are still shown.
+The built-in price table is an embedded resource (`Resources/model-pricing.json`) with an "as of" date shown in the dashboard. Some values, notably for the newest models, are sourced from third-party price trackers rather than official price pages and may lag price changes. Rates can be a single timeless object or an effective-dated schedule. `claude-sonnet-5` therefore uses its introductory $2/$10 rate through 2026-08-31 and automatically uses the standard $3/$15 rate from 2026-09-01 UTC without repricing older usage. Models without a table entry are excluded from cost totals and listed in a notice; their token counts are still shown.
 
 `claude-opus-5` uses Anthropic's published standard price of $5 input and $25 output per million tokens. Anthropic documents this as unchanged from Opus 4.8, so the table also uses the published Opus 4.8 prompt-cache rates: $6.25 for 5-minute writes, $10 for 1-hour writes, and $0.50 for cache hits. See [What's new in Claude Opus 5](https://platform.claude.com/docs/en/about-claude/models/whats-new-opus-5) and [Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing).
 
@@ -44,15 +44,18 @@ Known estimation gaps (both cause **under**-estimation and cannot be derived fro
 
 ### Overriding prices
 
-Create `%LOCALAPPDATA%\UsageBeacon\model-pricing.json` to correct or extend prices without a new build. Entries replace built-in models by name; unknown names are added. All values are USD per million tokens:
+Create `%LOCALAPPDATA%\UsageBeacon\model-pricing.json` to correct or extend prices without a new build. Entries replace the complete built-in schedule for that model; unknown names are added. A legacy object remains a timeless rate. Use an array with `effectiveFrom` dates for historical rates. Dates without an offset start at 00:00 UTC. All values are USD per million tokens:
 
 ```json
 {
     "asOf": "2026-08-01",
     "models": {
-        "claude-sonnet-5": { "input": 2, "cachedInput": 0.2, "cacheWrite5m": 2.5, "cacheWrite1h": 4, "output": 10 }
+        "claude-sonnet-5": [
+            { "effectiveFrom": "0001-01-01", "input": 2, "cachedInput": 0.2, "cacheWrite5m": 2.5, "cacheWrite1h": 4, "output": 10 },
+            { "effectiveFrom": "2026-09-01", "input": 3, "cachedInput": 0.3, "cacheWrite5m": 3.75, "cacheWrite1h": 6, "output": 15 }
+        ]
     }
 }
 ```
 
-Model names match exactly first, then by the longest table key that is a prefix of the model name at a `-` boundary (`gpt-5` matches `gpt-5-codex` but never `gpt-5.5`).
+Schedule entries may be in any order, but duplicate effective dates invalidate the override. Model names match exactly first, then by the longest table key that is a prefix of the model name at a `-` boundary (`gpt-5` matches `gpt-5-codex` but never `gpt-5.5`).

@@ -59,6 +59,48 @@ public sealed class ModelPricingCatalogTests
     }
 
     [Fact]
+    public void ParseDocument_UsesTheRateEffectiveAtTheUsageTimestamp()
+    {
+        var catalog = ModelPricingCatalog.ParseDocument(
+            """
+            {
+                "asOf": "2026-07-29",
+                "models": {
+                    "scheduled": [
+                        { "effectiveFrom": "2026-09-01", "input": 3, "cachedInput": 0.3, "cacheWrite5m": 0, "cacheWrite1h": 0, "output": 15 },
+                        { "effectiveFrom": "2026-01-01", "input": 2, "cachedInput": 0.2, "cacheWrite5m": 0, "cacheWrite1h": 0, "output": 10 }
+                    ]
+                }
+            }
+            """);
+
+        Assert.NotNull(catalog);
+        Assert.Equal(2m, catalog!.Resolve(
+            "scheduled",
+            new DateTime(2026, 8, 31, 23, 59, 59, DateTimeKind.Utc))!.Input);
+        Assert.Equal(3m, catalog.Resolve(
+            "scheduled",
+            new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc))!.Input);
+        Assert.Null(catalog.Resolve(
+            "scheduled",
+            new DateTime(2025, 12, 31, 23, 59, 59, DateTimeKind.Utc)));
+    }
+
+    [Fact]
+    public void ParseDocument_RejectsDuplicateEffectiveDates()
+    {
+        var catalog = ModelPricingCatalog.ParseDocument(
+            """
+            {"models":{"scheduled":[
+                {"effectiveFrom":"2026-09-01","input":2,"cachedInput":0,"cacheWrite5m":0,"cacheWrite1h":0,"output":10},
+                {"effectiveFrom":"2026-09-01","input":3,"cachedInput":0,"cacheWrite5m":0,"cacheWrite1h":0,"output":15}
+            ]}}
+            """);
+
+        Assert.Null(catalog);
+    }
+
+    [Fact]
     public void EmbeddedPricing_IncludesClaudeOpus5Rates()
     {
         var path = Path.Combine(
@@ -85,6 +127,25 @@ public sealed class ModelPricingCatalogTests
             CacheWrite1hTokens: 1_000_000,
             OutputTokens: 1_000_000);
         Assert.Equal(46.75m, catalog.TryGetCost(entry));
+    }
+
+    [Fact]
+    public void EmbeddedPricing_AppliesTheClaudeSonnet5ScheduledIncrease()
+    {
+        var path = Path.Combine(
+            RepositoryRoot(),
+            "UsageBeacon",
+            "Resources",
+            "model-pricing.json");
+        var catalog = ModelPricingCatalog.ParseDocument(File.ReadAllText(path));
+
+        Assert.NotNull(catalog);
+        Assert.Equal(2m, catalog!.Resolve(
+            "claude-sonnet-5",
+            new DateTime(2026, 8, 31, 23, 59, 59, DateTimeKind.Utc))!.Input);
+        Assert.Equal(3m, catalog.Resolve(
+            "claude-sonnet-5",
+            new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc))!.Input);
     }
 
     [Fact]
@@ -115,6 +176,28 @@ public sealed class ModelPricingCatalogTests
 
         Assert.Equal(5m, ModelPricingCatalog.MergeOverride(CreateCatalog(), missing).Resolve("gpt-5.5")!.Input);
         Assert.Equal(5m, ModelPricingCatalog.MergeOverride(CreateCatalog(), broken).Resolve("gpt-5.5")!.Input);
+    }
+
+    [Fact]
+    public void MergeOverride_ScheduleReplacesTheWholeBuiltInModelSchedule()
+    {
+        using var directory = new TempDirectory();
+        var overridePath = Path.Combine(directory.Path, "model-pricing.json");
+        File.WriteAllText(overridePath,
+            """
+            {"models":{"gpt-5.5":[
+                {"effectiveFrom":"2026-10-01","input":7,"cachedInput":0.7,"cacheWrite5m":0,"cacheWrite1h":0,"output":42}
+            ]}}
+            """);
+
+        var merged = ModelPricingCatalog.MergeOverride(CreateCatalog(), overridePath);
+
+        Assert.Null(merged.Resolve(
+            "gpt-5.5",
+            new DateTime(2026, 9, 30, 23, 59, 59, DateTimeKind.Utc)));
+        Assert.Equal(7m, merged.Resolve(
+            "gpt-5.5",
+            new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc))!.Input);
     }
 
     private sealed class TempDirectory : IDisposable
