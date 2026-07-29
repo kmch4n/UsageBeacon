@@ -1,6 +1,6 @@
 # Usage Dashboard
 
-The dashboard window (popup settings → "Usage dashboard", or the tray menu) shows token usage and estimated USD costs for today, the last 7 days, and the last 30 days, a daily cost chart, and a per-model breakdown.
+The dashboard window (popup settings → "Usage dashboard", or the tray menu) shows the token usage retained on this computer, estimated USD costs for today, the last 7 days, and the last 30 days, a daily cost chart, and a per-model breakdown.
 
 ## Data sources
 
@@ -15,13 +15,15 @@ WSL-side logs are not scanned in this version.
 
 ## Incremental cache
 
-Parsed results are cached at `%LOCALAPPDATA%\UsageBeacon\insights-cache.json`, keyed by file path, size, and write time, so only new or changed logs are reparsed. Entries of deleted log files are retained on purpose: Claude Code prunes transcripts after roughly 30 days (`cleanupPeriodDays`), so the cache is the primary source for older days. Deleting the cache file forces a full rescan and loses days whose logs were already pruned.
+Parsed results are cached at `%LOCALAPPDATA%\UsageBeacon\insights-cache.json`, keyed by file path, size, write time, and parser revision, so only new or changed logs are reparsed. Entries of deleted log files are retained on purpose: Claude Code prunes transcripts after roughly 30 days (`cleanupPeriodDays`), so the cache is the primary source for older days. Deleting the cache file forces a full rescan and loses history whose logs were already pruned.
 
 ### Retention
 
-Cached entries older than 180 days are dropped at the end of each scan so the cache reaches a bounded steady state. The per-file record is kept even when all of its entries are dropped, because removing it would make the next scan reparse a file that may be hundreds of megabytes and then discard the whole result.
+Detailed cached entries older than 180 days are compacted into exact input/output token totals. Their identity hashes are retained so a modified file or parser migration cannot count the same usage twice. The per-file record is also kept after compaction, because removing it would make the next scan reparse a file that may be hundreds of megabytes.
 
-The retention window is far outside the 30 days the dashboard displays, so pruning never changes a visible number. If a log file that was already pruned from the cache is later modified, it is reparsed in full and its still-recent entries return normally; identity deduplication makes that safe.
+The detailed window supports the 30-day cost chart and per-model table. The compacted totals support the "Recorded on this PC" token card without retaining every old model and timestamp. The cache is rewritten only when a file or archive changed, and serialization streams directly to a temporary file before the atomic replacement.
+
+The lifetime card is the history UsageBeacon can still observe, not an account-level total. Logs deleted before UsageBeacon scanned them, history lost before this format was introduced, cache deletion or corruption, and unreadable files can leave gaps. The earliest retained record shown in the card is therefore a lower bound, not a guarantee of continuous coverage.
 
 ## Cost estimation
 

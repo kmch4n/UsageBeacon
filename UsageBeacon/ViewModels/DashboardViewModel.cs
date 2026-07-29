@@ -56,7 +56,8 @@ public sealed class DashboardViewModel
             cache,
             _claudeProjectsDirectory,
             ClaudeTranscriptReader.ParseFile,
-            cancellationToken);
+            cancellationToken,
+            ClaudeTranscriptReader.ParserRevision);
         ScanDirectory(
             cache,
             _codexSessionsDirectory,
@@ -64,14 +65,19 @@ public sealed class DashboardViewModel
             cancellationToken,
             CodexSessionReader.ParserRevision);
 
-        // After the scan so entries that aged out during this run are dropped in
-        // the same pass, and before the save so the smaller form is what persists.
-        cache.Prune(DateTime.UtcNow.AddDays(-UsageLogCache.RetentionDays));
+        // Archive older details after scanning so lifetime tokens remain exact
+        // while the per-entry cache reaches a bounded steady state.
+        cache.ArchiveBefore(DateTime.UtcNow.AddDays(-UsageLogCache.RetentionDays));
         cache.Save();
 
         var today = DateOnly.FromDateTime(
             TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, _timeZone));
-        return UsageAggregator.Aggregate(cache.AllEntries(), _pricing, today, _timeZone);
+        return UsageAggregator.Aggregate(
+            cache.AllEntries(),
+            _pricing,
+            today,
+            _timeZone,
+            cache.ArchivedUsage);
     }
 
     private static void ScanDirectory(

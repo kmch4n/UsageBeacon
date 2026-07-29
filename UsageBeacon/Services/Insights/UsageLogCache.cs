@@ -11,6 +11,9 @@ namespace UsageBeacon.Services.Insights;
 /// files are never reparsed. Entries of deleted files are retained on
 /// purpose: Claude Code prunes transcripts after roughly 30 days, so the
 /// cache is the primary source for older days, not just an accelerator.
+/// Detailed entries older than <see cref="RetentionDays"/> are compacted into
+/// exact token totals plus their identity hashes so lifetime usage remains
+/// available without allowing the full entry payload to grow indefinitely.
 /// Only numeric usage values and model names are persisted — never content.
 /// </summary>
 public sealed class UsageLogCache
@@ -22,11 +25,23 @@ public sealed class UsageLogCache
 
     private readonly string _cachePath;
     private readonly Dictionary<string, CachedFile> _files;
+    private readonly HashSet<long> _archivedEntryIds;
+    private decimal _archivedInputTokens;
+    private decimal _archivedOutputTokens;
+    private DateTime? _archivedFirstUsageUtc;
+    private bool _dirty;
 
-    private UsageLogCache(string cachePath, Dictionary<string, CachedFile> files)
+    private UsageLogCache(
+        string cachePath,
+        Dictionary<string, CachedFile> files,
+        ArchivedUsageDocument? archived)
     {
         _cachePath = cachePath;
         _files = files;
+        _archivedEntryIds = new HashSet<long>(archived?.EntryIds ?? []);
+        _archivedInputTokens = archived?.TotalInputTokens ?? 0m;
+        _archivedOutputTokens = archived?.TotalOutputTokens ?? 0m;
+        _archivedFirstUsageUtc = archived?.FirstUsageUtc;
     }
 
     public static UsageLogCache Load(string cachePath)
@@ -41,8 +56,12 @@ public sealed class UsageLogCache
                 {
                     // Re-wrap: deserialization loses the case-insensitive
                     // path comparer of the original dictionary.
-                    return new UsageLogCache(cachePath, new Dictionary<string, CachedFile>(
-                        document.Files, StringComparer.OrdinalIgnoreCase));
+                    return new UsageLogCache(
+                        cachePath,
+                        new Dictionary<string, CachedFile>(
+                            document.Files,
+                            StringComparer.OrdinalIgnoreCase),
+                        document.Archived);
                 }
             }
         }
@@ -50,7 +69,10 @@ public sealed class UsageLogCache
         {
             // A corrupt cache is rebuilt from the logs on the next scan.
         }
-        return new UsageLogCache(cachePath, new Dictionary<string, CachedFile>(StringComparer.OrdinalIgnoreCase));
+        return new UsageLogCache(
+            cachePath,
+            new Dictionary<string, CachedFile>(StringComparer.OrdinalIgnoreCase),
+            archived: null);
     }
 
     /// <summary>
@@ -76,27 +98,56 @@ public sealed class UsageLogCache
             lastWriteUtc,
             entries.ToList(),
             parserRevision);
+        _dirty = true;
         return entries;
     }
 
     /// <summary>
-    /// Drops cached entries older than the cutoff so the cache reaches a bounded
-    /// steady state. The per-file record itself is kept with its original length
-    /// and write time: removing it would make <see cref="GetEntries"/> reparse a
-    /// file that may be hundreds of megabytes on every scan, only to discard the
-    /// whole result again. Dropping entries is idempotent, and a later reparse
-    /// simply re-ingests raw entries that the existing identity dedupe handles.
+    /// Compacts entries older than the cutoff into lifetime token totals. Their
+    /// identity hashes are retained so a later file reparse cannot count them
+    /// twice. Per-file metadata remains unchanged to avoid unnecessary reparses.
     /// </summary>
-    public void Prune(DateTime cutoffUtc)
+    public void ArchiveBefore(DateTime cutoffUtc)
     {
-        foreach (var path in _files.Keys.ToList())
+        var seen = new HashSet<long>(_archivedEntryIds);
+        foreach (var path in _files.Keys.OrderBy(
+                     path => path,
+                     StringComparer.OrdinalIgnoreCase).ToList())
         {
             var file = _files[path];
-            var kept = file.Entries.Where(entry => entry.TimestampUtc >= cutoffUtc).ToList();
+            var kept = new List<TokenUsageEntry>(file.Entries.Count);
+            foreach (var entry in file.Entries)
+            {
+                // Keep the same deterministic first-path-wins rule used by
+                // UsageAggregator, including across archived and detailed data.
+                if (!seen.Add(entry.IdHash)) continue;
+
+                if (entry.TimestampUtc >= cutoffUtc)
+                {
+                    kept.Add(entry);
+                    continue;
+                }
+
+                _archivedEntryIds.Add(entry.IdHash);
+                _archivedInputTokens += (decimal)entry.InputTokens +
+                                        entry.CachedInputTokens +
+                                        entry.CacheWrite5mTokens +
+                                        entry.CacheWrite1hTokens;
+                _archivedOutputTokens += entry.OutputTokens;
+                if (_archivedFirstUsageUtc is null ||
+                    entry.TimestampUtc < _archivedFirstUsageUtc)
+                    _archivedFirstUsageUtc = entry.TimestampUtc;
+            }
             if (kept.Count == file.Entries.Count) continue;
             _files[path] = file with { Entries = kept };
+            _dirty = true;
         }
     }
+
+    public ArchivedTokenUsage ArchivedUsage => new(
+        _archivedInputTokens,
+        _archivedOutputTokens,
+        _archivedFirstUsageUtc);
 
     /// <summary>All cached entries, including those of files deleted since.</summary>
     public IEnumerable<KeyValuePair<string, IReadOnlyList<TokenUsageEntry>>> AllEntries()
@@ -108,16 +159,36 @@ public sealed class UsageLogCache
     /// <summary>Persists the cache; failures are non-fatal by design.</summary>
     public void Save()
     {
+        if (!_dirty) return;
+
         try
         {
             var directory = Path.GetDirectoryName(_cachePath);
-            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
-            var json = JsonSerializer.Serialize(new CacheDocument(SchemaVersion, _files));
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
             // Write-then-move keeps the previous cache intact if this write is
             // interrupted; the cache is the only history for pruned transcripts.
             var tempPath = _cachePath + ".tmp";
-            File.WriteAllText(tempPath, json);
+            using (var stream = new FileStream(
+                       tempPath,
+                       FileMode.Create,
+                       FileAccess.Write,
+                       FileShare.None))
+            {
+                JsonSerializer.Serialize(
+                    stream,
+                    new CacheDocument(
+                        SchemaVersion,
+                        _files,
+                        new ArchivedUsageDocument(
+                            _archivedEntryIds.ToList(),
+                            _archivedInputTokens,
+                            _archivedOutputTokens,
+                            _archivedFirstUsageUtc)));
+                stream.Flush(flushToDisk: true);
+            }
             File.Move(tempPath, _cachePath, overwrite: true);
+            _dirty = false;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -133,5 +204,17 @@ public sealed class UsageLogCache
 
     private sealed record CacheDocument(
         [property: JsonPropertyName("schemaVersion")] int SchemaVersion,
-        [property: JsonPropertyName("files")] Dictionary<string, CachedFile> Files);
+        [property: JsonPropertyName("files")] Dictionary<string, CachedFile> Files,
+        [property: JsonPropertyName("archived")] ArchivedUsageDocument? Archived = null);
+
+    private sealed record ArchivedUsageDocument(
+        [property: JsonPropertyName("ids")] List<long>? EntryIds,
+        [property: JsonPropertyName("in")] decimal TotalInputTokens,
+        [property: JsonPropertyName("out")] decimal TotalOutputTokens,
+        [property: JsonPropertyName("first")] DateTime? FirstUsageUtc);
 }
+
+public sealed record ArchivedTokenUsage(
+    decimal TotalInputTokens,
+    decimal TotalOutputTokens,
+    DateTime? FirstUsageUtc);

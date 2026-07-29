@@ -32,6 +32,20 @@ The runtime localization changes were validated on 2026-07-18:
 
 When a running UsageBeacon process locks an output path or the single-instance mutex, use an alternate output directory for automated validation. Stop the running application only with user awareness before interactive validation.
 
+## Locally retained lifetime usage
+
+The dashboard lifetime-token implementation was validated on 2026-07-29:
+
+- The card reports input plus cached/cache-write tokens, output tokens, their total, and the earliest retained local day. It is labeled as locally recorded history and warns that deleted-before-scan logs or cache loss can leave gaps.
+- Detailed entries remain bounded to 180 days. Older entries compact into exact token totals plus identity hashes, so parser migrations and modified files cannot double count them.
+- Cache saves are dirty-only and stream JSON directly to the temporary file before replacement.
+- Claude and Codex parser revisions force one migration pass over still-present logs; locked files retain their old cache and retry on a later scan.
+- A temporary copy of the real cache completed the migration scan in 8.89 s, remained 6.17 MB with 44,456 detailed entries, and produced the same lifetime total and earliest day as the independently inspected records. The real cache and packaged executable were not changed.
+- `dotnet test UsageBeacon.sln -c Debug --no-restore`: 177 passed, 0 failed.
+- `dotnet build UsageBeacon.sln -c Release --no-restore`: 0 warnings, 0 errors.
+
+Manual verification remains pending for the new card at the minimum window width and in both themes and languages.
+
 ## OAuth credential persistence validation
 
 The restart authentication fix was validated on 2026-07-19:
@@ -111,7 +125,7 @@ A backend-only hardening pass (no UI changes) was completed on 2026-07-27:
 - `dotnet test UsageBeacon.sln -c Debug`: 133 passed, 0 failed (97 before the pass).
 - `dotnet build UsageBeacon.sln -c Debug` and `-c Release`: 0 warnings, 0 errors.
 - Fixed defect: the dashboard scan aborted entirely when any log subdirectory was unreadable, because `Directory.EnumerateFiles` with a `SearchOption` overload uses `EnumerationOptions.Compatible` (`IgnoreInaccessible = false`) and raises the failure from `MoveNext`, outside the guard that only wrapped the enumerator's creation. Reproduced with a deny ACE before the fix and confirmed skipped after it. The call now passes explicit `EnumerationOptions`, and `ResilientFileEnumeration` guards the residual mid-iteration `IOException` class.
-- Cache retention (D-011): entries older than 180 days are dropped after each scan.
+- The then-active cache retention policy (D-011) dropped entries older than 180 days; D-015 now supersedes it with exact token-only compaction.
 - Crash logging (D-012): verified against the built assembly by writing a real exception whose message embedded the profile path and an `sk-ant-` key; the record contained `%USERPROFILE%` and `<redacted>` and neither original value.
 - CI and release automation (D-013): both workflow files parse, and the tag/version gate was dry-run locally against `UsageBeacon.csproj` (`1.0.0` matches tag `v1.0.0`).
 
@@ -119,7 +133,7 @@ Insights pipeline measured on 2026-07-27 against the real corpus (Claude 136 fil
 
 - Cold scan 9.50 s, warm scan 0.20 s, cache file 5.55 MB.
 - The earlier "~3.1 s cold scan" figure was measured differently and is not comparable; treat 9.50 s as the current baseline for a Debug build with this corpus.
-- The 5.55 MB cache confirms that unbounded growth was not yet material. The 180-day window is a cheap safety valve rather than an urgent fix, and the constant can be revisited against this number.
+- The 5.55 MB measurement informed the later D-015 design: detailed entries stay on the 180-day window while older identities and token totals remain available.
 
 Manual verification remains pending for: dashboard visuals in both themes and languages, refresh behavior while logs are being written, a real crash producing `%LOCALAPPDATA%\UsageBeacon\logs\crash.log` in the running application, and a live run of the release workflow against a throwaway tag.
 

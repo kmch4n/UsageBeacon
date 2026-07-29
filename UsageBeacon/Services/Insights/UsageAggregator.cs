@@ -4,8 +4,9 @@ namespace UsageBeacon.Services.Insights;
 
 /// <summary>
 /// Turns raw usage entries into the dashboard report: today / last 7 days /
-/// last 30 days summaries, a 30-day daily series, and a per-model breakdown.
-/// Days are local calendar days derived from the entry's UTC timestamp.
+/// last 30 days summaries, locally retained lifetime token totals, a 30-day
+/// daily series, and a per-model breakdown. Days are local calendar days
+/// derived from the entry's UTC timestamp.
 /// </summary>
 public static class UsageAggregator
 {
@@ -13,23 +14,18 @@ public static class UsageAggregator
         IEnumerable<KeyValuePair<string, IReadOnlyList<TokenUsageEntry>>> files,
         ModelPricingCatalog pricing,
         DateOnly today,
-        TimeZoneInfo timeZone)
+        TimeZoneInfo timeZone,
+        ArchivedTokenUsage? archivedUsage = null)
     {
         // Deterministic order so cross-file duplicate ids always resolve the
         // same way regardless of directory enumeration order.
         var seen = new HashSet<long>();
-        var entries = new List<TokenUsageEntry>();
-        foreach (var pair in files.OrderBy(p => p.Key, StringComparer.OrdinalIgnoreCase))
-        {
-            foreach (var entry in pair.Value)
-            {
-                if (seen.Add(entry.IdHash)) entries.Add(entry);
-            }
-        }
-
         var last30Start = today.AddDays(-29);
         var last7Start = today.AddDays(-6);
 
+        var lifetimeInput = archivedUsage?.TotalInputTokens ?? 0m;
+        var lifetimeOutput = archivedUsage?.TotalOutputTokens ?? 0m;
+        var firstUsageUtc = archivedUsage?.FirstUsageUtc;
         var todayTotals = new PeriodAccumulator();
         var weekTotals = new PeriodAccumulator();
         var monthTotals = new PeriodAccumulator();
@@ -37,28 +33,41 @@ public static class UsageAggregator
         var models = new Dictionary<(string Model, UsageService Service), ModelAccumulator>();
         var unknownModels = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var entry in entries)
+        foreach (var pair in files.OrderBy(p => p.Key, StringComparer.OrdinalIgnoreCase))
         {
-            var day = DateOnly.FromDateTime(
-                TimeZoneInfo.ConvertTimeFromUtc(entry.TimestampUtc, timeZone));
-            if (day < last30Start || day > today) continue;
+            foreach (var entry in pair.Value)
+            {
+                if (!seen.Add(entry.IdHash)) continue;
 
-            var cost = pricing.TryGetCost(entry);
-            if (cost is null) unknownModels.Add(entry.Model);
+                var day = DateOnly.FromDateTime(
+                    TimeZoneInfo.ConvertTimeFromUtc(entry.TimestampUtc, timeZone));
+                if (day > today) continue;
 
-            monthTotals.Add(entry, cost);
-            if (day >= last7Start) weekTotals.Add(entry, cost);
-            if (day == today) todayTotals.Add(entry, cost);
+                lifetimeInput += (decimal)entry.InputTokens + entry.CachedInputTokens +
+                                 entry.CacheWrite5mTokens + entry.CacheWrite1hTokens;
+                lifetimeOutput += entry.OutputTokens;
+                if (firstUsageUtc is null || entry.TimestampUtc < firstUsageUtc)
+                    firstUsageUtc = entry.TimestampUtc;
 
-            var costs = dayCosts.TryGetValue(day, out var existing) ? existing : (0m, 0m);
-            if (entry.Service == UsageService.Claude) costs.Item1 += cost ?? 0m;
-            else costs.Item2 += cost ?? 0m;
-            dayCosts[day] = costs;
+                if (day < last30Start) continue;
 
-            var key = (entry.Model, entry.Service);
-            if (!models.TryGetValue(key, out var model))
-                models[key] = model = new ModelAccumulator();
-            model.Add(entry, cost);
+                var cost = pricing.TryGetCost(entry);
+                if (cost is null) unknownModels.Add(entry.Model);
+
+                monthTotals.Add(entry, cost);
+                if (day >= last7Start) weekTotals.Add(entry, cost);
+                if (day == today) todayTotals.Add(entry, cost);
+
+                var costs = dayCosts.TryGetValue(day, out var existing) ? existing : (0m, 0m);
+                if (entry.Service == UsageService.Claude) costs.Item1 += cost ?? 0m;
+                else costs.Item2 += cost ?? 0m;
+                dayCosts[day] = costs;
+
+                var key = (entry.Model, entry.Service);
+                if (!models.TryGetValue(key, out var model))
+                    models[key] = model = new ModelAccumulator();
+                model.Add(entry, cost);
+            }
         }
 
         var days = new List<DailyUsagePoint>(30);
@@ -81,6 +90,12 @@ public static class UsageAggregator
             .ToList();
 
         return new DashboardData(
+            new LifetimeTokenSummary(
+                lifetimeInput,
+                lifetimeOutput,
+                firstUsageUtc is { } first
+                    ? DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(first, timeZone))
+                    : null),
             todayTotals.ToSummary(),
             weekTotals.ToSummary(),
             monthTotals.ToSummary(),

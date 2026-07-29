@@ -47,6 +47,7 @@ public sealed class DashboardViewModelTests
         Assert.True(vm.HasAnyLogDirectory);
         Assert.Equal(10m, data.Today.ClaudeCostUsd);
         Assert.Equal(30m, data.Today.CodexCostUsd);
+        Assert.Equal(2_000_000m, data.Lifetime.TotalTokens);
         Assert.Equal(2, data.Models.Count);
         Assert.True(File.Exists(Path.Combine(directory.Path, "cache.json")));
     }
@@ -102,6 +103,52 @@ public sealed class DashboardViewModelTests
     }
 
     [Fact]
+    public async Task LoadAsync_ReparsesLegacyClaudeCacheShellOnceForLifetimeMigration()
+    {
+        using var directory = new TempDirectory();
+        var claudeDir = Directory.CreateDirectory(Path.Combine(directory.Path, "claude")).FullName;
+        var path = Path.Combine(claudeDir, "ancient.jsonl");
+        var ancientUtc = DateTime.UtcNow.AddDays(-200);
+        var ancient = ancientUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        File.WriteAllText(
+            path,
+            """
+            {"type":"assistant","timestamp":"__TS__","requestId":"req_1","message":{"id":"msg_1","model":"claude-fable-5","usage":{"input_tokens":1000000,"cache_read_input_tokens":0,"output_tokens":0}}}
+            """.Replace("__TS__", ancient) + Environment.NewLine);
+
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        var info = new FileInfo(path);
+        var legacyCache = UsageLogCache.Load(cachePath);
+        legacyCache.GetEntries(
+            path,
+            info.Length,
+            info.LastWriteTimeUtc,
+            _ => Array.Empty<TokenUsageEntry>());
+        legacyCache.Save();
+
+        var vm = new DashboardViewModel(
+            Pricing,
+            claudeProjectsDirectory: claudeDir,
+            codexSessionsDirectory: Path.Combine(directory.Path, "no-codex"),
+            cachePath: cachePath,
+            timeZone: TimeZoneInfo.Utc);
+
+        var first = await vm.LoadAsync(CancellationToken.None);
+        var reloaded = UsageLogCache.Load(cachePath);
+
+        Assert.Equal(1_000_000m, first.Lifetime.TotalInputTokens);
+        Assert.Empty(reloaded.AllEntries().Single().Value);
+        Assert.Equal(1_000_000m, reloaded.ArchivedUsage.TotalInputTokens);
+
+        var fixedWriteTime = new DateTime(2026, 7, 20, 12, 0, 0, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(cachePath, fixedWriteTime);
+        var second = await vm.LoadAsync(CancellationToken.None);
+
+        Assert.Equal(first.Lifetime, second.Lifetime);
+        Assert.Equal(fixedWriteTime, File.GetLastWriteTimeUtc(cachePath));
+    }
+
+    [Fact]
     public async Task LoadAsync_SkipsLockedFiles_AndStillSavesTheCache()
     {
         using var directory = new TempDirectory();
@@ -132,6 +179,59 @@ public sealed class DashboardViewModelTests
     }
 
     [Fact]
+    public async Task LoadAsync_RetriesParserMigrationAfterLockedFileIsReleased()
+    {
+        using var directory = new TempDirectory();
+        var claudeDir = Directory.CreateDirectory(Path.Combine(directory.Path, "claude")).FullName;
+        var nowUtc = DateTime.UtcNow;
+        var now = nowUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        var path = Path.Combine(claudeDir, "session.jsonl");
+        File.WriteAllText(
+            path,
+            """
+            {"type":"assistant","timestamp":"__TS__","requestId":"req_1","message":{"id":"msg_1","model":"claude-fable-5","usage":{"input_tokens":2000000,"cache_read_input_tokens":0,"output_tokens":0}}}
+            """.Replace("__TS__", now) + Environment.NewLine);
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        var info = new FileInfo(path);
+        var legacyCache = UsageLogCache.Load(cachePath);
+        legacyCache.GetEntries(
+            path,
+            info.Length,
+            info.LastWriteTimeUtc,
+            _ => new[]
+            {
+                new TokenUsageEntry(
+                    1,
+                    nowUtc,
+                    UsageService.Claude,
+                    "claude-fable-5",
+                    1_000_000,
+                    0,
+                    0,
+                    0,
+                    0),
+            });
+        legacyCache.Save();
+        var vm = new DashboardViewModel(
+            Pricing,
+            claudeProjectsDirectory: claudeDir,
+            codexSessionsDirectory: Path.Combine(directory.Path, "no-codex"),
+            cachePath: cachePath,
+            timeZone: TimeZoneInfo.Utc);
+
+        DashboardData whileLocked;
+        using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            whileLocked = await vm.LoadAsync(CancellationToken.None);
+        }
+        var afterRelease = await vm.LoadAsync(CancellationToken.None);
+
+        Assert.Equal(1_000_000m, whileLocked.Lifetime.TotalInputTokens);
+        Assert.Equal(2_000_000m, afterRelease.Lifetime.TotalInputTokens);
+        Assert.Equal(20m, afterRelease.Today.ClaudeCostUsd);
+    }
+
+    [Fact]
     public async Task LoadAsync_ReturnsEmptyData_WhenDirectoriesAreMissing()
     {
         using var directory = new TempDirectory();
@@ -146,11 +246,13 @@ public sealed class DashboardViewModelTests
 
         Assert.False(vm.HasAnyLogDirectory);
         Assert.Equal(0m, data.Last30Days.CostUsd);
+        Assert.Equal(0m, data.Lifetime.TotalTokens);
+        Assert.Null(data.Lifetime.FirstUsageDay);
         Assert.Empty(data.Models);
     }
 
     [Fact]
-    public async Task LoadAsync_PrunesCachedEntriesOlderThanTheRetentionWindow()
+    public async Task LoadAsync_ArchivesOldEntriesAndReportsLifetimeTokens()
     {
         using var directory = new TempDirectory();
         var claudeDir = Directory.CreateDirectory(Path.Combine(directory.Path, "claude")).FullName;
@@ -179,15 +281,19 @@ public sealed class DashboardViewModelTests
         var data = await vm.LoadAsync(CancellationToken.None);
 
         Assert.Equal(10m, data.Today.ClaudeCostUsd);
+        Assert.Equal(2_000_000m, data.Lifetime.TotalInputTokens);
 
         var cutoff = DateTime.UtcNow.AddDays(-UsageLogCache.RetentionDays);
-        var cached = UsageLogCache.Load(cachePath)
-            .AllEntries()
+        var reloaded = UsageLogCache.Load(cachePath);
+        var cached = reloaded.AllEntries()
             .SelectMany(pair => pair.Value)
             .ToList();
 
         Assert.Single(cached);
         Assert.All(cached, entry => Assert.True(entry.TimestampUtc >= cutoff));
+        Assert.Equal(1_000_000m, reloaded.ArchivedUsage.TotalInputTokens);
+        Assert.Equal(0m, reloaded.ArchivedUsage.TotalOutputTokens);
+        Assert.NotNull(reloaded.ArchivedUsage.FirstUsageUtc);
     }
 
     private sealed class TempDirectory : IDisposable

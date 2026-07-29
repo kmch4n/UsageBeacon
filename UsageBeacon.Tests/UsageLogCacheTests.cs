@@ -148,6 +148,11 @@ public sealed class UsageLogCacheTests
         cache.Save();
         var legacyJson = File.ReadAllText(cachePath)
             .Replace(",\"parserRevision\":0", "");
+        var archivedStart = legacyJson.LastIndexOf(
+            ",\"archived\":",
+            StringComparison.Ordinal);
+        Assert.True(archivedStart > 0);
+        legacyJson = legacyJson[..archivedStart] + "}";
         File.WriteAllText(cachePath, legacyJson);
         var parses = 0;
 
@@ -167,33 +172,37 @@ public sealed class UsageLogCacheTests
     }
 
     [Fact]
-    public void Prune_KeepsEntriesNewerThanTheCutoff()
+    public void ArchiveBefore_KeepsEntriesNewerThanTheCutoff()
     {
         using var directory = new TempDirectory();
         var cache = UsageLogCache.Load(Path.Combine(directory.Path, "cache.json"));
         cache.GetEntries("log.jsonl", 1, Noon, _ => new[] { Entry(1, Noon) });
 
-        cache.Prune(Noon.AddDays(-180));
+        cache.ArchiveBefore(Noon.AddDays(-180));
 
         var pair = Assert.Single(cache.AllEntries());
         Assert.Equal(Entry(1, Noon), Assert.Single(pair.Value));
+        Assert.Equal(0m, cache.ArchivedUsage.TotalInputTokens);
     }
 
     [Fact]
-    public void Prune_RemovesEntriesOlderThanTheCutoff()
+    public void ArchiveBefore_CompactsEntriesOlderThanTheCutoff()
     {
         using var directory = new TempDirectory();
         var cache = UsageLogCache.Load(Path.Combine(directory.Path, "cache.json"));
         cache.GetEntries("log.jsonl", 1, Noon, _ => new[] { Entry(1, Noon.AddDays(-200)) });
 
-        cache.Prune(Noon.AddDays(-180));
+        cache.ArchiveBefore(Noon.AddDays(-180));
 
         var pair = Assert.Single(cache.AllEntries());
         Assert.Empty(pair.Value);
+        Assert.Equal(370m, cache.ArchivedUsage.TotalInputTokens);
+        Assert.Equal(50m, cache.ArchivedUsage.TotalOutputTokens);
+        Assert.Equal(Noon.AddDays(-200), cache.ArchivedUsage.FirstUsageUtc);
     }
 
     [Fact]
-    public void Prune_RemovesOnlyOldEntries_WhenAFileSpansTheCutoff()
+    public void ArchiveBefore_CompactsOnlyOldEntries_WhenAFileSpansTheCutoff()
     {
         using var directory = new TempDirectory();
         var cache = UsageLogCache.Load(Path.Combine(directory.Path, "cache.json"));
@@ -205,14 +214,15 @@ public sealed class UsageLogCacheTests
             Entry(3, Noon),
         });
 
-        cache.Prune(cutoff);
+        cache.ArchiveBefore(cutoff);
 
         var pair = Assert.Single(cache.AllEntries());
         Assert.Equal(new long[] { 2, 3 }, pair.Value.Select(entry => entry.IdHash));
+        Assert.Equal(370m, cache.ArchivedUsage.TotalInputTokens);
     }
 
     [Fact]
-    public void Prune_KeepsFileMetadataWithEmptyEntries_SoUnchangedFilesAreNotReparsed()
+    public void ArchiveBefore_KeepsFileMetadataWithEmptyEntries_SoUnchangedFilesAreNotReparsed()
     {
         using var directory = new TempDirectory();
         var cache = UsageLogCache.Load(Path.Combine(directory.Path, "cache.json"));
@@ -224,7 +234,7 @@ public sealed class UsageLogCacheTests
         }
         cache.GetEntries("log.jsonl", 100, Noon, Parser);
 
-        cache.Prune(Noon.AddDays(-180));
+        cache.ArchiveBefore(Noon.AddDays(-180));
         cache.GetEntries("log.jsonl", 100, Noon, Parser);
 
         // Dropping the key would force a full reparse of a possibly huge file
@@ -233,7 +243,7 @@ public sealed class UsageLogCacheTests
     }
 
     [Fact]
-    public void Prune_IsIdempotent()
+    public void ArchiveBefore_IsIdempotent()
     {
         using var directory = new TempDirectory();
         var cache = UsageLogCache.Load(Path.Combine(directory.Path, "cache.json"));
@@ -244,17 +254,37 @@ public sealed class UsageLogCacheTests
             Entry(2, Noon),
         });
 
-        cache.Prune(cutoff);
+        cache.ArchiveBefore(cutoff);
         var afterFirst = cache.AllEntries().Single().Value.ToList();
-        cache.Prune(cutoff);
+        var archivedAfterFirst = cache.ArchivedUsage;
+        cache.ArchiveBefore(cutoff);
         var afterSecond = cache.AllEntries().Single().Value.ToList();
 
         Assert.Equal(afterFirst, afterSecond);
+        Assert.Equal(archivedAfterFirst, cache.ArchivedUsage);
         Assert.Equal(Entry(2, Noon), Assert.Single(afterSecond));
     }
 
     [Fact]
-    public void SaveAndLoad_RoundTripsAPrunedCache()
+    public void ArchiveBefore_DoesNotDoubleCountAnEntryAfterFileReparse()
+    {
+        using var directory = new TempDirectory();
+        var cache = UsageLogCache.Load(Path.Combine(directory.Path, "cache.json"));
+        var old = Entry(1, Noon.AddDays(-200));
+        var cutoff = Noon.AddDays(-180);
+        cache.GetEntries("log.jsonl", 1, Noon, _ => new[] { old });
+        cache.ArchiveBefore(cutoff);
+
+        cache.GetEntries("log.jsonl", 2, Noon, _ => new[] { old });
+        cache.ArchiveBefore(cutoff);
+
+        Assert.Equal(370m, cache.ArchivedUsage.TotalInputTokens);
+        Assert.Equal(50m, cache.ArchivedUsage.TotalOutputTokens);
+        Assert.Empty(cache.AllEntries().Single().Value);
+    }
+
+    [Fact]
+    public void SaveAndLoad_RoundTripsArchivedUsage()
     {
         using var directory = new TempDirectory();
         var cachePath = Path.Combine(directory.Path, "cache.json");
@@ -264,7 +294,7 @@ public sealed class UsageLogCacheTests
             Entry(1, Noon.AddDays(-200)),
             Entry(2, Noon),
         });
-        cache.Prune(Noon.AddDays(-180));
+        cache.ArchiveBefore(Noon.AddDays(-180));
         cache.Save();
 
         var reloaded = UsageLogCache.Load(cachePath);
@@ -272,6 +302,86 @@ public sealed class UsageLogCacheTests
         var pair = Assert.Single(reloaded.AllEntries());
         Assert.Equal("log.jsonl", pair.Key);
         Assert.Equal(Entry(2, Noon), Assert.Single(pair.Value));
+        Assert.Equal(370m, reloaded.ArchivedUsage.TotalInputTokens);
+        Assert.Equal(50m, reloaded.ArchivedUsage.TotalOutputTokens);
+        Assert.Equal(Noon.AddDays(-200), reloaded.ArchivedUsage.FirstUsageUtc);
+    }
+
+    [Fact]
+    public void ArchiveBefore_DeduplicatesEntriesAcrossFiles()
+    {
+        using var directory = new TempDirectory();
+        var cache = UsageLogCache.Load(Path.Combine(directory.Path, "cache.json"));
+        var old = Entry(1, Noon.AddDays(-200));
+        var conflicting = old with { InputTokens = 999 };
+        cache.GetEntries("b.jsonl", 1, Noon, _ => new[] { conflicting });
+        cache.GetEntries("a.jsonl", 1, Noon, _ => new[] { old });
+
+        cache.ArchiveBefore(Noon.AddDays(-180));
+
+        // Deterministic path order means a.jsonl wins regardless of insertion order.
+        Assert.Equal(370m, cache.ArchivedUsage.TotalInputTokens);
+        Assert.Equal(50m, cache.ArchivedUsage.TotalOutputTokens);
+        Assert.All(cache.AllEntries(), pair => Assert.Empty(pair.Value));
+    }
+
+    [Fact]
+    public void ArchiveBefore_DoesNotOverflowLongTokenBuckets()
+    {
+        using var directory = new TempDirectory();
+        var cache = UsageLogCache.Load(Path.Combine(directory.Path, "cache.json"));
+        var old = new TokenUsageEntry(
+            1,
+            Noon.AddDays(-200),
+            UsageService.Claude,
+            "claude-fable-5",
+            long.MaxValue,
+            long.MaxValue,
+            long.MaxValue,
+            long.MaxValue,
+            long.MaxValue);
+        cache.GetEntries("log.jsonl", 1, Noon, _ => new[] { old });
+
+        cache.ArchiveBefore(Noon.AddDays(-180));
+
+        Assert.Equal((decimal)long.MaxValue * 4m, cache.ArchivedUsage.TotalInputTokens);
+        Assert.Equal((decimal)long.MaxValue, cache.ArchivedUsage.TotalOutputTokens);
+    }
+
+    [Fact]
+    public void Save_DoesNotRewriteAnUnchangedCache()
+    {
+        using var directory = new TempDirectory();
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        var cache = UsageLogCache.Load(cachePath);
+        cache.GetEntries("log.jsonl", 1, Noon, _ => new[] { Entry(1) });
+        cache.Save();
+        File.SetLastWriteTimeUtc(cachePath, Noon);
+
+        cache.Save();
+
+        Assert.Equal(Noon, File.GetLastWriteTimeUtc(cachePath));
+    }
+
+    [Fact]
+    public void SaveAndLoad_RoundTripsLargeArchivedHistory()
+    {
+        using var directory = new TempDirectory();
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        var cache = UsageLogCache.Load(cachePath);
+        var old = Noon.AddDays(-200);
+        var entries = Enumerable.Range(1, 100_000)
+            .Select(id => Entry(id, old))
+            .ToArray();
+        cache.GetEntries("large.jsonl", 1, Noon, _ => entries);
+
+        cache.ArchiveBefore(Noon.AddDays(-180));
+        cache.Save();
+        var reloaded = UsageLogCache.Load(cachePath);
+
+        Assert.Equal(37_000_000m, reloaded.ArchivedUsage.TotalInputTokens);
+        Assert.Equal(5_000_000m, reloaded.ArchivedUsage.TotalOutputTokens);
+        Assert.InRange(new FileInfo(cachePath).Length, 100_000, 5_000_000);
     }
 
     private sealed class TempDirectory : IDisposable

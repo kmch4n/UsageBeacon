@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Media;
 using MediaColor = System.Windows.Media.Color;
 using UsageBeacon.Localization;
@@ -89,6 +90,8 @@ public partial class DashboardWindow : Window
         Title = LocalizationService.Get("DashboardTitle");
         TitleText.Text = Title;
         RefreshBtn.Content = LocalizationService.Get("DashboardRefresh");
+        LifetimeTitle.Text = LocalizationService.Get("DashboardLifetime");
+        AutomationProperties.SetName(LifetimeCard, LifetimeTitle.Text);
         TodayTitle.Text = LocalizationService.Get("DashboardToday");
         WeekTitle.Text = LocalizationService.Get("DashboardLast7Days");
         MonthTitle.Text = LocalizationService.Get("DashboardLast30Days");
@@ -129,6 +132,7 @@ public partial class DashboardWindow : Window
     {
         if (_data is not { } data) return;
 
+        RenderLifetime(data.Lifetime);
         RenderCard(data.Today, TodayCost, TodaySplit, TodayTokens);
         RenderCard(data.Last7Days, WeekCost, WeekSplit, WeekTokens);
         RenderCard(data.Last30Days, MonthCost, MonthSplit, MonthTokens);
@@ -148,6 +152,25 @@ public partial class DashboardWindow : Window
         LastScanText.Text = LocalizationService.Format(
             "DashboardLastScan",
             _lastScanLocal.ToString("g", LocalizationService.Culture));
+    }
+
+    private void RenderLifetime(LifetimeTokenSummary summary)
+    {
+        LifetimeTotal.Text = LocalizationService.Format(
+            "DashboardLifetimeTotal",
+            FormatTokens(summary.TotalTokens));
+        LifetimeTokens.Text = LocalizationService.Format(
+            "DashboardTokens",
+            FormatTokens(summary.TotalInputTokens),
+            FormatTokens(summary.TotalOutputTokens));
+        LifetimeSince.Visibility = summary.FirstUsageDay is null
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        LifetimeSince.Text = summary.FirstUsageDay is { } firstDay
+            ? LocalizationService.Format(
+                "DashboardLifetimeSince",
+                firstDay.ToString("d", LocalizationService.Culture))
+            : "";
     }
 
     private static void RenderCard(
@@ -204,7 +227,7 @@ public partial class DashboardWindow : Window
     private static string FormatUsd(decimal value)
         => "$" + value.ToString("N2", CultureInfo.InvariantCulture);
 
-    private static string FormatTokens(long value)
+    private static string FormatTokens(decimal value)
         => value.ToString("N0", LocalizationService.Culture);
 
     public sealed record ChartBarView(double ClaudeHeight, double CodexHeight, string Tooltip);

@@ -62,6 +62,8 @@ public sealed class UsageAggregatorTests
         Assert.Equal(10m, data.Today.CostUsd);
         Assert.Equal(20m, data.Last7Days.CostUsd);
         Assert.Equal(30m, data.Last30Days.CostUsd);
+        Assert.Equal(4_000_000m, data.Lifetime.TotalTokens);
+        Assert.Equal(new DateOnly(2026, 6, 1), data.Lifetime.FirstUsageDay);
     }
 
     [Fact]
@@ -79,6 +81,7 @@ public sealed class UsageAggregatorTests
         var data = UsageAggregator.Aggregate(files, Pricing, Today, Tokyo);
 
         Assert.Equal(20m, data.Today.CostUsd);
+        Assert.Equal(2_000_000m, data.Lifetime.TotalTokens);
     }
 
     [Fact]
@@ -121,5 +124,114 @@ public sealed class UsageAggregatorTests
 
         Assert.Equal("claude-fable-5", data.Models[0].Model);
         Assert.Equal("gpt-5.6-sol", data.Models[1].Model);
+    }
+
+    [Fact]
+    public void Aggregate_LifetimeIncludesAllTokenBucketsAndArchivedUsage()
+    {
+        var timestamp = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc);
+        var entry = new TokenUsageEntry(
+            1,
+            timestamp,
+            UsageService.Claude,
+            "claude-fable-5",
+            10,
+            20,
+            30,
+            40,
+            50);
+        var archived = new ArchivedTokenUsage(
+            100m,
+            200m,
+            new DateTime(2026, 1, 1, 16, 0, 0, DateTimeKind.Utc));
+
+        var data = UsageAggregator.Aggregate(
+            new[]
+            {
+                new KeyValuePair<string, IReadOnlyList<TokenUsageEntry>>(
+                    "file-a",
+                    new[] { entry }),
+            },
+            Pricing,
+            Today,
+            Tokyo,
+            archived);
+
+        Assert.Equal(200m, data.Lifetime.TotalInputTokens);
+        Assert.Equal(250m, data.Lifetime.TotalOutputTokens);
+        Assert.Equal(450m, data.Lifetime.TotalTokens);
+        Assert.Equal(new DateOnly(2026, 1, 2), data.Lifetime.FirstUsageDay);
+    }
+
+    [Fact]
+    public void Aggregate_LifetimeExcludesFutureUsageAndOldModelsFromThirtyDayViews()
+    {
+        var data = Aggregate(
+            Entry(
+                1,
+                new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+                model: "old-unknown"),
+            Entry(
+                2,
+                new DateTime(2026, 7, 21, 0, 0, 0, DateTimeKind.Utc)));
+
+        Assert.Equal(1_000_000m, data.Lifetime.TotalTokens);
+        Assert.Empty(data.Models);
+        Assert.Empty(data.UnknownModels);
+        Assert.Equal(0m, data.Last30Days.CostUsd);
+    }
+
+    [Fact]
+    public void Aggregate_LifetimeUsesDeterministicDuplicateWinner()
+    {
+        var timestamp = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var smaller = Entry(1, timestamp, input: 10);
+        var larger = Entry(1, timestamp.AddDays(-1), input: 100);
+        var forward = new[]
+        {
+            new KeyValuePair<string, IReadOnlyList<TokenUsageEntry>>("b", new[] { larger }),
+            new KeyValuePair<string, IReadOnlyList<TokenUsageEntry>>("a", new[] { smaller }),
+        };
+
+        var first = UsageAggregator.Aggregate(forward, Pricing, Today, Tokyo);
+        var second = UsageAggregator.Aggregate(forward.Reverse(), Pricing, Today, Tokyo);
+
+        Assert.Equal(10m, first.Lifetime.TotalTokens);
+        Assert.Equal(first.Lifetime, second.Lifetime);
+    }
+
+    [Fact]
+    public void Aggregate_LifetimeDoesNotOverflowLongTotals()
+    {
+        var timestamp = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var entry = new TokenUsageEntry(
+            1,
+            timestamp,
+            UsageService.Claude,
+            "claude-fable-5",
+            long.MaxValue,
+            long.MaxValue,
+            long.MaxValue,
+            long.MaxValue,
+            long.MaxValue);
+
+        var data = Aggregate(entry);
+
+        Assert.Equal((decimal)long.MaxValue * 4m, data.Lifetime.TotalInputTokens);
+        Assert.Equal((decimal)long.MaxValue, data.Lifetime.TotalOutputTokens);
+        Assert.True(data.Lifetime.TotalTokens > long.MaxValue);
+    }
+
+    [Fact]
+    public void Aggregate_HandlesLargeLifetimeHistory()
+    {
+        var timestamp = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+        var entries = Enumerable.Range(1, 100_000)
+            .Select(id => Entry(id, timestamp, input: 1))
+            .ToArray();
+
+        var data = Aggregate(entries);
+
+        Assert.Equal(100_000m, data.Lifetime.TotalTokens);
     }
 }

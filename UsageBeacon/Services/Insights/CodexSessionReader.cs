@@ -20,7 +20,7 @@ namespace UsageBeacon.Services.Insights;
 /// </summary>
 public static class CodexSessionReader
 {
-    public const int ParserRevision = 1;
+    public const int ParserRevision = 2;
 
     public static IReadOnlyList<TokenUsageEntry> ParseFile(string path)
     {

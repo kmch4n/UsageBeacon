@@ -9,6 +9,15 @@ public sealed record UsagePeriodSummary(
     decimal CodexCostUsd,
     bool HasUnknownModels);
 
+/// <summary>Token totals across all locally retained usage history.</summary>
+public sealed record LifetimeTokenSummary(
+    decimal TotalInputTokens,
+    decimal TotalOutputTokens,
+    DateOnly? FirstUsageDay)
+{
+    public decimal TotalTokens => TotalInputTokens + TotalOutputTokens;
+}
+
 /// <summary>Estimated cost for one local calendar day, split by service.</summary>
 public sealed record DailyUsagePoint(
     DateOnly Day,
@@ -29,6 +38,7 @@ public sealed record ModelUsageBreakdown(
 
 /// <summary>Everything the dashboard window renders.</summary>
 public sealed record DashboardData(
+    LifetimeTokenSummary Lifetime,
     UsagePeriodSummary Today,
     UsagePeriodSummary Last7Days,
     UsagePeriodSummary Last30Days,

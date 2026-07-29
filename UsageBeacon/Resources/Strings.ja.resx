@@ -102,6 +102,9 @@
   <data name="DashboardToday" xml:space="preserve"><value>今日</value></data>
   <data name="DashboardLast7Days" xml:space="preserve"><value>過去7日間</value></data>
   <data name="DashboardLast30Days" xml:space="preserve"><value>過去30日間</value></data>
+  <data name="DashboardLifetime" xml:space="preserve"><value>このPCで記録できた累計</value></data>
+  <data name="DashboardLifetimeTotal" xml:space="preserve"><value>{0} トークン</value></data>
+  <data name="DashboardLifetimeSince" xml:space="preserve"><value>保持している最古の記録: {0}。それ以前や削除済みのログは含まれない場合があります。</value></data>
   <data name="DashboardTokens" xml:space="preserve"><value>入力 {0} / 出力 {1} トークン</value></data>
   <data name="DashboardChartTitle" xml:space="preserve"><value>日別推定コスト(過去30日)</value></data>
   <data name="DashboardTableTitle" xml:space="preserve"><value>モデル別(過去30日)</value></data>

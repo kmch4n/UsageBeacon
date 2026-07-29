@@ -13,6 +13,8 @@ namespace UsageBeacon.Services.Insights;
 /// </summary>
 public static class ClaudeTranscriptReader
 {
+    public const int ParserRevision = 1;
+
     /// <summary>
     /// Parses one transcript file. Repeated emissions of the same message
     /// (the transcript rewrites an assistant record as it streams) are
