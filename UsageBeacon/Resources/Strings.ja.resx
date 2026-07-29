@@ -103,7 +103,6 @@
   <data name="DashboardLast7Days" xml:space="preserve"><value>過去7日間</value></data>
   <data name="DashboardLast30Days" xml:space="preserve"><value>過去30日間</value></data>
   <data name="DashboardLifetime" xml:space="preserve"><value>このPCで記録できた累計</value></data>
-  <data name="DashboardLifetimeTotal" xml:space="preserve"><value>{0} トークン</value></data>
   <data name="DashboardLifetimeSince" xml:space="preserve"><value>保持している最古の記録: {0}。それ以前や削除済みのログは含まれない場合があります。</value></data>
   <data name="DashboardTokens" xml:space="preserve"><value>入力 {0} / 出力 {1} トークン</value></data>
   <data name="DashboardChartTitle" xml:space="preserve"><value>日別推定コスト(過去30日)</value></data>
@@ -115,6 +114,7 @@
   <data name="DashboardColOutput" xml:space="preserve"><value>出力</value></data>
   <data name="DashboardColCost" xml:space="preserve"><value>推定コスト</value></data>
   <data name="DashboardUnknownModels" xml:space="preserve"><value>料金データのないモデル: {0}(コスト推定から除外)</value></data>
+  <data name="DashboardLegacyLifetimeUnpriced" xml:space="preserve"><value>旧形式の履歴の一部は、元ログが残っていないため料金換算できません。</value></data>
   <data name="DashboardDisclaimer" xml:space="preserve"><value>コストはローカルのセッションログから推定したAPI料金換算値です。サブスクリプションプランではトークン単位の課金は行われません。</value></data>
   <data name="DashboardPricesAsOf" xml:space="preserve"><value>料金は {0} 時点</value></data>
   <data name="DashboardLastScan" xml:space="preserve"><value>走査: {0}</value></data>

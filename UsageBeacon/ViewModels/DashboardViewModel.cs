@@ -65,8 +65,8 @@ public sealed class DashboardViewModel
             cancellationToken,
             CodexSessionReader.ParserRevision);
 
-        // Archive older details after scanning so lifetime tokens remain exact
-        // while the per-entry cache reaches a bounded steady state.
+        // Archive older details after scanning so lifetime costs remain
+        // repricable without retaining their original file paths.
         cache.ArchiveBefore(DateTime.UtcNow.AddDays(-UsageLogCache.RetentionDays));
         cache.Save();
 

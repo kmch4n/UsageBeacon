@@ -9,13 +9,18 @@ public sealed record UsagePeriodSummary(
     decimal CodexCostUsd,
     bool HasUnknownModels);
 
-/// <summary>Token totals across all locally retained usage history.</summary>
-public sealed record LifetimeTokenSummary(
-    decimal TotalInputTokens,
-    decimal TotalOutputTokens,
+/// <summary>Estimated cost across all locally retained usage history.</summary>
+public sealed record LifetimeCostSummary(
+    decimal ClaudeCostUsd,
+    decimal CodexCostUsd,
+    bool ClaudeHasUnknownCost,
+    bool CodexHasUnknownCost,
+    bool HasUnpricedLegacyUsage,
     DateOnly? FirstUsageDay)
 {
-    public decimal TotalTokens => TotalInputTokens + TotalOutputTokens;
+    public decimal CostUsd => ClaudeCostUsd + CodexCostUsd;
+    public bool HasUnknownModels => ClaudeHasUnknownCost || CodexHasUnknownCost;
+    public bool HasUnknownCost => HasUnknownModels || HasUnpricedLegacyUsage;
 }
 
 /// <summary>Estimated cost for one local calendar day, split by service.</summary>
@@ -38,7 +43,7 @@ public sealed record ModelUsageBreakdown(
 
 /// <summary>Everything the dashboard window renders.</summary>
 public sealed record DashboardData(
-    LifetimeTokenSummary Lifetime,
+    LifetimeCostSummary Lifetime,
     UsagePeriodSummary Today,
     UsagePeriodSummary Last7Days,
     UsagePeriodSummary Last30Days,

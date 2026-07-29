@@ -106,12 +106,12 @@
         <ScrollViewer x:Name="ContentScroll" Grid.Row="1"
                       VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
             <StackPanel>
-                <!-- Locally retained lifetime token total -->
+                <!-- Locally retained lifetime estimated cost -->
                 <Border x:Name="LifetimeCard" Style="{StaticResource Card}" Margin="0,0,0,10">
                     <StackPanel>
                         <TextBlock x:Name="LifetimeTitle" Style="{StaticResource CardTitle}"/>
                         <TextBlock x:Name="LifetimeTotal" Style="{StaticResource Cost}"/>
-                        <TextBlock x:Name="LifetimeTokens" Style="{StaticResource Tiny}"/>
+                        <TextBlock x:Name="LifetimeSplit" Style="{StaticResource Tiny}"/>
                         <TextBlock x:Name="LifetimeSince" Style="{StaticResource Tiny}"
                                    Margin="0,3,0,0" TextWrapping="Wrap"/>
                     </StackPanel>

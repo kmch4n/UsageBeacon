@@ -101,7 +101,7 @@ public sealed class ModelPricingCatalogTests
     }
 
     [Fact]
-    public void EmbeddedPricing_IncludesClaudeOpus5Rates()
+    public void EmbeddedPricing_IncludesVerifiedLifetimeModelRates()
     {
         var path = Path.Combine(
             RepositoryRoot(),
@@ -111,7 +111,7 @@ public sealed class ModelPricingCatalogTests
         var catalog = ModelPricingCatalog.ParseDocument(File.ReadAllText(path));
 
         Assert.NotNull(catalog);
-        Assert.Equal("2026-07-29", catalog!.AsOf);
+        Assert.Equal("2026-07-30", catalog!.AsOf);
         Assert.Equal(
             new ModelPricing(5m, 0.5m, 6.25m, 10m, 25m),
             catalog.Resolve("claude-opus-5"));
@@ -127,6 +127,9 @@ public sealed class ModelPricingCatalogTests
             CacheWrite1hTokens: 1_000_000,
             OutputTokens: 1_000_000);
         Assert.Equal(46.75m, catalog.TryGetCost(entry));
+        Assert.Equal(
+            new ModelPricing(1.75m, 0.175m, 0m, 0m, 14m),
+            catalog.Resolve("gpt-5.2-codex"));
     }
 
     [Fact]

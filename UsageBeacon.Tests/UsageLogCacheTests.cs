@@ -172,6 +172,82 @@ public sealed class UsageLogCacheTests
     }
 
     [Fact]
+    public void Load_MigratesV1ArchiveByRecoveringExactEntries()
+    {
+        using var directory = new TempDirectory();
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        var old = Entry(1, Noon.AddDays(-200));
+        File.WriteAllText(
+            cachePath,
+            $$$"""
+            {"schemaVersion":1,"files":{"log.jsonl":{"len":100,"mtime":"{{{Noon:o}}}","entries":[],"parserRevision":0}},"archived":{"ids":[1],"in":370,"out":50,"first":"{{{old.TimestampUtc:o}}}"}}
+            """);
+
+        var cache = UsageLogCache.Load(cachePath);
+        var parses = 0;
+        cache.GetEntries(
+            "log.jsonl",
+            100,
+            Noon,
+            _ =>
+            {
+                parses++;
+                return new[] { old };
+            });
+        cache.ArchiveBefore(Noon.AddDays(-180));
+
+        Assert.Equal(1, parses);
+        Assert.Equal(old.IdHash, Assert.Single(cache.ArchivedUsage.Entries).IdHash);
+        Assert.False(cache.ArchivedUsage.HasUnpricedLegacyUsage);
+    }
+
+    [Fact]
+    public void Load_PreservesUnrecoverableV1ArchiveAsUnpricedUsage()
+    {
+        using var directory = new TempDirectory();
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        var first = Noon.AddDays(-200);
+        File.WriteAllText(
+            cachePath,
+            $$$"""
+            {"schemaVersion":1,"files":{},"archived":{"ids":[1],"in":370,"out":50,"first":"{{{first:o}}}"}}
+            """);
+
+        var cache = UsageLogCache.Load(cachePath);
+        cache.ArchiveBefore(Noon.AddDays(-180));
+        cache.Save();
+        var migrated = UsageLogCache.Load(cachePath);
+
+        Assert.Empty(migrated.ArchivedUsage.Entries);
+        Assert.True(migrated.ArchivedUsage.HasUnpricedLegacyUsage);
+        Assert.Equal(370m, migrated.ArchivedUsage.UnpricedLegacyInputTokens);
+        Assert.Equal(50m, migrated.ArchivedUsage.UnpricedLegacyOutputTokens);
+        Assert.Equal(first, migrated.ArchivedUsage.UnpricedLegacyFirstUsageUtc);
+    }
+
+    [Fact]
+    public void Load_PartialV1RecoveryRemainsMarkedUnpriced_WhenTotalsReachZero()
+    {
+        using var directory = new TempDirectory();
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        var old = Entry(1, Noon.AddDays(-200));
+        File.WriteAllText(
+            cachePath,
+            $$$"""
+            {"schemaVersion":1,"files":{"log.jsonl":{"len":100,"mtime":"{{{Noon:o}}}","entries":[],"parserRevision":0}},"archived":{"ids":[1,2],"in":100,"out":10,"first":"{{{old.TimestampUtc:o}}}"}}
+            """);
+
+        var cache = UsageLogCache.Load(cachePath);
+        cache.GetEntries("log.jsonl", 100, Noon, _ => new[] { old });
+        cache.ArchiveBefore(Noon.AddDays(-180));
+
+        Assert.Equal(0m, cache.ArchivedUsage.UnpricedLegacyInputTokens);
+        Assert.Equal(0m, cache.ArchivedUsage.UnpricedLegacyOutputTokens);
+        Assert.Equal(1, cache.ArchivedUsage.UnresolvedLegacyEntryCount);
+        Assert.True(cache.ArchivedUsage.HasUnpricedLegacyUsage);
+    }
+
+    [Fact]
     public void ArchiveBefore_KeepsEntriesNewerThanTheCutoff()
     {
         using var directory = new TempDirectory();
@@ -261,7 +337,13 @@ public sealed class UsageLogCacheTests
         var afterSecond = cache.AllEntries().Single().Value.ToList();
 
         Assert.Equal(afterFirst, afterSecond);
-        Assert.Equal(archivedAfterFirst, cache.ArchivedUsage);
+        Assert.Equal(archivedAfterFirst.Entries, cache.ArchivedUsage.Entries);
+        Assert.Equal(
+            archivedAfterFirst.UnpricedLegacyInputTokens,
+            cache.ArchivedUsage.UnpricedLegacyInputTokens);
+        Assert.Equal(
+            archivedAfterFirst.UnpricedLegacyOutputTokens,
+            cache.ArchivedUsage.UnpricedLegacyOutputTokens);
         Assert.Equal(Entry(2, Noon), Assert.Single(afterSecond));
     }
 
@@ -378,10 +460,14 @@ public sealed class UsageLogCacheTests
         cache.ArchiveBefore(Noon.AddDays(-180));
         cache.Save();
         var reloaded = UsageLogCache.Load(cachePath);
+        var json = File.ReadAllText(cachePath);
 
         Assert.Equal(37_000_000m, reloaded.ArchivedUsage.TotalInputTokens);
         Assert.Equal(5_000_000m, reloaded.ArchivedUsage.TotalOutputTokens);
-        Assert.InRange(new FileInfo(cachePath).Length, 100_000, 5_000_000);
+        Assert.Contains("\"models\":[\"claude-fable-5\"]", json);
+        Assert.Contains("\"rows\":[[", json);
+        Assert.DoesNotContain("\"model\":\"claude-fable-5\"", json);
+        Assert.InRange(new FileInfo(cachePath).Length, 1_000_000, 10_000_000);
     }
 
     private sealed class TempDirectory : IDisposable

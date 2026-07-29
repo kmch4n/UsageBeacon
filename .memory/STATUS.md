@@ -34,17 +34,19 @@ When a running UsageBeacon process locks an output path or the single-instance m
 
 ## Locally retained lifetime usage
 
-The dashboard lifetime-token implementation was validated on 2026-07-29:
+The dashboard lifetime-cost implementation was revised on 2026-07-30:
 
-- The card reports input plus cached/cache-write tokens, output tokens, their total, and the earliest retained local day. It is labeled as locally recorded history and warns that deleted-before-scan logs or cache loss can leave gaps.
-- Detailed entries remain bounded to 180 days. Older entries compact into exact token totals plus identity hashes, so parser migrations and modified files cannot double count them.
+- The card reports total API-price-equivalent USD with a Claude/Codex split and the earliest retained local day. It is labeled as locally recorded history and warns that deleted-before-scan logs or cache loss can leave gaps.
+- Detailed entries remain associated with their files for 180 days. Older events move to a path-independent schema-v2 archive that keeps the exact timestamp, service, model, five token buckets, and identity hash, allowing historical repricing and future-record exclusion. Archived model names are table-encoded and events use compact positional JSON rows.
+- Schema-v1 token-only archives are reparsed once. Recovered identities become exact v2 events; unrecoverable totals remain explicitly unpriced and produce a `+` notice instead of a fabricated service split.
 - Cache saves are dirty-only and stream JSON directly to the temporary file before replacement.
-- Claude and Codex parser revisions force one migration pass over still-present logs; locked files retain their old cache and retry on a later scan.
-- A temporary copy of the real cache completed the migration scan in 8.89 s, remained 6.17 MB with 44,456 detailed entries, and produced the same lifetime total and earliest day as the independently inspected records. The real cache and packaged executable were not changed.
-- `dotnet test UsageBeacon.sln -c Debug --no-restore`: 177 passed, 0 failed.
+- Automated coverage includes Claude/Codex lifetime separation, all token price buckets, exact effective-time boundaries, later pricing of archived unknown models, future archived events, v1 recovered and unrecoverable migration, deduplication, large histories, and dirty-only saving.
+- The real migrated history exposed `gpt-5.2-codex` as the only unknown model. Its official $1.75 input / $0.175 cached input / $14 output rates were added to the embedded catalog.
+- `dotnet test UsageBeacon.sln -c Debug --no-restore`: 184 passed, 0 failed.
 - `dotnet build UsageBeacon.sln -c Release --no-restore`: 0 warnings, 0 errors.
+- The real schema-v1 cache migrated to schema v2 in under 10 seconds: all 555 legacy identities were recovered, no unpriced legacy usage or unknown model remained, and the 6.23 MB cache retained an earliest local record of 2025-11-04. The live estimate at validation time was Claude $2,134.29 and Codex $2,939.10.
 
-Manual verification remains pending for the new card at the minimum window width and in both themes and languages.
+Manual verification at the minimum window width and in both themes and languages remains pending.
 
 ## OAuth credential persistence validation
 

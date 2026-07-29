@@ -139,13 +139,19 @@ public partial class DashboardWindow : Window
         RenderChart(data.Days);
         RenderTable(data.Models);
 
-        UnknownNote.Visibility = data.UnknownModels.Count > 0
+        var unknownNotes = new List<string>();
+        if (data.UnknownModels.Count > 0)
+        {
+            unknownNotes.Add(LocalizationService.Format(
+                "DashboardUnknownModels",
+                string.Join(", ", data.UnknownModels)));
+        }
+        if (data.Lifetime.HasUnpricedLegacyUsage)
+            unknownNotes.Add(LocalizationService.Get("DashboardLegacyLifetimeUnpriced"));
+        UnknownNote.Visibility = unknownNotes.Count > 0
             ? Visibility.Visible
             : Visibility.Collapsed;
-        UnknownNote.Text = data.UnknownModels.Count > 0
-            ? LocalizationService.Format(
-                "DashboardUnknownModels", string.Join(", ", data.UnknownModels))
-            : "";
+        UnknownNote.Text = string.Join(Environment.NewLine, unknownNotes);
         PricesAsOfText.Text = string.IsNullOrEmpty(_vm.PricesAsOf)
             ? ""
             : LocalizationService.Format("DashboardPricesAsOf", _vm.PricesAsOf);
@@ -154,15 +160,17 @@ public partial class DashboardWindow : Window
             _lastScanLocal.ToString("g", LocalizationService.Culture));
     }
 
-    private void RenderLifetime(LifetimeTokenSummary summary)
+    private void RenderLifetime(LifetimeCostSummary summary)
     {
-        LifetimeTotal.Text = LocalizationService.Format(
-            "DashboardLifetimeTotal",
-            FormatTokens(summary.TotalTokens));
-        LifetimeTokens.Text = LocalizationService.Format(
-            "DashboardTokens",
-            FormatTokens(summary.TotalInputTokens),
-            FormatTokens(summary.TotalOutputTokens));
+        LifetimeTotal.Text = FormatUsd(summary.CostUsd) +
+                             (summary.HasUnknownCost ? "+" : "");
+        var claudeIncomplete =
+            summary.ClaudeHasUnknownCost || summary.HasUnpricedLegacyUsage;
+        var codexIncomplete =
+            summary.CodexHasUnknownCost || summary.HasUnpricedLegacyUsage;
+        LifetimeSplit.Text =
+            $"Claude {FormatUsd(summary.ClaudeCostUsd)}{(claudeIncomplete ? "+" : "")} · " +
+            $"Codex {FormatUsd(summary.CodexCostUsd)}{(codexIncomplete ? "+" : "")}";
         LifetimeSince.Visibility = summary.FirstUsageDay is null
             ? Visibility.Collapsed
             : Visibility.Visible;

@@ -62,7 +62,7 @@ public sealed class UsageAggregatorTests
         Assert.Equal(10m, data.Today.CostUsd);
         Assert.Equal(20m, data.Last7Days.CostUsd);
         Assert.Equal(30m, data.Last30Days.CostUsd);
-        Assert.Equal(4_000_000m, data.Lifetime.TotalTokens);
+        Assert.Equal(40m, data.Lifetime.CostUsd);
         Assert.Equal(new DateOnly(2026, 6, 1), data.Lifetime.FirstUsageDay);
     }
 
@@ -81,7 +81,7 @@ public sealed class UsageAggregatorTests
         var data = UsageAggregator.Aggregate(files, Pricing, Today, Tokyo);
 
         Assert.Equal(20m, data.Today.CostUsd);
-        Assert.Equal(2_000_000m, data.Lifetime.TotalTokens);
+        Assert.Equal(20m, data.Lifetime.CostUsd);
     }
 
     [Fact]
@@ -95,6 +95,8 @@ public sealed class UsageAggregatorTests
         Assert.Equal(10m, data.Today.ClaudeCostUsd);
         Assert.Equal(30m, data.Today.CodexCostUsd);
         Assert.Equal(40m, data.Today.CostUsd);
+        Assert.Equal(10m, data.Lifetime.ClaudeCostUsd);
+        Assert.Equal(30m, data.Lifetime.CodexCostUsd);
         Assert.Equal(10m, data.Days[^1].ClaudeCostUsd);
         Assert.Equal(30m, data.Days[^1].CodexCostUsd);
     }
@@ -127,7 +129,7 @@ public sealed class UsageAggregatorTests
     }
 
     [Fact]
-    public void Aggregate_LifetimeIncludesAllTokenBucketsAndArchivedUsage()
+    public void Aggregate_LifetimePricesAllTokenBucketsAndArchivedUsage()
     {
         var timestamp = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc);
         var entry = new TokenUsageEntry(
@@ -135,15 +137,23 @@ public sealed class UsageAggregatorTests
             timestamp,
             UsageService.Claude,
             "claude-fable-5",
-            10,
-            20,
-            30,
-            40,
-            50);
-        var archived = new ArchivedTokenUsage(
-            100m,
-            200m,
-            new DateTime(2026, 1, 1, 16, 0, 0, DateTimeKind.Utc));
+            1_000_000,
+            1_000_000,
+            1_000_000,
+            1_000_000,
+            1_000_000);
+        var archivedEntry = Entry(
+            2,
+            new DateTime(2026, 1, 1, 16, 0, 0, DateTimeKind.Utc),
+            UsageService.Codex,
+            "gpt-5.6-sol",
+            input: 0,
+            output: 1_000_000);
+        var archived = new ArchivedUsageSnapshot(
+            new[] { ArchivedUsageEntry.From(archivedEntry) },
+            0m,
+            0m,
+            null);
 
         var data = UsageAggregator.Aggregate(
             new[]
@@ -157,9 +167,10 @@ public sealed class UsageAggregatorTests
             Tokyo,
             archived);
 
-        Assert.Equal(200m, data.Lifetime.TotalInputTokens);
-        Assert.Equal(250m, data.Lifetime.TotalOutputTokens);
-        Assert.Equal(450m, data.Lifetime.TotalTokens);
+        Assert.Equal(93.5m, data.Lifetime.ClaudeCostUsd);
+        Assert.Equal(30m, data.Lifetime.CodexCostUsd);
+        Assert.Equal(123.5m, data.Lifetime.CostUsd);
+        Assert.False(data.Lifetime.HasUnknownCost);
         Assert.Equal(new DateOnly(2026, 1, 2), data.Lifetime.FirstUsageDay);
     }
 
@@ -175,10 +186,149 @@ public sealed class UsageAggregatorTests
                 2,
                 new DateTime(2026, 7, 21, 0, 0, 0, DateTimeKind.Utc)));
 
-        Assert.Equal(1_000_000m, data.Lifetime.TotalTokens);
+        Assert.Equal(0m, data.Lifetime.CostUsd);
+        Assert.True(data.Lifetime.HasUnknownModels);
         Assert.Empty(data.Models);
-        Assert.Empty(data.UnknownModels);
+        Assert.Contains("old-unknown", data.UnknownModels);
         Assert.Equal(0m, data.Last30Days.CostUsd);
+    }
+
+    [Fact]
+    public void Aggregate_LifetimeFlagsUnpricedLegacyUsage()
+    {
+        var archived = new ArchivedUsageSnapshot(
+            [],
+            100m,
+            50m,
+            new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        var data = UsageAggregator.Aggregate(
+            Array.Empty<KeyValuePair<string, IReadOnlyList<TokenUsageEntry>>>(),
+            Pricing,
+            Today,
+            Tokyo,
+            archived);
+
+        Assert.Equal(0m, data.Lifetime.CostUsd);
+        Assert.True(data.Lifetime.HasUnpricedLegacyUsage);
+        Assert.True(data.Lifetime.HasUnknownCost);
+        Assert.Equal(new DateOnly(2026, 1, 1), data.Lifetime.FirstUsageDay);
+    }
+
+    [Fact]
+    public void Aggregate_LifetimeExcludesFutureArchivedUsage()
+    {
+        var future = Entry(
+            1,
+            new DateTime(2026, 7, 21, 0, 0, 0, DateTimeKind.Utc));
+        var archived = new ArchivedUsageSnapshot(
+            new[] { ArchivedUsageEntry.From(future) },
+            0m,
+            0m,
+            null);
+
+        var data = UsageAggregator.Aggregate(
+            Array.Empty<KeyValuePair<string, IReadOnlyList<TokenUsageEntry>>>(),
+            Pricing,
+            Today,
+            Tokyo,
+            archived);
+
+        Assert.Equal(0m, data.Lifetime.CostUsd);
+        Assert.Null(data.Lifetime.FirstUsageDay);
+    }
+
+    [Fact]
+    public void Aggregate_LifetimeRepricesArchivedUnknownModel()
+    {
+        var entry = Entry(
+            1,
+            new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            model: "newly-priced");
+        var archived = new ArchivedUsageSnapshot(
+            new[] { ArchivedUsageEntry.From(entry) },
+            0m,
+            0m,
+            null);
+        var updatedPricing = new ModelPricingCatalog(
+            "2026-07-21",
+            new Dictionary<string, ModelPricing>
+            {
+                ["newly-priced"] = new(7m, 0m, 0m, 0m, 0m),
+            });
+
+        var before = UsageAggregator.Aggregate(
+            Array.Empty<KeyValuePair<string, IReadOnlyList<TokenUsageEntry>>>(),
+            Pricing,
+            Today,
+            Tokyo,
+            archived);
+        var after = UsageAggregator.Aggregate(
+            Array.Empty<KeyValuePair<string, IReadOnlyList<TokenUsageEntry>>>(),
+            updatedPricing,
+            Today,
+            Tokyo,
+            archived);
+
+        Assert.True(before.Lifetime.HasUnknownModels);
+        Assert.Equal(0m, before.Lifetime.CostUsd);
+        Assert.False(after.Lifetime.HasUnknownModels);
+        Assert.Equal(7m, after.Lifetime.ClaudeCostUsd);
+    }
+
+    [Fact]
+    public void Aggregate_LifetimeUsesExactArchivedTimestampAtPriceBoundary()
+    {
+        var pricing = ModelPricingCatalog.ParseDocument(
+            """
+            {
+                "asOf": "2026-01-01",
+                "models": {
+                    "boundary-model": [
+                        {
+                            "effectiveFrom": "2026-01-01T00:00:00Z",
+                            "input": 10,
+                            "cachedInput": 0,
+                            "cacheWrite5m": 0,
+                            "cacheWrite1h": 0,
+                            "output": 0
+                        },
+                        {
+                            "effectiveFrom": "2026-01-01T12:00:00Z",
+                            "input": 20,
+                            "cachedInput": 0,
+                            "cacheWrite5m": 0,
+                            "cacheWrite1h": 0,
+                            "output": 0
+                        }
+                    ]
+                }
+            }
+            """)!;
+        var archived = new ArchivedUsageSnapshot(
+            new[]
+            {
+                ArchivedUsageEntry.From(Entry(
+                    1,
+                    new DateTime(2026, 1, 1, 11, 59, 59, DateTimeKind.Utc),
+                    model: "boundary-model")),
+                ArchivedUsageEntry.From(Entry(
+                    2,
+                    new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc),
+                    model: "boundary-model")),
+            },
+            0m,
+            0m,
+            null);
+
+        var data = UsageAggregator.Aggregate(
+            Array.Empty<KeyValuePair<string, IReadOnlyList<TokenUsageEntry>>>(),
+            pricing,
+            Today,
+            Tokyo,
+            archived);
+
+        Assert.Equal(30m, data.Lifetime.ClaudeCostUsd);
     }
 
     [Fact]
@@ -196,12 +346,12 @@ public sealed class UsageAggregatorTests
         var first = UsageAggregator.Aggregate(forward, Pricing, Today, Tokyo);
         var second = UsageAggregator.Aggregate(forward.Reverse(), Pricing, Today, Tokyo);
 
-        Assert.Equal(10m, first.Lifetime.TotalTokens);
+        Assert.Equal(0.0001m, first.Lifetime.CostUsd);
         Assert.Equal(first.Lifetime, second.Lifetime);
     }
 
     [Fact]
-    public void Aggregate_LifetimeDoesNotOverflowLongTotals()
+    public void Aggregate_LifetimeDoesNotOverflowLongTokenValues()
     {
         var timestamp = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
         var entry = new TokenUsageEntry(
@@ -217,9 +367,8 @@ public sealed class UsageAggregatorTests
 
         var data = Aggregate(entry);
 
-        Assert.Equal((decimal)long.MaxValue * 4m, data.Lifetime.TotalInputTokens);
-        Assert.Equal((decimal)long.MaxValue, data.Lifetime.TotalOutputTokens);
-        Assert.True(data.Lifetime.TotalTokens > long.MaxValue);
+        var expected = (decimal)long.MaxValue * 93.5m / 1_000_000m;
+        Assert.Equal(expected, data.Lifetime.ClaudeCostUsd);
     }
 
     [Fact]
@@ -232,6 +381,6 @@ public sealed class UsageAggregatorTests
 
         var data = Aggregate(entries);
 
-        Assert.Equal(100_000m, data.Lifetime.TotalTokens);
+        Assert.Equal(1m, data.Lifetime.CostUsd);
     }
 }

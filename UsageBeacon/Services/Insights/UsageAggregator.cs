@@ -4,7 +4,7 @@ namespace UsageBeacon.Services.Insights;
 
 /// <summary>
 /// Turns raw usage entries into the dashboard report: today / last 7 days /
-/// last 30 days summaries, locally retained lifetime token totals, a 30-day
+/// last 30 days summaries, locally retained lifetime costs, a 30-day
 /// daily series, and a per-model breakdown. Days are local calendar days
 /// derived from the entry's UTC timestamp.
 /// </summary>
@@ -15,7 +15,7 @@ public static class UsageAggregator
         ModelPricingCatalog pricing,
         DateOnly today,
         TimeZoneInfo timeZone,
-        ArchivedTokenUsage? archivedUsage = null)
+        ArchivedUsageSnapshot? archivedUsage = null)
     {
         // Deterministic order so cross-file duplicate ids always resolve the
         // same way regardless of directory enumeration order.
@@ -23,9 +23,15 @@ public static class UsageAggregator
         var last30Start = today.AddDays(-29);
         var last7Start = today.AddDays(-6);
 
-        var lifetimeInput = archivedUsage?.TotalInputTokens ?? 0m;
-        var lifetimeOutput = archivedUsage?.TotalOutputTokens ?? 0m;
-        var firstUsageUtc = archivedUsage?.FirstUsageUtc;
+        var lifetimeClaudeCost = 0m;
+        var lifetimeCodexCost = 0m;
+        var lifetimeClaudeHasUnknown = false;
+        var lifetimeCodexHasUnknown = false;
+        var hasUnpricedLegacyUsage = archivedUsage?.HasUnpricedLegacyUsage ?? false;
+        var firstUsageUtc = ValidFirstUsageUtc(
+            archivedUsage?.UnpricedLegacyFirstUsageUtc,
+            today,
+            timeZone);
         var todayTotals = new PeriodAccumulator();
         var weekTotals = new PeriodAccumulator();
         var monthTotals = new PeriodAccumulator();
@@ -33,26 +39,59 @@ public static class UsageAggregator
         var models = new Dictionary<(string Model, UsageService Service), ModelAccumulator>();
         var unknownModels = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        foreach (var entry in archivedUsage?.Entries ?? [])
+        {
+            if (!seen.Add(entry.IdHash))
+                continue;
+
+            var day = LocalDay(entry.TimestampUtc, timeZone);
+            if (day > today)
+                continue;
+
+            var cost = pricing.TryGetCost(
+                entry.Model,
+                entry.TimestampUtc,
+                entry.InputTokens,
+                entry.CachedInputTokens,
+                entry.CacheWrite5mTokens,
+                entry.CacheWrite1hTokens,
+                entry.OutputTokens);
+            AddLifetimeCost(
+                entry.Service,
+                entry.Model,
+                cost,
+                ref lifetimeClaudeCost,
+                ref lifetimeCodexCost,
+                ref lifetimeClaudeHasUnknown,
+                ref lifetimeCodexHasUnknown,
+                unknownModels);
+            if (firstUsageUtc is null || entry.TimestampUtc < firstUsageUtc)
+                firstUsageUtc = entry.TimestampUtc;
+        }
+
         foreach (var pair in files.OrderBy(p => p.Key, StringComparer.OrdinalIgnoreCase))
         {
             foreach (var entry in pair.Value)
             {
                 if (!seen.Add(entry.IdHash)) continue;
 
-                var day = DateOnly.FromDateTime(
-                    TimeZoneInfo.ConvertTimeFromUtc(entry.TimestampUtc, timeZone));
+                var day = LocalDay(entry.TimestampUtc, timeZone);
                 if (day > today) continue;
 
-                lifetimeInput += (decimal)entry.InputTokens + entry.CachedInputTokens +
-                                 entry.CacheWrite5mTokens + entry.CacheWrite1hTokens;
-                lifetimeOutput += entry.OutputTokens;
+                var cost = pricing.TryGetCost(entry);
+                AddLifetimeCost(
+                    entry.Service,
+                    entry.Model,
+                    cost,
+                    ref lifetimeClaudeCost,
+                    ref lifetimeCodexCost,
+                    ref lifetimeClaudeHasUnknown,
+                    ref lifetimeCodexHasUnknown,
+                    unknownModels);
                 if (firstUsageUtc is null || entry.TimestampUtc < firstUsageUtc)
                     firstUsageUtc = entry.TimestampUtc;
 
                 if (day < last30Start) continue;
-
-                var cost = pricing.TryGetCost(entry);
-                if (cost is null) unknownModels.Add(entry.Model);
 
                 monthTotals.Add(entry, cost);
                 if (day >= last7Start) weekTotals.Add(entry, cost);
@@ -90,11 +129,14 @@ public static class UsageAggregator
             .ToList();
 
         return new DashboardData(
-            new LifetimeTokenSummary(
-                lifetimeInput,
-                lifetimeOutput,
+            new LifetimeCostSummary(
+                lifetimeClaudeCost,
+                lifetimeCodexCost,
+                lifetimeClaudeHasUnknown,
+                lifetimeCodexHasUnknown,
+                hasUnpricedLegacyUsage,
                 firstUsageUtc is { } first
-                    ? DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(first, timeZone))
+                    ? LocalDay(first, timeZone)
                     : null),
             todayTotals.ToSummary(),
             weekTotals.ToSummary(),
@@ -102,6 +144,45 @@ public static class UsageAggregator
             days,
             breakdown,
             unknownModels.ToList());
+    }
+
+    private static DateOnly LocalDay(DateTime timestampUtc, TimeZoneInfo timeZone)
+        => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(timestampUtc, timeZone));
+
+    private static DateTime? ValidFirstUsageUtc(
+        DateTime? timestampUtc,
+        DateOnly today,
+        TimeZoneInfo timeZone)
+        => timestampUtc is { } timestamp && LocalDay(timestamp, timeZone) <= today
+            ? timestamp
+            : null;
+
+    private static void AddLifetimeCost(
+        UsageService service,
+        string model,
+        decimal? cost,
+        ref decimal claudeCost,
+        ref decimal codexCost,
+        ref bool claudeHasUnknown,
+        ref bool codexHasUnknown,
+        ISet<string> unknownModels)
+    {
+        if (cost is null)
+        {
+            if (service == UsageService.Claude)
+                claudeHasUnknown = true;
+            else
+                codexHasUnknown = true;
+            unknownModels.Add(model);
+        }
+        else if (service == UsageService.Claude)
+        {
+            claudeCost += cost.Value;
+        }
+        else
+        {
+            codexCost += cost.Value;
+        }
     }
 
     private sealed class PeriodAccumulator

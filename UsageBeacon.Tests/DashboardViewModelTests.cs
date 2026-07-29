@@ -47,7 +47,8 @@ public sealed class DashboardViewModelTests
         Assert.True(vm.HasAnyLogDirectory);
         Assert.Equal(10m, data.Today.ClaudeCostUsd);
         Assert.Equal(30m, data.Today.CodexCostUsd);
-        Assert.Equal(2_000_000m, data.Lifetime.TotalTokens);
+        Assert.Equal(10m, data.Lifetime.ClaudeCostUsd);
+        Assert.Equal(30m, data.Lifetime.CodexCostUsd);
         Assert.Equal(2, data.Models.Count);
         Assert.True(File.Exists(Path.Combine(directory.Path, "cache.json")));
     }
@@ -136,7 +137,7 @@ public sealed class DashboardViewModelTests
         var first = await vm.LoadAsync(CancellationToken.None);
         var reloaded = UsageLogCache.Load(cachePath);
 
-        Assert.Equal(1_000_000m, first.Lifetime.TotalInputTokens);
+        Assert.Equal(10m, first.Lifetime.ClaudeCostUsd);
         Assert.Empty(reloaded.AllEntries().Single().Value);
         Assert.Equal(1_000_000m, reloaded.ArchivedUsage.TotalInputTokens);
 
@@ -226,8 +227,8 @@ public sealed class DashboardViewModelTests
         }
         var afterRelease = await vm.LoadAsync(CancellationToken.None);
 
-        Assert.Equal(1_000_000m, whileLocked.Lifetime.TotalInputTokens);
-        Assert.Equal(2_000_000m, afterRelease.Lifetime.TotalInputTokens);
+        Assert.Equal(10m, whileLocked.Lifetime.ClaudeCostUsd);
+        Assert.Equal(20m, afterRelease.Lifetime.ClaudeCostUsd);
         Assert.Equal(20m, afterRelease.Today.ClaudeCostUsd);
     }
 
@@ -246,13 +247,13 @@ public sealed class DashboardViewModelTests
 
         Assert.False(vm.HasAnyLogDirectory);
         Assert.Equal(0m, data.Last30Days.CostUsd);
-        Assert.Equal(0m, data.Lifetime.TotalTokens);
+        Assert.Equal(0m, data.Lifetime.CostUsd);
         Assert.Null(data.Lifetime.FirstUsageDay);
         Assert.Empty(data.Models);
     }
 
     [Fact]
-    public async Task LoadAsync_ArchivesOldEntriesAndReportsLifetimeTokens()
+    public async Task LoadAsync_ArchivesOldEntriesAndReportsLifetimeCost()
     {
         using var directory = new TempDirectory();
         var claudeDir = Directory.CreateDirectory(Path.Combine(directory.Path, "claude")).FullName;
@@ -281,7 +282,7 @@ public sealed class DashboardViewModelTests
         var data = await vm.LoadAsync(CancellationToken.None);
 
         Assert.Equal(10m, data.Today.ClaudeCostUsd);
-        Assert.Equal(2_000_000m, data.Lifetime.TotalInputTokens);
+        Assert.Equal(20m, data.Lifetime.ClaudeCostUsd);
 
         var cutoff = DateTime.UtcNow.AddDays(-UsageLogCache.RetentionDays);
         var reloaded = UsageLogCache.Load(cachePath);

@@ -103,7 +103,6 @@
   <data name="DashboardLast7Days" xml:space="preserve"><value>Last 7 days</value></data>
   <data name="DashboardLast30Days" xml:space="preserve"><value>Last 30 days</value></data>
   <data name="DashboardLifetime" xml:space="preserve"><value>Recorded on this PC</value></data>
-  <data name="DashboardLifetimeTotal" xml:space="preserve"><value>{0} tokens</value></data>
   <data name="DashboardLifetimeSince" xml:space="preserve"><value>Earliest retained record: {0}. Earlier or deleted logs may be missing.</value></data>
   <data name="DashboardTokens" xml:space="preserve"><value>Input {0} / Output {1} tokens</value></data>
   <data name="DashboardChartTitle" xml:space="preserve"><value>Estimated cost per day (last 30 days)</value></data>
@@ -115,6 +114,7 @@
   <data name="DashboardColOutput" xml:space="preserve"><value>Output</value></data>
   <data name="DashboardColCost" xml:space="preserve"><value>Est. cost</value></data>
   <data name="DashboardUnknownModels" xml:space="preserve"><value>No pricing data for: {0} (excluded from cost estimates)</value></data>
+  <data name="DashboardLegacyLifetimeUnpriced" xml:space="preserve"><value>Some legacy history cannot be priced because its source logs are no longer available.</value></data>
   <data name="DashboardDisclaimer" xml:space="preserve"><value>Costs are API-price equivalents estimated from local session logs. Subscription plans do not bill per token.</value></data>
   <data name="DashboardPricesAsOf" xml:space="preserve"><value>Prices as of {0}</value></data>
   <data name="DashboardLastScan" xml:space="preserve"><value>Scanned {0}</value></data>

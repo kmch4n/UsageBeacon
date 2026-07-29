@@ -89,14 +89,32 @@ public sealed class ModelPricingCatalog
 
     /// <summary>Estimated USD cost of one entry, or null for unknown models.</summary>
     public decimal? TryGetCost(TokenUsageEntry entry)
+        => TryGetCost(
+            entry.Model,
+            entry.TimestampUtc,
+            entry.InputTokens,
+            entry.CachedInputTokens,
+            entry.CacheWrite5mTokens,
+            entry.CacheWrite1hTokens,
+            entry.OutputTokens);
+
+    /// <summary>Estimated USD cost of aggregated raw token buckets.</summary>
+    public decimal? TryGetCost(
+        string model,
+        DateTime timestampUtc,
+        decimal inputTokens,
+        decimal cachedInputTokens,
+        decimal cacheWrite5mTokens,
+        decimal cacheWrite1hTokens,
+        decimal outputTokens)
     {
-        var pricing = Resolve(entry.Model, entry.TimestampUtc);
+        var pricing = Resolve(model, timestampUtc);
         if (pricing is null) return null;
-        return (entry.InputTokens * pricing.Input +
-                entry.CachedInputTokens * pricing.CachedInput +
-                entry.CacheWrite5mTokens * pricing.CacheWrite5m +
-                entry.CacheWrite1hTokens * pricing.CacheWrite1h +
-                entry.OutputTokens * pricing.Output) / 1_000_000m;
+        return (inputTokens * pricing.Input +
+                cachedInputTokens * pricing.CachedInput +
+                cacheWrite5mTokens * pricing.CacheWrite5m +
+                cacheWrite1hTokens * pricing.CacheWrite1h +
+                outputTokens * pricing.Output) / 1_000_000m;
     }
 
     /// <summary>Loads the embedded table merged with the optional user override file.</summary>
