@@ -34,6 +34,8 @@ Vendor semantics differ and are normalized during parsing:
 
 The built-in price table is an embedded resource (`Resources/model-pricing.json`) with an "as of" date shown in the dashboard. Some values, notably for the newest models, are sourced from third-party price trackers rather than official price pages and may lag price changes. `claude-sonnet-5` uses the official introductory price ($2/$10) that applies until 2026-08-31 and must be raised to the standard $3/$15 afterwards. Models without a table entry are excluded from cost totals and listed in a notice; their token counts are still shown.
 
+`claude-opus-5` uses Anthropic's published standard price of $5 input and $25 output per million tokens. Anthropic documents this as unchanged from Opus 4.8, so the table also uses the published Opus 4.8 prompt-cache rates: $6.25 for 5-minute writes, $10 for 1-hour writes, and $0.50 for cache hits. See [What's new in Claude Opus 5](https://platform.claude.com/docs/en/about-claude/models/whats-new-opus-5) and [Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing).
+
 Known estimation gaps (both cause **under**-estimation and cannot be derived from the logs):
 
 - OpenAI bills prompt-cache **writes** separately (1.25x input), but Codex rollouts do not record cache-write token counts.

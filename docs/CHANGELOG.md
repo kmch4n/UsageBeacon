@@ -17,6 +17,7 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 ### Fixed
 
 - The usage dashboard no longer fails to load when a session log directory cannot be read. Unreadable directories are skipped instead of ending the whole scan.
+- Claude Opus 5 session usage is now included in dashboard cost estimates.
 
 ## 1.0.0 - 2026-07-20
 

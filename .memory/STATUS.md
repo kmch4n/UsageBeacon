@@ -78,6 +78,14 @@ A three-agent verification pass on 2026-07-20 confirmed measurement accuracy emp
 
 Pending price change: raise `claude-sonnet-5` in `UsageBeacon/Resources/model-pricing.json` from the introductory $2/$10 (cache 2.50/4/0.20) to the standard $3/$15 (cache 3.75/6/0.30) after 2026-08-31.
 
+Claude Opus 5 pricing support was added on 2026-07-29:
+
+- Local Claude Code transcripts use the exact model identifier `claude-opus-5`.
+- The embedded table now applies Anthropic's standard $5 input / $25 output per million token price and the Opus 4.8-equivalent $6.25 / $10 cache-write and $0.50 cache-hit rates.
+- `ModelPricingCatalogTests` reads the real embedded pricing source file and guards the model identifier, rates, pricing date, and full-bucket cost calculation.
+- `dotnet test UsageBeacon.sln -c Debug`: 134 passed, 0 failed.
+- `dotnet build UsageBeacon.sln -c Debug --no-restore` and `-c Release --no-restore`: 0 warnings, 0 errors.
+
 ## Backend hardening validation
 
 A backend-only hardening pass (no UI changes) was completed on 2026-07-27:

@@ -59,6 +59,35 @@ public sealed class ModelPricingCatalogTests
     }
 
     [Fact]
+    public void EmbeddedPricing_IncludesClaudeOpus5Rates()
+    {
+        var path = Path.Combine(
+            RepositoryRoot(),
+            "UsageBeacon",
+            "Resources",
+            "model-pricing.json");
+        var catalog = ModelPricingCatalog.ParseDocument(File.ReadAllText(path));
+
+        Assert.NotNull(catalog);
+        Assert.Equal("2026-07-29", catalog!.AsOf);
+        Assert.Equal(
+            new ModelPricing(5m, 0.5m, 6.25m, 10m, 25m),
+            catalog.Resolve("claude-opus-5"));
+
+        var entry = new TokenUsageEntry(
+            IdHash: 3,
+            TimestampUtc: DateTime.UtcNow,
+            Service: UsageService.Claude,
+            Model: "claude-opus-5",
+            InputTokens: 1_000_000,
+            CachedInputTokens: 1_000_000,
+            CacheWrite5mTokens: 1_000_000,
+            CacheWrite1hTokens: 1_000_000,
+            OutputTokens: 1_000_000);
+        Assert.Equal(46.75m, catalog.TryGetCost(entry));
+    }
+
+    [Fact]
     public void MergeOverride_ReplacesAndAddsModels()
     {
         using var directory = new TempDirectory();
@@ -99,5 +128,15 @@ public sealed class ModelPricingCatalogTests
         {
             try { _directory.Delete(recursive: true); } catch { }
         }
+    }
+
+    private static string RepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null && !File.Exists(Path.Combine(directory.FullName, "UsageBeacon.sln")))
+            directory = directory.Parent;
+
+        Assert.NotNull(directory);
+        return directory!.FullName;
     }
 }
