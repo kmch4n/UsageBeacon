@@ -45,9 +45,11 @@ public static class CodexSessionReader
                     continue;
 
                 if (root.TryGetProperty("type", out var type) &&
+                    type.ValueKind == JsonValueKind.String &&
                     type.GetString() == "turn_context")
                 {
-                    var turnModel = payload.TryGetProperty("model", out var modelProp)
+                    var turnModel = payload.TryGetProperty("model", out var modelProp) &&
+                                    modelProp.ValueKind == JsonValueKind.String
                         ? modelProp.GetString()
                         : null;
                     if (!string.IsNullOrEmpty(turnModel)) model = turnModel;
@@ -55,6 +57,7 @@ public static class CodexSessionReader
                 }
 
                 if (!payload.TryGetProperty("type", out var payloadType) ||
+                    payloadType.ValueKind != JsonValueKind.String ||
                     payloadType.GetString() != "token_count")
                     continue;
                 if (!payload.TryGetProperty("info", out var info) ||
@@ -63,12 +66,15 @@ public static class CodexSessionReader
                     total.ValueKind != JsonValueKind.Object)
                     continue;
                 if (!root.TryGetProperty("timestamp", out var tsProp) ||
+                    tsProp.ValueKind != JsonValueKind.String ||
                     !ClaudeTranscriptReader.TryParseUtc(tsProp.GetString(), out var timestampUtc))
                     continue;
 
-                var input = ClaudeTranscriptReader.GetLong(total, "input_tokens");
-                var cached = ClaudeTranscriptReader.GetLong(total, "cached_input_tokens");
-                var output = ClaudeTranscriptReader.GetLong(total, "output_tokens");
+                if (!ClaudeTranscriptReader.TryGetNonNegativeLong(total, "input_tokens", out var input) ||
+                    !ClaudeTranscriptReader.TryGetNonNegativeLong(total, "cached_input_tokens", out var cached) ||
+                    !ClaudeTranscriptReader.TryGetNonNegativeLong(total, "output_tokens", out var output) ||
+                    cached > input)
+                    continue;
 
                 long dInput = input - prevInput;
                 long dCached = cached - prevCached;
@@ -80,6 +86,8 @@ public static class CodexSessionReader
                     dCached = cached;
                     dOutput = output;
                 }
+                if (dCached > dInput) continue;
+
                 prevInput = input;
                 prevCached = cached;
                 prevOutput = output;

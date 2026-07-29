@@ -44,6 +44,12 @@ public sealed class InsightsReaderTests
     [InlineData("""{"type":"user","timestamp":"2026-07-20T03:00:00Z"}""")]
     [InlineData("""{"type":"assistant","timestamp":"2026-07-20T03:00:00Z","message":{"id":"m","model":"<synthetic>","usage":{"input_tokens":1}}}""")]
     [InlineData("""{"type":"assistant","timestamp":"not a date","message":{"id":"m","model":"claude-fable-5","usage":{"input_tokens":1}}}""")]
+    [InlineData("""{"type":"assistant","timestamp":"2026-07-20T03:00:00Z","message":{"id":1,"model":"claude-fable-5","usage":{"input_tokens":1}}}""")]
+    [InlineData("""{"type":"assistant","timestamp":"2026-07-20T03:00:00Z","message":{"id":"m","model":5,"usage":{"input_tokens":1}}}""")]
+    [InlineData("""{"type":"assistant","timestamp":"2026-07-20T03:00:00Z","requestId":5,"message":{"id":"m","model":"claude-fable-5","usage":{"input_tokens":1}}}""")]
+    [InlineData("""{"type":"assistant","timestamp":"2026-07-20T03:00:00Z","message":{"id":"m","model":"claude-fable-5","usage":{"input_tokens":1.5}}}""")]
+    [InlineData("""{"type":"assistant","timestamp":"2026-07-20T03:00:00Z","message":{"id":"m","model":"claude-fable-5","usage":{"input_tokens":-1}}}""")]
+    [InlineData("""{"type":"assistant","timestamp":"2026-07-20T03:00:00Z","message":{"id":"m","model":"claude-fable-5","usage":{"input_tokens":9223372036854775808}}}""")]
     [InlineData("not json at all")]
     [InlineData("""["assistant","usage"]""")]
     public void ClaudeParseLine_SkipsNonBillableOrMalformedLines(string line)
@@ -122,6 +128,50 @@ public sealed class InsightsReaderTests
         Assert.Equal("unknown", entries[0].Model);
     }
 
+    [Fact]
+    public void CodexParseFile_SkipsInvalidCountersWithoutAdvancingTheBaseline()
+    {
+        using var directory = new TempDirectory();
+        var path = Path.Combine(directory.Path, "rollout.jsonl");
+        File.WriteAllLines(path, new[]
+        {
+            CodexTokenCount("2026-07-20T03:00:05Z", 100, 20, 5),
+            CodexTokenCountRaw("2026-07-20T03:00:10Z", "150.5", "30", "8"),
+            CodexTokenCountRaw("2026-07-20T03:00:15Z", "180", "200", "10"),
+            CodexTokenCount("2026-07-20T03:00:20Z", 200, 40, 15),
+        });
+
+        var entries = CodexSessionReader.ParseFile(path);
+
+        Assert.Equal(2, entries.Count);
+        Assert.Equal(80, entries[0].InputTokens);
+        Assert.Equal(80, entries[1].InputTokens);
+        Assert.Equal(20, entries[1].CachedInputTokens);
+        Assert.Equal(10, entries[1].OutputTokens);
+    }
+
+    [Theory]
+    [InlineData("-1", "0", "1")]
+    [InlineData("1", "-1", "1")]
+    [InlineData("1", "0", "1.5")]
+    [InlineData("\"100\"", "0", "1")]
+    [InlineData("9223372036854775808", "0", "1")]
+    public void CodexParseFile_SkipsInvalidNumericValues(
+        string input,
+        string cached,
+        string output)
+    {
+        using var directory = new TempDirectory();
+        var path = Path.Combine(directory.Path, "rollout.jsonl");
+        File.WriteAllText(path, CodexTokenCountRaw(
+            "2026-07-20T03:00:05Z",
+            input,
+            cached,
+            output));
+
+        Assert.Empty(CodexSessionReader.ParseFile(path));
+    }
+
     private static string CodexTokenCount(string timestamp, long input, long cached, long output)
         => """
            {"timestamp":"__TS__","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":__IN__,"cached_input_tokens":__CACHED__,"output_tokens":__OUT__,"reasoning_output_tokens":0,"total_tokens":__TOTAL__}}}}
@@ -131,6 +181,19 @@ public sealed class InsightsReaderTests
             .Replace("__CACHED__", cached.ToString())
             .Replace("__OUT__", output.ToString())
             .Replace("__TOTAL__", (input + output).ToString());
+
+    private static string CodexTokenCountRaw(
+        string timestamp,
+        string input,
+        string cached,
+        string output)
+        => """
+           {"timestamp":"__TS__","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":__IN__,"cached_input_tokens":__CACHED__,"output_tokens":__OUT__}}}}
+           """
+            .Replace("__TS__", timestamp)
+            .Replace("__IN__", input)
+            .Replace("__CACHED__", cached)
+            .Replace("__OUT__", output);
 
     private sealed class TempDirectory : IDisposable
     {

@@ -43,6 +43,7 @@ public static class ClaudeTranscriptReader
             var root = doc.RootElement;
             if (root.ValueKind != JsonValueKind.Object) return null;
             if (!root.TryGetProperty("type", out var type) ||
+                type.ValueKind != JsonValueKind.String ||
                 type.GetString() != "assistant")
                 return null;
             if (!root.TryGetProperty("message", out var message) ||
@@ -52,38 +53,50 @@ public static class ClaudeTranscriptReader
                 usage.ValueKind != JsonValueKind.Object)
                 return null;
 
-            var model = message.TryGetProperty("model", out var modelProp)
+            var model = message.TryGetProperty("model", out var modelProp) &&
+                        modelProp.ValueKind == JsonValueKind.String
                 ? modelProp.GetString()
                 : null;
             if (string.IsNullOrEmpty(model) || model == "<synthetic>") return null;
 
             if (!root.TryGetProperty("timestamp", out var tsProp) ||
+                tsProp.ValueKind != JsonValueKind.String ||
                 !TryParseUtc(tsProp.GetString(), out var timestampUtc))
                 return null;
 
-            var messageId = message.TryGetProperty("id", out var idProp)
+            var messageId = message.TryGetProperty("id", out var idProp) &&
+                            idProp.ValueKind == JsonValueKind.String
                 ? idProp.GetString()
                 : null;
             if (string.IsNullOrEmpty(messageId)) return null;
-            var requestId = root.TryGetProperty("requestId", out var reqProp)
-                ? reqProp.GetString() ?? ""
-                : "";
+            var requestId = "";
+            if (root.TryGetProperty("requestId", out var reqProp))
+            {
+                if (reqProp.ValueKind != JsonValueKind.String) return null;
+                requestId = reqProp.GetString() ?? "";
+            }
 
-            var input = GetLong(usage, "input_tokens");
-            var cacheRead = GetLong(usage, "cache_read_input_tokens");
-            var output = GetLong(usage, "output_tokens");
+            if (!TryGetNonNegativeLong(usage, "input_tokens", out var input) ||
+                !TryGetNonNegativeLong(usage, "cache_read_input_tokens", out var cacheRead) ||
+                !TryGetNonNegativeLong(usage, "output_tokens", out var output))
+                return null;
+
             long write5m, write1h;
             if (usage.TryGetProperty("cache_creation", out var creation) &&
                 creation.ValueKind == JsonValueKind.Object)
             {
-                write5m = GetLong(creation, "ephemeral_5m_input_tokens");
-                write1h = GetLong(creation, "ephemeral_1h_input_tokens");
+                if (!TryGetNonNegativeLong(creation, "ephemeral_5m_input_tokens", out write5m) ||
+                    !TryGetNonNegativeLong(creation, "ephemeral_1h_input_tokens", out write1h))
+                    return null;
             }
             else
             {
+                if (usage.TryGetProperty("cache_creation", out _)) return null;
+
                 // Older records only expose the combined counter; bill it at
                 // the cheaper five-minute write rate.
-                write5m = GetLong(usage, "cache_creation_input_tokens");
+                if (!TryGetNonNegativeLong(usage, "cache_creation_input_tokens", out write5m))
+                    return null;
                 write1h = 0;
             }
 
@@ -119,9 +132,15 @@ public static class ClaudeTranscriptReader
         return false;
     }
 
-    internal static long GetLong(JsonElement element, string property)
-        => element.TryGetProperty(property, out var value) &&
-           value.ValueKind == JsonValueKind.Number
-            ? value.GetInt64()
-            : 0;
+    internal static bool TryGetNonNegativeLong(
+        JsonElement element,
+        string property,
+        out long result)
+    {
+        result = 0;
+        if (!element.TryGetProperty(property, out var value)) return true;
+        return value.ValueKind == JsonValueKind.Number &&
+               value.TryGetInt64(out result) &&
+               result >= 0;
+    }
 }
