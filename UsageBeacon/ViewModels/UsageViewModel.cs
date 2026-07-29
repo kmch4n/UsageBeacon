@@ -17,7 +17,8 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     private readonly IUsageProvider _claude;
     private readonly IUsageProvider _codex;
-    private readonly AppSettingsStore _settingsStore;
+    private readonly IAppSettingsStore _settingsStore;
+    private readonly IStartupManager _startupManager;
     private readonly string _claudeUsageCachePath;
     private readonly string _codexUsageCachePath;
     private readonly string _claudePollingStatePath;
@@ -33,6 +34,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool _loginPrompted;
     private string _uiLanguage;
     private AppTheme _appTheme;
+    private string? _settingsErrorKey;
     private DateTime _claudeCooldownUntilUtc;
     private ServiceUsage? _lastClaudeUsage;
     private DateTime? _lastClaudeFetchedAtUtc;
@@ -61,7 +63,14 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
     public PollingInterval PollingInterval
     {
         get => _pollingInterval;
-        set { _pollingInterval = value; Notify(); SaveSettings(); }
+        set
+        {
+            if (_pollingInterval == value) return;
+            var previous = _pollingInterval;
+            _pollingInterval = value;
+            if (!TrySaveSettings()) _pollingInterval = previous;
+            Notify();
+        }
     }
 
     public WidgetPlacement WidgetPlacement
@@ -70,9 +79,10 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         set
         {
             if (_widgetPlacement == value) return;
+            var previous = _widgetPlacement;
             _widgetPlacement = value;
+            if (!TrySaveSettings()) _widgetPlacement = previous;
             Notify();
-            SaveSettings();
         }
     }
 
@@ -82,9 +92,10 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         set
         {
             if (_popupTransparency == value) return;
+            var previous = _popupTransparency;
             _popupTransparency = value;
+            if (!TrySaveSettings()) _popupTransparency = previous;
             Notify();
-            SaveSettings();
         }
     }
 
@@ -94,9 +105,10 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         set
         {
             if (_monitorDeviceName == value) return;
+            var previous = _monitorDeviceName;
             _monitorDeviceName = value;
+            if (!TrySaveSettings()) _monitorDeviceName = previous;
             Notify();
-            SaveSettings();
         }
     }
 
@@ -105,9 +117,20 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         get => _startupEnabled;
         set
         {
-            _startupEnabled = value;
+            if (_startupEnabled == value) return;
+            try
+            {
+                _startupManager.IsEnabled = value;
+                if (_startupManager.IsEnabled != value)
+                    throw new InvalidOperationException("The startup registration did not reach the requested state.");
+                _startupEnabled = value;
+                ClearSettingsError();
+            }
+            catch
+            {
+                SetSettingsError("SettingsStartupFailed");
+            }
             Notify();
-            try { StartupManager.IsEnabled = value; } catch { }
         }
     }
 
@@ -118,8 +141,9 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         set
         {
             if (_loginPrompted == value) return;
+            var previous = _loginPrompted;
             _loginPrompted = value;
-            SaveSettings();
+            if (!TrySaveSettings()) _loginPrompted = previous;
         }
     }
 
@@ -138,10 +162,16 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         {
             var normalized = LocalizationService.NormalizePreference(value);
             if (_uiLanguage == normalized) return;
+            var previous = _uiLanguage;
             _uiLanguage = normalized;
-            LocalizationService.SetLanguage(normalized);
+            if (!TrySaveSettings())
+            {
+                _uiLanguage = previous;
+                Notify();
+                return;
+            }
+            LocalizationService.SetLanguage(_uiLanguage);
             Notify();
-            SaveSettings();
         }
     }
 
@@ -151,19 +181,28 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         set
         {
             if (_appTheme == value) return;
+            var previous = _appTheme;
             _appTheme = value;
-            ThemeService.SetTheme(value);
+            if (!TrySaveSettings())
+            {
+                _appTheme = previous;
+                Notify();
+                return;
+            }
+            ThemeService.SetTheme(_appTheme);
             Notify();
-            SaveSettings();
         }
     }
+
+    public string? SettingsErrorKey => _settingsErrorKey;
 
     // ── Init ─────────────────────────────────────────────────────────────
 
     public UsageViewModel(
         IUsageProvider? claude = null,
         IUsageProvider? codex = null,
-        AppSettingsStore? settingsStore = null,
+        IAppSettingsStore? settingsStore = null,
+        IStartupManager? startupManager = null,
         string? dataDirectory = null)
     {
         var directory = dataDirectory ?? AppDataPaths.DirectoryPath;
@@ -172,6 +211,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         _claudePollingStatePath = Path.Combine(directory, "claude-polling-state.json");
         _claudeNativeUsagePath = Path.Combine(directory, "claude-native-usage.json");
         _settingsStore = settingsStore ?? new AppSettingsStore();
+        _startupManager = startupManager ?? new StartupManager();
         var settings = _settingsStore.Load();
         _claude          = claude ?? new ClaudeUsageProvider();
         _codex           = codex  ?? new CodexUsageProvider();
@@ -184,8 +224,15 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         LocalizationService.SetLanguage(_uiLanguage);
         _appTheme = ThemeService.NormalizePreference(settings.AppTheme);
         ThemeService.SetTheme(_appTheme);
-        try { StartupManager.MigrateLegacyRegistration(); } catch { }
-        _startupEnabled  = StartupManager.IsEnabled;
+        try
+        {
+            _startupManager.MigrateLegacyRegistration();
+            _startupEnabled = _startupManager.IsEnabled;
+        }
+        catch
+        {
+            _settingsErrorKey = "SettingsStartupFailed";
+        }
         var claudeUsageCache = LoadClaudeUsageCache();
         var nativeUsageCache = ClaudeNativeUsageStore.Load(_claudeNativeUsagePath);
         var latestClaudeUsage = claudeUsageCache;
@@ -407,7 +454,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
             ? transparency
             : PopupTransparencyExtensions.Default;
 
-    private void SaveSettings()
+    private bool TrySaveSettings()
     {
         try
         {
@@ -421,8 +468,28 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
                 UiLanguage = _uiLanguage,
                 AppTheme = _appTheme.ToString(),
             });
+            ClearSettingsError();
+            return true;
         }
-        catch { }
+        catch
+        {
+            SetSettingsError("SettingsSaveFailed");
+            return false;
+        }
+    }
+
+    private void SetSettingsError(string resourceKey)
+    {
+        if (_settingsErrorKey == resourceKey) return;
+        _settingsErrorKey = resourceKey;
+        Notify(nameof(SettingsErrorKey));
+    }
+
+    private void ClearSettingsError()
+    {
+        if (_settingsErrorKey is null) return;
+        _settingsErrorKey = null;
+        Notify(nameof(SettingsErrorKey));
     }
 
     private UsageCacheEntry? LoadClaudeUsageCache()

@@ -125,6 +125,58 @@ public sealed class UsageViewModelTests
         }
     }
 
+    [Fact]
+    public async Task SettingChange_RollsBackAndReportsFailure_WhenSaveFails()
+    {
+        using var directory = new TempDirectory();
+        var store = new StubSettingsStore { ThrowOnSave = true };
+        var vm = new UsageViewModel(
+            new StubUsageProvider(),
+            new StubUsageProvider(),
+            store,
+            new FakeStartupManager(),
+            directory.Path);
+
+        vm.PollingInterval = PollingInterval.Min10;
+
+        Assert.Equal(PollingInterval.Min5, vm.PollingInterval);
+        Assert.Equal("SettingsSaveFailed", vm.SettingsErrorKey);
+
+        store.ThrowOnSave = false;
+        vm.PollingInterval = PollingInterval.Min10;
+
+        Assert.Equal(PollingInterval.Min10, vm.PollingInterval);
+        Assert.Null(vm.SettingsErrorKey);
+        Assert.Equal(600, store.Saved?.PollingInterval);
+        await vm.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task StartupChange_RollsBackAndReportsFailure_WhenRegistryWriteFails()
+    {
+        using var directory = new TempDirectory();
+        var startup = new FakeStartupManager { ThrowOnSet = true };
+        var vm = new UsageViewModel(
+            new StubUsageProvider(),
+            new StubUsageProvider(),
+            new StubSettingsStore(),
+            startup,
+            directory.Path);
+
+        vm.StartupEnabled = true;
+
+        Assert.False(vm.StartupEnabled);
+        Assert.Equal("SettingsStartupFailed", vm.SettingsErrorKey);
+
+        startup.ThrowOnSet = false;
+        vm.StartupEnabled = true;
+
+        Assert.True(vm.StartupEnabled);
+        Assert.True(startup.IsEnabled);
+        Assert.Null(vm.SettingsErrorKey);
+        await vm.DisposeAsync();
+    }
+
     private static void WritePollingState(
         string directory,
         DateTime nextRequestUtc,
@@ -155,6 +207,7 @@ public sealed class UsageViewModelTests
         claude: claude,
         codex: codex ?? new StubUsageProvider(),
         settingsStore: new AppSettingsStore(Path.Combine(directory, "settings.json")),
+        startupManager: new FakeStartupManager(),
         dataDirectory: directory);
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -176,6 +229,42 @@ public sealed class UsageViewModelTests
                 FiveHour: new RateLimit(0.5, DateTime.Now.AddHours(2)),
                 Weekly: null,
                 WeeklySonnet: null));
+        }
+    }
+
+    private sealed class StubSettingsStore : IAppSettingsStore
+    {
+        public bool ThrowOnSave { get; set; }
+
+        public AppSettings? Saved { get; private set; }
+
+        public AppSettings Load() => new();
+
+        public void Save(AppSettings settings)
+        {
+            if (ThrowOnSave) throw new IOException("save failed");
+            Saved = settings;
+        }
+    }
+
+    private sealed class FakeStartupManager : IStartupManager
+    {
+        private bool _isEnabled;
+
+        public bool ThrowOnSet { get; set; }
+
+        public bool IsEnabled
+        {
+            get => _isEnabled;
+            set
+            {
+                if (ThrowOnSet) throw new UnauthorizedAccessException();
+                _isEnabled = value;
+            }
+        }
+
+        public void MigrateLegacyRegistration()
+        {
         }
     }
 

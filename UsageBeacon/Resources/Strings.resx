@@ -14,6 +14,7 @@
   <data name="CommonConfirm" xml:space="preserve"><value>Confirm</value></data>
   <data name="TooltipRefreshNow" xml:space="preserve"><value>Refresh now</value></data>
   <data name="TooltipClose" xml:space="preserve"><value>Close</value></data>
+  <data name="WidgetOpenUsage" xml:space="preserve"><value>Open UsageBeacon usage details</value></data>
   <data name="StatusLoading" xml:space="preserve"><value>Loading...</value></data>
   <data name="UsageFiveHour" xml:space="preserve"><value>5 hours</value></data>
   <data name="UsageWeekly" xml:space="preserve"><value>Weekly (7 days)</value></data>
@@ -28,6 +29,8 @@
   <data name="SettingsPollingInterval" xml:space="preserve"><value>Refresh interval</value></data>
   <data name="SettingsPollingNote" xml:space="preserve"><value>Claude API: 30-minute minimum / Codex: selected interval</value></data>
   <data name="SettingsStartAtLogin" xml:space="preserve"><value>Start at sign-in</value></data>
+  <data name="SettingsSaveFailed" xml:space="preserve"><value>The setting could not be saved. Your previous value is still active.</value></data>
+  <data name="SettingsStartupFailed" xml:space="preserve"><value>The start-at-sign-in setting could not be changed. Check your registry permissions.</value></data>
   <data name="SettingsTransparency" xml:space="preserve"><value>Background transparency</value></data>
   <data name="SettingsMonitor" xml:space="preserve"><value>Display monitor</value></data>
   <data name="SettingsPosition" xml:space="preserve"><value>Display position</value></data>

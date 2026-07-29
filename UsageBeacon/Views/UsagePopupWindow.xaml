@@ -358,6 +358,13 @@
                     <Button x:Name="DashboardBtn" HorizontalAlignment="Right"
                             Style="{StaticResource LinkBtn}" Click="Dashboard_Click"/>
                 </Grid>
+                <TextBlock x:Name="SettingsErrorText"
+                           Visibility="Collapsed"
+                           Foreground="{DynamicResource ErrorText}"
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           AutomationProperties.LiveSetting="Polite"
+                           Margin="0,7,0,0"/>
             </StackPanel>
 
             <Separator Margin="0,0,0,10"/>

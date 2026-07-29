@@ -17,6 +17,7 @@ public partial class UsagePopupWindow : Window
     private bool _transparencyPickerReady;
     private bool _languagePickerReady;
     private bool _themePickerReady;
+    private bool _syncingStartup;
     private int _monitorIndex;
     private int _monitorTotal = 1;
     private WidgetPlacement _placement;
@@ -31,7 +32,7 @@ public partial class UsagePopupWindow : Window
         _placement = vm.WidgetPlacement;
         InitializeComponent();
         ApplyTheme();
-        StartupChk.IsChecked = vm.StartupEnabled;
+        SyncSettingsState();
         LocalizationService.LanguageChanged += OnLanguageChanged;
         ThemeService.ThemeChanged += OnThemeChanged;
         Closed += (_, _) =>
@@ -117,9 +118,30 @@ public partial class UsagePopupWindow : Window
 
     private void Refresh()
     {
+        SyncSettingsState();
         RefreshClaude();
         RefreshCodex();
         RefreshFooter();
+    }
+
+    private void SyncSettingsState()
+    {
+        _syncingStartup = true;
+        try
+        {
+            StartupChk.IsChecked = _vm.StartupEnabled;
+        }
+        finally
+        {
+            _syncingStartup = false;
+        }
+
+        SettingsErrorText.Visibility = _vm.SettingsErrorKey is null
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        SettingsErrorText.Text = _vm.SettingsErrorKey is { } resourceKey
+            ? LocalizationService.Get(resourceKey)
+            : "";
     }
 
     private void RefreshClaude()
@@ -423,7 +445,11 @@ public partial class UsagePopupWindow : Window
     }
 
     private void StartupChk_Changed(object sender, RoutedEventArgs e)
-        => _vm.StartupEnabled = StartupChk.IsChecked == true;
+    {
+        if (_syncingStartup) return;
+        _vm.StartupEnabled = StartupChk.IsChecked == true;
+        SyncSettingsState();
+    }
 
     private void Dashboard_Click(object sender, RoutedEventArgs e)
         => DashboardRequested?.Invoke();

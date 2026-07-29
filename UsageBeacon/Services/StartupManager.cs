@@ -5,14 +5,21 @@ namespace UsageBeacon.Services;
 /// <summary>
 /// Manages startup at sign-in through the Windows registry Run key.
 /// </summary>
-public static class StartupManager
+public interface IStartupManager
+{
+    bool IsEnabled { get; set; }
+
+    void MigrateLegacyRegistration();
+}
+
+public sealed class StartupManager : IStartupManager
 {
     private const string RunKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
     private const string AppName = "UsageBeacon";
     private const string LegacyAppName = "TokenChecker";
 
     /// <summary>Migrates the startup entry created by TokenChecker.</summary>
-    public static void MigrateLegacyRegistration()
+    public void MigrateLegacyRegistration()
     {
         using var key = Registry.CurrentUser.CreateSubKey(RunKey, writable: true);
         if (key.GetValue(LegacyAppName) is null) return;
@@ -27,7 +34,7 @@ public static class StartupManager
         key.DeleteValue(LegacyAppName, throwOnMissingValue: false);
     }
 
-    public static bool IsEnabled
+    public bool IsEnabled
     {
         get
         {
@@ -42,11 +49,10 @@ public static class StartupManager
             if (value)
             {
                 var exe = Environment.ProcessPath;
-                if (exe is not null)
-                {
-                    key.SetValue(AppName, $"\"{exe}\"");
-                    key.DeleteValue(LegacyAppName, throwOnMissingValue: false);
-                }
+                if (exe is null)
+                    throw new InvalidOperationException("The executable path is unavailable.");
+                key.SetValue(AppName, $"\"{exe}\"");
+                key.DeleteValue(LegacyAppName, throwOnMissingValue: false);
             }
             else
             {
