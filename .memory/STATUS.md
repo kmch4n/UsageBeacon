@@ -100,8 +100,9 @@ The prioritized hardening pass was implemented on 2026-07-29:
 - `dotnet build UsageBeacon.sln -c Debug --no-restore`: 0 warnings, 0 errors.
 - `dotnet build UsageBeacon.sln -c Release --no-restore`: 0 warnings, 0 errors.
 - `dotnet test UsageBeacon.sln -c Debug --no-build --no-restore`: 160 passed, 0 failed.
+- GitHub Actions CI run `30459273684` passed on the hosted Windows runner after normalizing exact duplicate ACEs that do not change effective DACL access.
 
-Manual verification remains pending for the localized settings error presentation, taskbar keyboard focus behavior in the live shell, WSL discovery against multiple installed distributions, and the ACL test on a GitHub-hosted Windows runner.
+Manual verification remains pending for the localized settings error presentation, taskbar keyboard focus behavior in the live shell, and WSL discovery against multiple installed distributions.
 
 ## Backend hardening validation
 
