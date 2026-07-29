@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -16,6 +15,26 @@ namespace UsageBeacon.Services;
 public sealed class WindowsTokenSource : IClaudeCredentialSource
 {
     private const string ServiceName = "Claude Code-credentials";
+    private const string WslCredentialScript =
+        "for p in \"$HOME/.claude/.credentials.json\" \"$HOME/.claude/credentials.json\"; " +
+        "do if [ -f \"$p\" ]; then cat -- \"$p\"; exit 0; fi; done; exit 1";
+    private static readonly TimeSpan DefaultWslTimeout = TimeSpan.FromSeconds(3);
+
+    private readonly IProcessCommandRunner _processRunner;
+    private readonly TimeSpan _wslTimeout;
+
+    public WindowsTokenSource()
+        : this(new ProcessCommandRunner(), DefaultWslTimeout)
+    {
+    }
+
+    internal WindowsTokenSource(
+        IProcessCommandRunner processRunner,
+        TimeSpan wslTimeout)
+    {
+        _processRunner = processRunner;
+        _wslTimeout = wslTimeout;
+    }
 
     public async Task<string> ReadAccessTokenAsync(CancellationToken ct = default)
         => (await ReadCredentialAsync(ct)).AccessToken;
@@ -82,26 +101,11 @@ public sealed class WindowsTokenSource : IClaudeCredentialSource
             catch { }
         }
 
-        // Fall back to WSL files when the CLI exists only inside WSL.
-        foreach (var path in GetWslCredentialPaths())
-        {
-            if (!File.Exists(path)) continue;
-            try
-            {
-                var json = await File.ReadAllTextAsync(path, ct);
-                var credential = ParseCredential(json, "wsl-file");
-                if (credential != null) credential = credential with
-                {
-                    Origin = new ClaudeCredentialOrigin(
-                        ClaudeCredentialOriginKind.WslFile,
-                        path),
-                };
-                if (credential?.IsUsableAt(now) == true) return credential;
-                expiredCredential = PreferRefreshable(expiredCredential, credential);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-            catch { }
-        }
+        // Run inside each distribution so a stalled UNC provider cannot block
+        // startup and each distribution resolves its own HOME.
+        var wslCredential = await ReadWslCredentialAsync(now, ct);
+        if (wslCredential?.IsUsableAt(now) == true) return wslCredential;
+        expiredCredential = PreferRefreshable(expiredCredential, wslCredential);
 
         if (expiredCredential != null) return expiredCredential;
         throw DomainError.TokenMissing();
@@ -123,54 +127,66 @@ public sealed class WindowsTokenSource : IClaudeCredentialSource
         return current;
     }
 
-    private static IEnumerable<string> GetWslCredentialPaths()
+    internal async Task<ClaudeCredential?> ReadWslCredentialAsync(
+        DateTimeOffset now,
+        CancellationToken ct)
     {
-        string[] distros;
-        string wslUser;
+        ProcessCommandResult listResult;
         try
         {
-            using var p = Process.Start(new ProcessStartInfo("wsl.exe", "--list --quiet")
-            {
-                RedirectStandardOutput = true,
-                UseShellExecute        = false,
-                CreateNoWindow         = true,
-                StandardOutputEncoding = Encoding.Unicode,
-            });
-            if (p == null) yield break;
-            var raw = p.StandardOutput.ReadToEnd();
-            p.WaitForExit(3000);
-            distros = raw.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-                         .Select(d => d.Trim().Replace("\0", ""))
-                         .Where(d => !string.IsNullOrWhiteSpace(d))
-                         .ToArray();
-            if (distros.Length == 0) yield break;
+            listResult = await _processRunner.RunAsync(
+                "wsl.exe",
+                ["--list", "--quiet"],
+                Encoding.Unicode,
+                _wslTimeout,
+                ct);
         }
-        catch { yield break; }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch { return null; }
 
-        try
-        {
-            using var p = Process.Start(new ProcessStartInfo("wsl.exe", "-- whoami")
-            {
-                RedirectStandardOutput = true,
-                UseShellExecute        = false,
-                CreateNoWindow         = true,
-            });
-            if (p == null) yield break;
-            wslUser = p.StandardOutput.ReadToEnd().Trim();
-            p.WaitForExit(3000);
-            if (string.IsNullOrWhiteSpace(wslUser)) yield break;
-        }
-        catch { yield break; }
+        if (listResult.TimedOut || listResult.ExitCode != 0) return null;
+        var distros = listResult.StandardOutput
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(distro => distro.Trim().Replace("\0", ""))
+            .Where(distro => !string.IsNullOrWhiteSpace(distro))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
 
+        ClaudeCredential? expiredCredential = null;
         foreach (var distro in distros)
         {
-            // Windows 11 uses \\wsl.localhost\ while Windows 10 uses \\wsl$\.
-            foreach (var prefix in new[] { $@"\\wsl.localhost\{distro}", $@"\\wsl$\{distro}" })
+            ProcessCommandResult credentialResult;
+            try
             {
-                yield return Path.Combine(prefix, "home", wslUser, ".claude", ".credentials.json");
-                yield return Path.Combine(prefix, "home", wslUser, ".claude", "credentials.json");
+                credentialResult = await _processRunner.RunAsync(
+                    "wsl.exe",
+                    ["--distribution", distro, "--", "sh", "-lc", WslCredentialScript],
+                    Encoding.UTF8,
+                    _wslTimeout,
+                    ct);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch { continue; }
+
+            if (credentialResult.TimedOut ||
+                credentialResult.ExitCode != 0 ||
+                string.IsNullOrWhiteSpace(credentialResult.StandardOutput))
+                continue;
+
+            var source = $"wsl:{distro}";
+            var credential = ParseCredential(credentialResult.StandardOutput, source);
+            if (credential == null) continue;
+            credential = credential with
+            {
+                Origin = new ClaudeCredentialOrigin(
+                    ClaudeCredentialOriginKind.WslFile,
+                    source),
+            };
+            if (credential.IsUsableAt(now)) return credential;
+            expiredCredential = PreferRefreshable(expiredCredential, credential);
         }
+
+        return expiredCredential;
     }
 
     // ── Windows Credential Manager (P/Invoke) ────────────────────────────
