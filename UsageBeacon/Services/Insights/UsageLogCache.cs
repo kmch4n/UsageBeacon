@@ -61,15 +61,21 @@ public sealed class UsageLogCache
         string path,
         long length,
         DateTime lastWriteUtc,
-        Func<string, IReadOnlyList<TokenUsageEntry>> parser)
+        Func<string, IReadOnlyList<TokenUsageEntry>> parser,
+        int parserRevision = 0)
     {
         if (_files.TryGetValue(path, out var cached) &&
             cached.Length == length &&
-            cached.LastWriteUtc == lastWriteUtc)
+            cached.LastWriteUtc == lastWriteUtc &&
+            cached.ParserRevision == parserRevision)
             return cached.Entries;
 
         var entries = parser(path);
-        _files[path] = new CachedFile(length, lastWriteUtc, entries.ToList());
+        _files[path] = new CachedFile(
+            length,
+            lastWriteUtc,
+            entries.ToList(),
+            parserRevision);
         return entries;
     }
 
@@ -122,7 +128,8 @@ public sealed class UsageLogCache
     private sealed record CachedFile(
         [property: JsonPropertyName("len")] long Length,
         [property: JsonPropertyName("mtime")] DateTime LastWriteUtc,
-        [property: JsonPropertyName("entries")] List<TokenUsageEntry> Entries);
+        [property: JsonPropertyName("entries")] List<TokenUsageEntry> Entries,
+        [property: JsonPropertyName("parserRevision")] int ParserRevision = 0);
 
     private sealed record CacheDocument(
         [property: JsonPropertyName("schemaVersion")] int SchemaVersion,

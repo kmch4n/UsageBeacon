@@ -1,3 +1,4 @@
+using System.Text;
 using UsageBeacon.Models.Insights;
 using UsageBeacon.Services.Insights;
 
@@ -126,6 +127,103 @@ public sealed class InsightsReaderTests
 
         Assert.Single(entries);
         Assert.Equal("unknown", entries[0].Model);
+    }
+
+    [Fact]
+    public void CodexParseFile_BackfillsLeadingUsageWithFirstObservedModel()
+    {
+        using var directory = new TempDirectory();
+        var path = Path.Combine(directory.Path, "rollout.jsonl");
+        File.WriteAllLines(path, new[]
+        {
+            CodexTokenCount("2026-07-20T03:00:05Z", 100, 20, 5),
+            """{"timestamp":"2026-07-20T03:00:06Z","type":"turn_context","payload":{"model":"   "}}""",
+            CodexTokenCount("2026-07-20T03:00:10Z", 150, 30, 8),
+            """{"timestamp":"2026-07-20T03:00:11Z","type":"turn_context","payload":{"model":"gpt-5.6-sol"}}""",
+            CodexTokenCount("2026-07-20T03:00:15Z", 200, 40, 10),
+            """{"timestamp":"2026-07-20T03:00:16Z","type":"turn_context","payload":{"model":"gpt-5.6-terra"}}""",
+            CodexTokenCount("2026-07-20T03:00:20Z", 300, 60, 20),
+        });
+
+        var entries = CodexSessionReader.ParseFile(path);
+
+        Assert.Equal(4, entries.Count);
+        Assert.Equal(
+            new[] { "gpt-5.6-sol", "gpt-5.6-sol", "gpt-5.6-sol", "gpt-5.6-terra" },
+            entries.Select(entry => entry.Model));
+        Assert.Equal(80, entries[0].InputTokens);
+        Assert.Equal(40, entries[1].InputTokens);
+        Assert.Equal(40, entries[2].InputTokens);
+        Assert.Equal(80, entries[3].InputTokens);
+    }
+
+    [Fact]
+    public void CodexParseFile_RecoversCompletedTrailingLineThroughCache()
+    {
+        using var directory = new TempDirectory();
+        var path = Path.Combine(directory.Path, "rollout.jsonl");
+        var first = CodexTokenCount("2026-07-20T03:00:05Z", 100, 20, 5);
+        var second = CodexTokenCount("2026-07-20T03:00:10Z", 200, 40, 10);
+        var split = second.Length / 2;
+        File.WriteAllText(
+            path,
+            """
+            {"timestamp":"2026-07-20T03:00:00Z","type":"turn_context","payload":{"model":"gpt-5.6-sol"}}
+            """
+            + Environment.NewLine
+            + first
+            + Environment.NewLine);
+
+        using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Write,
+            FileShare.ReadWrite | FileShare.Delete);
+        stream.Seek(0, SeekOrigin.End);
+        using var writer = new StreamWriter(
+            stream,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            bufferSize: 1024,
+            leaveOpen: true);
+        writer.Write(second[..split]);
+        writer.Flush();
+
+        var cache = UsageLogCache.Load(Path.Combine(directory.Path, "cache.json"));
+        var parses = 0;
+        IReadOnlyList<TokenUsageEntry> Parser(string filePath)
+        {
+            parses++;
+            return CodexSessionReader.ParseFile(filePath);
+        }
+
+        var info = new FileInfo(path);
+        var incomplete = cache.GetEntries(
+            path,
+            info.Length,
+            info.LastWriteTimeUtc,
+            Parser,
+            parserRevision: CodexSessionReader.ParserRevision);
+
+        writer.Write(second[split..]);
+        writer.Flush();
+        info.Refresh();
+        var completed = cache.GetEntries(
+            path,
+            info.Length,
+            info.LastWriteTimeUtc,
+            Parser,
+            parserRevision: CodexSessionReader.ParserRevision);
+        var cached = cache.GetEntries(
+            path,
+            info.Length,
+            info.LastWriteTimeUtc,
+            Parser,
+            parserRevision: CodexSessionReader.ParserRevision);
+
+        Assert.Single(incomplete);
+        Assert.Equal(2, completed.Count);
+        Assert.Equal(completed, cached);
+        Assert.Equal(2, parses);
     }
 
     [Fact]

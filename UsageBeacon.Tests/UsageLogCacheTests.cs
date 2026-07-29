@@ -49,6 +49,32 @@ public sealed class UsageLogCacheTests
     }
 
     [Fact]
+    public void GetEntries_ReparsesOnce_WhenParserRevisionChanges()
+    {
+        using var directory = new TempDirectory();
+        var cache = UsageLogCache.Load(Path.Combine(directory.Path, "cache.json"));
+        var mtime = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc);
+        var parses = 0;
+        IReadOnlyList<TokenUsageEntry> Parser(string _)
+        {
+            parses++;
+            return new[] { Entry(parses) };
+        }
+
+        cache.GetEntries("log.jsonl", 100, mtime, Parser);
+        cache.GetEntries("log.jsonl", 100, mtime, Parser, parserRevision: 1);
+        var current = cache.GetEntries(
+            "log.jsonl",
+            100,
+            mtime,
+            Parser,
+            parserRevision: 1);
+
+        Assert.Equal(2, parses);
+        Assert.Equal(Entry(2), Assert.Single(current));
+    }
+
+    [Fact]
     public void SaveAndLoad_RoundTripsEntries_AndRetainsDeletedFiles()
     {
         using var directory = new TempDirectory();
@@ -109,6 +135,35 @@ public sealed class UsageLogCacheTests
         var cache = UsageLogCache.Load(cachePath);
 
         Assert.Empty(cache.AllEntries());
+    }
+
+    [Fact]
+    public void Load_AcceptsLegacyCacheWithoutParserRevision()
+    {
+        using var directory = new TempDirectory();
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        var mtime = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc);
+        var cache = UsageLogCache.Load(cachePath);
+        cache.GetEntries("log.jsonl", 100, mtime, _ => new[] { Entry(7) });
+        cache.Save();
+        var legacyJson = File.ReadAllText(cachePath)
+            .Replace(",\"parserRevision\":0", "");
+        File.WriteAllText(cachePath, legacyJson);
+        var parses = 0;
+
+        var reloaded = UsageLogCache.Load(cachePath);
+        var entries = reloaded.GetEntries(
+            "log.jsonl",
+            100,
+            mtime,
+            _ =>
+            {
+                parses++;
+                return new[] { Entry(8) };
+            });
+
+        Assert.Equal(0, parses);
+        Assert.Equal(Entry(7), Assert.Single(entries));
     }
 
     [Fact]

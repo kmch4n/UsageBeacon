@@ -52,8 +52,17 @@ public sealed class DashboardViewModel
     {
         var cache = UsageLogCache.Load(_cachePath);
 
-        ScanDirectory(cache, _claudeProjectsDirectory, ClaudeTranscriptReader.ParseFile, cancellationToken);
-        ScanDirectory(cache, _codexSessionsDirectory, CodexSessionReader.ParseFile, cancellationToken);
+        ScanDirectory(
+            cache,
+            _claudeProjectsDirectory,
+            ClaudeTranscriptReader.ParseFile,
+            cancellationToken);
+        ScanDirectory(
+            cache,
+            _codexSessionsDirectory,
+            CodexSessionReader.ParseFile,
+            cancellationToken,
+            CodexSessionReader.ParserRevision);
 
         // After the scan so entries that aged out during this run are dropped in
         // the same pass, and before the save so the smaller form is what persists.
@@ -69,7 +78,8 @@ public sealed class DashboardViewModel
         UsageLogCache cache,
         string directory,
         Func<string, IReadOnlyList<TokenUsageEntry>> parser,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int parserRevision = 0)
     {
         foreach (var path in EnumerateLogs(directory))
         {
@@ -77,7 +87,12 @@ public sealed class DashboardViewModel
             try
             {
                 var info = new FileInfo(path);
-                cache.GetEntries(path, info.Length, info.LastWriteTimeUtc, parser);
+                cache.GetEntries(
+                    path,
+                    info.Length,
+                    info.LastWriteTimeUtc,
+                    parser,
+                    parserRevision);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {

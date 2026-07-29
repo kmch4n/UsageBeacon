@@ -20,15 +20,24 @@ namespace UsageBeacon.Services.Insights;
 /// </summary>
 public static class CodexSessionReader
 {
+    public const int ParserRevision = 1;
+
     public static IReadOnlyList<TokenUsageEntry> ParseFile(string path)
     {
         var entries = new List<TokenUsageEntry>();
-        var model = "unknown";
+        var leadingEntries = new List<TokenUsageEntry>();
+        string? model = null;
         long prevInput = 0, prevCached = 0, prevOutput = 0;
         var fileKey = Path.GetFileNameWithoutExtension(path);
         var lineIndex = 0;
 
-        foreach (var line in File.ReadLines(path))
+        using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        while (reader.ReadLine() is { } line)
         {
             lineIndex++;
             var hasTurnContext = line.Contains("\"turn_context\"", StringComparison.Ordinal);
@@ -52,7 +61,19 @@ public static class CodexSessionReader
                                     modelProp.ValueKind == JsonValueKind.String
                         ? modelProp.GetString()
                         : null;
-                    if (!string.IsNullOrEmpty(turnModel)) model = turnModel;
+                    if (!string.IsNullOrWhiteSpace(turnModel))
+                    {
+                        model = turnModel;
+                        if (leadingEntries.Count > 0)
+                        {
+                            // Codex can emit cumulative usage before its first
+                            // turn_context. The first observed model is the
+                            // best available attribution for those deltas.
+                            entries.AddRange(leadingEntries.Select(
+                                entry => entry with { Model = model }));
+                            leadingEntries.Clear();
+                        }
+                    }
                     continue;
                 }
 
@@ -94,22 +115,29 @@ public static class CodexSessionReader
 
                 if (dInput == 0 && dOutput == 0) continue;
 
-                entries.Add(new TokenUsageEntry(
+                var entry = new TokenUsageEntry(
                     IdHash: UsageLogHashing.Hash($"{fileKey}:{lineIndex}:{input}:{output}"),
                     TimestampUtc: timestampUtc,
                     Service: UsageService.Codex,
-                    Model: model,
+                    Model: model ?? "unknown",
                     InputTokens: Math.Max(0, dInput - dCached),
                     CachedInputTokens: dCached,
                     CacheWrite5mTokens: 0,
                     CacheWrite1hTokens: 0,
-                    OutputTokens: dOutput));
+                    OutputTokens: dOutput);
+                if (model == null)
+                    leadingEntries.Add(entry);
+                else
+                    entries.Add(entry);
             }
             catch (JsonException)
             {
                 // Malformed line: skip.
             }
         }
+
+        // Preserve the existing fallback when a session never identifies a model.
+        entries.AddRange(leadingEntries);
         return entries;
     }
 }

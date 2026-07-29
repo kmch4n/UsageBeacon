@@ -52,6 +52,56 @@ public sealed class DashboardViewModelTests
     }
 
     [Fact]
+    public async Task LoadAsync_ReparsesLegacyCodexCacheWithUnknownModel()
+    {
+        using var directory = new TempDirectory();
+        var codexDir = Directory.CreateDirectory(Path.Combine(directory.Path, "codex")).FullName;
+        var path = Path.Combine(codexDir, "rollout.jsonl");
+        var nowUtc = DateTime.UtcNow;
+        var now = nowUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        File.WriteAllText(
+            path,
+            """
+            {"timestamp":"__TS__","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":0,"cached_input_tokens":0,"output_tokens":1000000,"total_tokens":1000000}}}}
+            {"timestamp":"__TS__","type":"turn_context","payload":{"model":"gpt-5.6-sol"}}
+            """.Replace("__TS__", now) + Environment.NewLine);
+
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        var info = new FileInfo(path);
+        var legacyCache = UsageLogCache.Load(cachePath);
+        legacyCache.GetEntries(
+            path,
+            info.Length,
+            info.LastWriteTimeUtc,
+            _ => new[]
+            {
+                new TokenUsageEntry(
+                    1,
+                    nowUtc,
+                    UsageService.Codex,
+                    "unknown",
+                    0,
+                    0,
+                    0,
+                    0,
+                    1000000),
+            });
+        legacyCache.Save();
+
+        var vm = new DashboardViewModel(
+            Pricing,
+            claudeProjectsDirectory: Path.Combine(directory.Path, "no-claude"),
+            codexSessionsDirectory: codexDir,
+            cachePath: cachePath,
+            timeZone: TimeZoneInfo.Utc);
+
+        var data = await vm.LoadAsync(CancellationToken.None);
+
+        Assert.Equal(30m, data.Today.CodexCostUsd);
+        Assert.Equal("gpt-5.6-sol", Assert.Single(data.Models).Model);
+    }
+
+    [Fact]
     public async Task LoadAsync_SkipsLockedFiles_AndStillSavesTheCache()
     {
         using var directory = new TempDirectory();
