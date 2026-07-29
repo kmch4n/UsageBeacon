@@ -15,22 +15,47 @@
         The widget sits next to the taskbar at the same height.
         AllowsTransparency keeps the idle surface visually integrated with the taskbar.
     -->
-    <Border x:Name="Root"
-            CornerRadius="6"
+    <Button x:Name="Root"
             Cursor="Hand"
-            MouseLeftButtonDown="Root_Click">
-
-        <!-- Remain transparent until hover so the widget blends into the taskbar. -->
-        <Border.Style>
-            <Style TargetType="Border">
-                <Setter Property="Background" Value="Transparent"/>
-                <Style.Triggers>
+            Background="Transparent"
+            BorderThickness="0"
+            Padding="0"
+            Click="Root_Click">
+        <Button.Template>
+            <ControlTemplate TargetType="Button">
+                <Grid>
+                    <Border x:Name="BackgroundBorder"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="6">
+                        <ContentPresenter/>
+                    </Border>
+                    <Border x:Name="FocusBorder"
+                            BorderBrush="#FFFFFFFF"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Margin="1"
+                            Visibility="Collapsed"
+                            IsHitTestVisible="False"/>
+                </Grid>
+                <ControlTemplate.Triggers>
                     <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="#26FFFFFF"/>
+                        <Setter TargetName="BackgroundBorder"
+                                Property="Background"
+                                Value="#26FFFFFF"/>
                     </Trigger>
-                </Style.Triggers>
-            </Style>
-        </Border.Style>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter TargetName="BackgroundBorder"
+                                Property="Background"
+                                Value="#40FFFFFF"/>
+                    </Trigger>
+                    <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Setter TargetName="FocusBorder"
+                                Property="Visibility"
+                                Value="Visible"/>
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+        </Button.Template>
 
         <Grid>
         <StackPanel x:Name="WideContent" Orientation="Horizontal"
@@ -111,5 +136,5 @@
         </StackPanel>
 
         </Grid>
-    </Border>
+    </Button>
 </Window>

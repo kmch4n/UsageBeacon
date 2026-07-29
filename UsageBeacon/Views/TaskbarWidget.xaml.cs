@@ -1,11 +1,13 @@
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Input;
+using System.Windows.Automation;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using UsageBeacon.Localization;
 using UsageBeacon.Utilities;
 using UsageBeacon.ViewModels;
 using MediaColor = System.Windows.Media.Color;
+using WpfButton = System.Windows.Controls.Button;
 
 namespace UsageBeacon.Views;
 
@@ -47,14 +49,29 @@ public partial class TaskbarWidget : Window
         InitializeComponent();
         Loaded += OnLoaded;
         Closed += OnClosed;
+        LocalizationService.LanguageChanged += OnLanguageChanged;
         vm.SnapshotChanged += () => Dispatcher.Invoke(UpdateLabels);
+        ApplyLocalization();
         UpdateLabels();
     }
+
+    internal WpfButton ToggleButton => Root;
 
     private void OnClosed(object? sender, EventArgs e)
     {
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        LocalizationService.LanguageChanged -= OnLanguageChanged;
         _topmostTimer?.Stop();
+    }
+
+    private void OnLanguageChanged()
+        => Dispatcher.Invoke(ApplyLocalization);
+
+    private void ApplyLocalization()
+    {
+        var accessibleName = LocalizationService.Get("WidgetOpenUsage");
+        AutomationProperties.SetName(Root, accessibleName);
+        Root.ToolTip = accessibleName;
     }
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e)
@@ -235,6 +252,6 @@ public partial class TaskbarWidget : Window
 
     // Toggle the detail popup on click.
 
-    private void Root_Click(object sender, MouseButtonEventArgs e)
+    private void Root_Click(object sender, RoutedEventArgs e)
         => PopupToggleRequested?.Invoke();
 }
