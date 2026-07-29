@@ -1,5 +1,4 @@
 using System.IO;
-using System.Security.AccessControl;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -102,7 +101,6 @@ public sealed class ClaudeCredentialFileStore : IClaudeCredentialStore
         try
         {
             await WriteThroughAsync(
-                path,
                 tempPath,
                 root.ToJsonString(JsonOptions) + "\n",
                 ct);
@@ -154,7 +152,6 @@ public sealed class ClaudeCredentialFileStore : IClaudeCredentialStore
         left.Scopes.SequenceEqual(right.Scopes, StringComparer.Ordinal);
 
     private static async Task WriteThroughAsync(
-        string sourcePath,
         string path,
         string contents,
         CancellationToken ct)
@@ -169,10 +166,6 @@ public sealed class ClaudeCredentialFileStore : IClaudeCredentialStore
         {
             emptyStream.Flush(flushToDisk: true);
         }
-
-        var accessRules = new FileInfo(sourcePath)
-            .GetAccessControl(AccessControlSections.Access);
-        new FileInfo(path).SetAccessControl(accessRules);
 
         await using var stream = new FileStream(
             path,

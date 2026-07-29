@@ -1,4 +1,5 @@
 using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using UsageBeacon.Providers;
@@ -57,20 +58,46 @@ public sealed class ClaudeCredentialFileStoreTests : IDisposable
     {
         var path = CreateCredentialFile();
         var original = await ReadCredentialAsync(path);
-        var before = new FileInfo(path)
-            .GetAccessControl(AccessControlSections.Access)
-            .GetSecurityDescriptorSddlForm(AccessControlSections.Access);
+        var before = ReadDacl(path);
         var store = new ClaudeCredentialFileStore();
 
         var result = await store.PersistRefreshedCredentialAsync(
             original,
             original with { AccessToken = "new-access" });
 
-        var after = new FileInfo(path)
-            .GetAccessControl(AccessControlSections.Access)
-            .GetSecurityDescriptorSddlForm(AccessControlSections.Access);
+        var after = ReadDacl(path);
         Assert.Equal(ClaudeCredentialPersistenceStatus.Persisted, result);
-        Assert.Equal(before, after);
+        Assert.Equal(before.IsProtected, after.IsProtected);
+        Assert.Equal(before.Rules, after.Rules);
+    }
+
+    [Fact]
+    public async Task PersistRefreshedCredentialAsync_PreservesProtectedAllowAndDenyRules()
+    {
+        var path = CreateCredentialFile();
+        var security = new FileInfo(path).GetAccessControl(AccessControlSections.Access);
+        security.SetAccessRuleProtection(isProtected: true, preserveInheritance: true);
+        security.AddAccessRule(new FileSystemAccessRule(
+            new SecurityIdentifier("S-1-5-21-1-2-3-1001"),
+            FileSystemRights.ReadAttributes,
+            AccessControlType.Allow));
+        security.AddAccessRule(new FileSystemAccessRule(
+            new SecurityIdentifier("S-1-5-21-1-2-3-1002"),
+            FileSystemRights.WriteAttributes,
+            AccessControlType.Deny));
+        new FileInfo(path).SetAccessControl(security);
+        var before = ReadDacl(path);
+        var original = await ReadCredentialAsync(path);
+        var store = new ClaudeCredentialFileStore();
+
+        var result = await store.PersistRefreshedCredentialAsync(
+            original,
+            original with { AccessToken = "new-access" });
+
+        var after = ReadDacl(path);
+        Assert.Equal(ClaudeCredentialPersistenceStatus.Persisted, result);
+        Assert.True(after.IsProtected);
+        Assert.Equal(before.Rules, after.Rules);
     }
 
     [Fact]
@@ -232,6 +259,39 @@ public sealed class ClaudeCredentialFileStoreTests : IDisposable
                 Path.GetFullPath(path)),
         };
     }
+
+    private static DaclSnapshot ReadDacl(string path)
+    {
+        var security = new FileInfo(path).GetAccessControl(AccessControlSections.Access);
+        var rules = security
+            .GetAccessRules(
+                includeExplicit: true,
+                includeInherited: true,
+                targetType: typeof(SecurityIdentifier))
+            .Cast<FileSystemAccessRule>()
+            .Select(rule => new AccessRuleSnapshot(
+                rule.IdentityReference.Value,
+                rule.AccessControlType,
+                rule.FileSystemRights,
+                rule.InheritanceFlags,
+                rule.PropagationFlags))
+            .OrderBy(rule => rule.Identity, StringComparer.Ordinal)
+            .ThenBy(rule => rule.AccessControlType)
+            .ThenBy(rule => rule.Rights)
+            .ToArray();
+        return new DaclSnapshot(security.AreAccessRulesProtected, rules);
+    }
+
+    private sealed record DaclSnapshot(
+        bool IsProtected,
+        IReadOnlyList<AccessRuleSnapshot> Rules);
+
+    private sealed record AccessRuleSnapshot(
+        string Identity,
+        AccessControlType AccessControlType,
+        FileSystemRights Rights,
+        InheritanceFlags InheritanceFlags,
+        PropagationFlags PropagationFlags);
 
     private sealed class FileCredentialSource(string path) : IClaudeCredentialSource
     {
