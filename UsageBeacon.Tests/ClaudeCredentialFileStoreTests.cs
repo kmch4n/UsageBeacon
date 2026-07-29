@@ -275,6 +275,9 @@ public sealed class ClaudeCredentialFileStoreTests : IDisposable
                 rule.FileSystemRights,
                 rule.InheritanceFlags,
                 rule.PropagationFlags))
+            // ReplaceFile can materialize an identical ACE twice on some
+            // Windows versions. Duplicate ACEs do not change effective access.
+            .Distinct()
             .OrderBy(rule => rule.Identity, StringComparer.Ordinal)
             .ThenBy(rule => rule.AccessControlType)
             .ThenBy(rule => rule.Rights)
