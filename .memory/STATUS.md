@@ -1,6 +1,6 @@
 # Current Repository Status
 
-Last verified: 2026-07-27
+Last verified: 2026-07-29
 
 ## Git and naming state
 
@@ -76,7 +76,7 @@ Manual verification remains pending for: dashboard visuals in both themes and la
 
 A three-agent verification pass on 2026-07-20 confirmed measurement accuracy empirically: Codex reader sums matched the final cumulative `total_token_usage` of three large real rollout files exactly; Claude 30-day per-model costs matched ccusage to the cent for opus/haiku models (Codex-side deltas vs ccusage stem from ccusage excluding reasoning tokens from output — our counts match the session files and OpenAI billing semantics); cold scan of the ~1 GB corpus took ~3.1 s. Fixes applied from the review: per-file error isolation in the scan, atomic cache save, case-insensitive cache reload, `gpt-5.1-codex-mini` and `gpt-5.4` price entries, and `claude-sonnet-5` at the official introductory price.
 
-Pending price change: raise `claude-sonnet-5` in `UsageBeacon/Resources/model-pricing.json` from the introductory $2/$10 (cache 2.50/4/0.20) to the standard $3/$15 (cache 3.75/6/0.30) after 2026-08-31.
+The `claude-sonnet-5` price change is now scheduled in `UsageBeacon/Resources/model-pricing.json`: usage through 2026-08-31 keeps the introductory $2/$10 rate (cache 2.50/4/0.20), and usage from 2026-09-01 UTC uses the standard $3/$15 rate (cache 3.75/6/0.30).
 
 Claude Opus 5 pricing support was added on 2026-07-29:
 
@@ -85,6 +85,23 @@ Claude Opus 5 pricing support was added on 2026-07-29:
 - `ModelPricingCatalogTests` reads the real embedded pricing source file and guards the model identifier, rates, pricing date, and full-bucket cost calculation.
 - `dotnet test UsageBeacon.sln -c Debug`: 134 passed, 0 failed.
 - `dotnet build UsageBeacon.sln -c Debug --no-restore` and `-c Release --no-restore`: 0 warnings, 0 errors.
+
+## Reliability and accessibility hardening
+
+The prioritized hardening pass was implemented on 2026-07-29:
+
+- The CI-sensitive OAuth file test compares normalized DACL semantics instead of unstable SDDL text, and credential replacement relies on `File.Replace` to preserve the destination DACL.
+- Crash-log redaction fails closed on regex timeout.
+- Claude and Codex JSONL readers reject wrong types and invalid counters per line; rejected Codex lines do not advance the cumulative baseline.
+- WSL credential discovery uses timeout-bounded `wsl.exe` calls per distribution, drains both output streams, kills timed-out process trees, and never performs UNC credential-file reads.
+- Pricing schedules select rates using each usage event's UTC timestamp while preserving legacy single-object overrides.
+- Settings and startup changes roll back on failure and show a localized inline error. Malformed settings are backed up before defaults can overwrite them.
+- The taskbar widget is a keyboard-focusable Button with Enter/Space activation, visible focus, localized UI Automation naming, and Invoke support.
+- `dotnet build UsageBeacon.sln -c Debug --no-restore`: 0 warnings, 0 errors.
+- `dotnet build UsageBeacon.sln -c Release --no-restore`: 0 warnings, 0 errors.
+- `dotnet test UsageBeacon.sln -c Debug --no-build --no-restore`: 160 passed, 0 failed.
+
+Manual verification remains pending for the localized settings error presentation, taskbar keyboard focus behavior in the live shell, WSL discovery against multiple installed distributions, and the ACL test on a GitHub-hosted Windows runner.
 
 ## Backend hardening validation
 

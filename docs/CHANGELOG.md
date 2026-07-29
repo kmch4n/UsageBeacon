@@ -13,11 +13,19 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 ### Changed
 
 - The usage dashboard's parse cache now keeps 180 days of history and drops older entries, so the cache reaches a bounded size instead of growing indefinitely. Displayed figures are unaffected.
+- Model prices may now use effective-dated schedules, so historical usage keeps the rate that applied when it occurred.
+- The taskbar widget now supports keyboard activation, a visible focus indicator, and UI Automation Invoke.
 
 ### Fixed
 
 - The usage dashboard no longer fails to load when a session log directory cannot be read. Unreadable directories are skipped instead of ending the whole scan.
 - Claude Opus 5 session usage is now included in dashboard cost estimates.
+- The Claude Sonnet 5 introductory price now changes automatically to its standard rate on 2026-09-01 UTC.
+- Malformed token counters and wrong-typed JSONL fields are skipped without aborting a scan or corrupting Codex cumulative baselines.
+- WSL credential discovery no longer blocks indefinitely on process output or UNC file access, and resolves each distribution's own home directory.
+- Crash redaction timeouts now omit the original crash details instead of risking an unredacted log record.
+- OAuth credential replacement preserves the destination DACL without relying on unstable SDDL string formatting.
+- Failed settings and start-at-sign-in changes now roll back in the UI and show a localized error; malformed settings files are preserved for recovery.
 
 ## 1.0.0 - 2026-07-20
 
