@@ -4,15 +4,19 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+## 1.1.0 - 2026-07-31
+
 ### Added
 
 - Usage dashboard window showing estimated USD costs for today, the last 7 days, and the last 30 days, with a daily chart and per-model breakdown computed from local Claude Code and Codex session logs.
+- "Recorded on this PC" lifetime cost card on the dashboard, split into Claude and Codex. It covers all usage UsageBeacon has retained locally and reports the earliest retained record as a lower bound, not an account-level total.
 - Local crash log at `%LOCALAPPDATA%\UsageBeacon\logs\crash.log` for unhandled exceptions. It is size-capped, redacted for local paths, account name, and credential-shaped values, and is never transmitted.
 - Releases are now built by GitHub Actions from the tagged source and published with a SHA-256 checksum.
 
 ### Changed
 
-- The usage dashboard's parse cache now keeps 180 days of history and drops older entries, so the cache reaches a bounded size instead of growing indefinitely. Displayed figures are unaffected.
+- The usage dashboard's parse cache now keeps 180 days of detailed history and archives older usage in a compact, pricing-neutral form instead of discarding it, so the cache stays bounded while lifetime estimates survive log pruning and are recalculated after a price-table update.
+- Cached parse results are refreshed automatically when the log parser itself changes, so a parser fix applies to logs that were already scanned.
 - Model prices may now use effective-dated schedules, so historical usage keeps the rate that applied when it occurred.
 - The taskbar widget now supports keyboard activation, a visible focus indicator, and UI Automation Invoke.
 
@@ -20,6 +24,9 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 - The usage dashboard no longer fails to load when a session log directory cannot be read. Unreadable directories are skipped instead of ending the whole scan.
 - Claude Opus 5 session usage is now included in dashboard cost estimates.
+- GPT-5.2 Codex usage is now priced instead of being excluded from cost totals.
+- Usage from an in-progress Codex session is now counted. Rollout files still held open by the CLI are read instead of skipped.
+- Codex usage recorded before a session declares its model is now attributed to the first model observed in that session instead of being reported as unknown.
 - The Claude Sonnet 5 introductory price now changes automatically to its standard rate on 2026-09-01 UTC.
 - Malformed token counters and wrong-typed JSONL fields are skipped without aborting a scan or corrupting Codex cumulative baselines.
 - WSL credential discovery no longer blocks indefinitely on process output or UNC file access, and resolves each distribution's own home directory.
