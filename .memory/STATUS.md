@@ -1,6 +1,6 @@
 # Current Repository Status
 
-Last verified: 2026-07-29
+Last verified: 2026-07-31
 
 ## Git and naming state
 
@@ -12,6 +12,18 @@ Last verified: 2026-07-29
 - Release v1.0.0 (2026-07-20) is the first fork release. Fork versioning restarts at 1.0.0: the fork diverged from upstream after its v0.2.0, so upstream tags v0.3.0 and v0.4.0 are not ancestors of `main` and continuing that numbering would misrepresent the contents. Repository topics were set on the same date.
 
 Remote facts are drift-prone and must be verified with `git remote -v` before relying on them.
+
+## Release v1.1.0 validation
+
+Release v1.1.0 was published on 2026-07-31 (2026-07-30 UTC), the first release produced by the tag workflow rather than by hand:
+
+- Pre-tag local checks: `dotnet test UsageBeacon.sln -c Debug` 184 passed, 0 failed; `dotnet build` in Debug and Release, 0 warnings, 0 errors.
+- `.github/workflows/release.yml` run 30562112449 succeeded on every step, including the tag/version gate.
+- Both assets were attached: `UsageBeacon.exe` (161,926,378 bytes) and `UsageBeacon.exe.sha256`.
+- Checksum verified end to end: the published `UsageBeacon.exe.sha256` content equals GitHub's own asset digest, `db4c962475f43e1f1618d8390c5400b7fcebe5e6f0236a4ebf04eb26e65ee185`. The verification command documented in the README therefore matches.
+- `docs/CHANGELOG.md` needed three entries that the lifetime-usage commits had not recorded (lifetime cost card, archived retention plus parser-revision cache invalidation, and the Codex active-session and pre-`turn_context` attribution fixes). Changelog entries must be written in the same commit as the change; the release step is too late to reconstruct them reliably.
+
+Pending: `publish/latest/UsageBeacon.exe` is still 1.0.0. The application was running during the release, which locks that path, so refreshing the persistent local executable requires exiting UsageBeacon first.
 
 ## Shared agent configuration
 
