@@ -39,6 +39,10 @@ on 2026-08-16. Retaking them has constraints that are not visible from the files
   bleeds the desktop behind it into the image. Set transparency to 0% while capturing.
 - Window rectangles must be read with the capturing process marked DPI-aware, otherwise the coordinates
   do not match the physical pixels that a screen copy returns.
+- `GetWindowRect` includes the shadow margin and the popup's corners are rounded, so a capture at the
+  reported rectangle keeps desktop pixels in the corner arcs. Crop inside the arc (about 14 px per side
+  for the popup at 150% scaling) rather than to the border stroke; cropping to the stroke leaves
+  visible background at the corners.
 - The taskbar widget exposes the UIA Invoke pattern (D-014), so the popup and dashboard can be opened
   without synthetic mouse input.
 
