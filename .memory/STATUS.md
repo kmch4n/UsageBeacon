@@ -25,6 +25,46 @@ Release v1.1.0 was published on 2026-07-31 (2026-07-30 UTC), the first release p
 
 Pending: `publish/latest/UsageBeacon.exe` is still 1.0.0. The application was running during the release, which locks that path, so refreshing the persistent local executable requires exiting UsageBeacon first.
 
+## README screenshots
+
+`README.md` embeds three PNGs under `docs/images/` that were captured from a live UsageBeacon process
+on 2026-08-16. Retaking them has constraints that are not visible from the files themselves:
+
+- The captures are real usage data. Every USD amount in `dashboard.png` is blurred, and a replacement
+  must be masked the same way. Token counts, the daily chart, reset times, and utilization percentages
+  are intentionally left readable.
+- Screenshots use the English UI because repository documentation is English (D-003). The app language
+  must be switched to English for the capture and restored afterward.
+- The popup composes its surface with the transparency setting (D-009), so any non-zero transparency
+  bleeds the desktop behind it into the image. Set transparency to 0% while capturing.
+- Window rectangles must be read with the capturing process marked DPI-aware, otherwise the coordinates
+  do not match the physical pixels that a screen copy returns.
+- The taskbar widget exposes the UIA Invoke pattern (D-014), so the popup and dashboard can be opened
+  without synthetic mouse input.
+
+A dashboard window was seen once during the capture in a loaded-but-hidden state (`WS_VISIBLE`
+clear), after which the popup's "Open" button did nothing. The investigation on 2026-08-16 did not
+establish a root cause and did not reproduce it:
+
+- No application code hides a window other than the popup's own `Deactivated` handler
+  (`App.xaml.cs:110`). `TaskbarWidget` declares `SW_HIDE` but never uses it, and its `ShowWindow`
+  call targets the widget's own handle.
+- An open dashboard stayed visible across a 60-second observation with no external window calls.
+- The state is reachable in principle, because `App.OpenDashboard` calls only `Activate()` when
+  `_dashboard is { IsLoaded: true }`, and `Activate()` does not restore a hidden window. Whether
+  normal interaction can produce that state is unknown.
+
+The single observation followed direct `ShowWindow`/`BringWindowToTop`/`SetForegroundWindow` calls
+from the capture tooling, so external manipulation is the more likely cause than an application
+defect. No code change was made. Treat this as an open question, not a confirmed bug.
+
+`docs/NOTICE.md` and `README.md` both link to `https://github.com/satonico/Token-Checker`, which
+returned HTTP 404 on 2026-08-16. Upstream's own README carries the same dead link, so the repository
+appears to have been removed or made private rather than the reference being wrong. The name
+`satonico224` matches the copyright holder in both the upstream and local `LICENSE`. The link is kept
+because it is still the canonical reference for the original work; changing it touches D-001
+attribution and should be a deliberate decision across both files.
+
 ## Shared agent configuration
 
 - `.codex/AGENTS.md` is the canonical repository agent guidance.
