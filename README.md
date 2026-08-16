@@ -47,7 +47,7 @@ Claude Code and Codex are both optional; either one can be used on its own.
 
 The widget stays on the taskbar and updates on your chosen interval:
 
-<img src="docs/images/widget.png" alt="UsageBeacon taskbar widget showing Claude and Codex percentages" width="213">
+<img src="docs/images/widget.png" alt="UsageBeacon taskbar widget showing Claude and Codex percentages" width="177">
 
 The dashboard estimates costs for today, the last 7 days, and the last 30 days, with a daily chart
 and a per-model breakdown:

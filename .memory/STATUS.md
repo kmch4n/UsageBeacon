@@ -43,6 +43,9 @@ on 2026-08-16. Retaking them has constraints that are not visible from the files
   reported rectangle keeps desktop pixels in the corner arcs. Crop inside the arc (about 14 px per side
   for the popup at 150% scaling) rather than to the border stroke; cropping to the stroke leaves
   visible background at the corners.
+- The widget sits next to the notification area, so a capture with margin picks up the overflow
+  chevron and the user's tray icons. Crop to the widget's own window rectangle, which already leaves
+  even padding around the glyphs, and verify that no content columns fall outside it.
 - The taskbar widget exposes the UIA Invoke pattern (D-014), so the popup and dashboard can be opened
   without synthetic mouse input.
 
