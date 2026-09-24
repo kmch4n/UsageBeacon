@@ -1,10 +1,20 @@
 # Current Repository Status
 
-Last verified: 2026-07-31
+Last verified: 2026-09-25
+
+## Release v1.2.0 validation
+
+Release v1.2.0 was published on 2026-09-25 JST (2026-09-24 UTC) from tag `v1.2.0` at `353810e1190d04ae6b32514bdb298be98b93a162`:
+
+- Local Debug and Release test suites each passed 236 tests. A self-contained single-file `win-x64` publish completed and its executable started successfully.
+- Main CI run `36026549826` and tag release run `36026838666` both succeeded, including version matching, tests, publish, checksum generation, and release creation.
+- The published release contains curated notes, `UsageBeacon.exe`, and `UsageBeacon.exe.sha256`. The checksum file matches GitHub's executable digest `0d0420f724b43b7f0e097ec276be3dc7d83e50938bfe2e342c2ec48752b92954`.
+- README dashboard screenshots were captured from the actual WPF view with illustrative data. They contain no personal usage history, account identifiers, or text/EXIF metadata. An independent release review found two documentation/visual issues; the dashboard scrollbar and release procedure were corrected before publication.
+- Issues #17 and #18 were included in the release but their GitHub Issue states were not changed. The Actions runs emitted a Node.js 20 deprecation notice for `actions/checkout@v4` and `actions/setup-dotnet@v4`; it did not fail either run.
 
 ## Issues 17 and 18 local validation (2026-09-12)
 
-- Working-tree fixes apply full-response HTTP limits (D-016) and structured crash redaction (D-012 amendment). They are not committed or released; Issue states have not been changed.
+- At this 2026-09-12 local validation, the full-response HTTP limits (D-016) and structured crash redaction (D-012 amendment) were uncommitted and unreleased. They were subsequently released in v1.2.0; Issue states were not changed.
 - Red phase: 12 expected HTTP/redaction failures, a separate view-model body-timeout failure, then three additional structured-value failures. A final punctuation case caught a regression during self-review before it was corrected.
 - Final `dotnet test UsageBeacon.sln -c Debug --no-restore`: 210 passed, 0 failed, 0 skipped (26 added cases over the prior 184).
 - Final Debug and Release builds: 0 warnings, 0 errors. `git diff --check` passed.
@@ -38,14 +48,14 @@ Pending: `publish/latest/UsageBeacon.exe` is still 1.0.0. The application was ru
 
 ## README screenshots
 
-`README.md` embeds three PNGs under `docs/images/` that were captured from a live UsageBeacon process
-on 2026-08-16. Retaking them has constraints that are not visible from the files themselves:
+`README.md` embeds PNGs under `docs/images/`. The widget and popup were captured from a live
+UsageBeacon process on 2026-08-16. The two dashboard images were recaptured on 2026-09-25 from
+the actual WPF view using illustrative data in a separate screenshot process:
 
-- The captures are real usage data. Every USD amount in `dashboard.png` is blurred, and a replacement
-  must be masked the same way. Token counts, the daily chart, reset times, and utilization percentages
-  are intentionally left readable.
-- Screenshots use the English UI because repository documentation is English (D-003). The app language
-  must be switched to English for the capture and restored afterward.
+- The dashboard images expose no personal usage data. Future replacements should preserve that
+  property rather than relying on blur. The widget and popup still show live utilization data.
+- Screenshots use the English UI because repository documentation is English (D-003). The separate
+  dashboard process sets English without changing the user's app language preference.
 - The popup composes its surface with the transparency setting (D-009), so any non-zero transparency
   bleeds the desktop behind it into the image. Set transparency to 0% while capturing.
 - Window rectangles must be read with the capturing process marked DPI-aware, otherwise the coordinates
@@ -108,7 +118,7 @@ The dashboard lifetime-cost implementation was revised on 2026-07-30:
 
 - The card reports total API-price-equivalent USD with a Claude/Codex split and the earliest retained local day. It is labeled as locally recorded history and warns that deleted-before-scan logs or cache loss can leave gaps.
 - Detailed entries remain associated with their files for 180 days. Older events move to a path-independent schema-v2 archive that keeps the exact timestamp, service, model, five token buckets, and identity hash, allowing historical repricing and future-record exclusion. Archived model names are table-encoded and events use compact positional JSON rows.
-- Schema-v1 token-only archives are reparsed once. Recovered identities become exact v2 events; unrecoverable totals remain explicitly unpriced and produce a `+` notice instead of a fabricated service split.
+- Schema-v1 token-only archives are reparsed once. Recovered identities become exact v2 events; unrecoverable totals remain explicitly unpriced. The dashboard now uses a written coverage note instead of a `+` suffix or fabricated service split.
 - Cache saves are dirty-only and stream JSON directly to the temporary file before replacement.
 - Automated coverage includes Claude/Codex lifetime separation, all token price buckets, exact effective-time boundaries, later pricing of archived unknown models, future archived events, v1 recovered and unrecoverable migration, deduplication, large histories, and dirty-only saving.
 - The real migrated history exposed `gpt-5.2-codex` as the only unknown model. Its official $1.75 input / $0.175 cached input / $14 output rates were added to the embedded catalog.
