@@ -4,6 +4,25 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+## 1.2.0 - 2026-09-25
+
+### Added
+
+- Aligned daily charts for estimated cost by service and input/output token volume, with 7-day and 30-day views, rounded axes, peak-day shortcuts, and a selectable daily numeric grid.
+- USD, JPY, and EUR dashboard display options. JPY and EUR use fixed approximate rates while stored estimates remain in USD.
+- Published Standard short-context API rates for GPT-6 Astra and GPT-6 Sol, so their locally recorded usage contributes to cost estimates.
+
+### Changed
+
+- The dashboard now uses a theme-aware integrated title bar and keeps the lifetime, today, 7-day, and 30-day cards above the daily analysis.
+- Cost coverage is stated explicitly where model prices or older source logs are unavailable; ambiguous `+` suffixes were removed.
+- Dashboard screenshots now use illustrative usage data and show both the chart overview and daily figures.
+
+### Fixed
+
+- Claude usage and OAuth responses now apply the configured timeout and 64 KiB size limit to the complete response body, preventing a stalled body from indefinitely blocking usage refreshes.
+- Crash logs now mask complete quoted credential values, including whitespace and escaped quotes. Compound or escaped credential representations omit the remaining record conservatively. Log-sharing guidance now explains that redaction is best effort.
+
 ## 1.1.0 - 2026-07-31
 
 ### Added

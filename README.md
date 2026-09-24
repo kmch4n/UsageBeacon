@@ -49,14 +49,19 @@ The widget stays on the taskbar and updates on your chosen interval:
 
 <img src="docs/images/widget.png" alt="UsageBeacon taskbar widget showing Claude and Codex percentages" width="177">
 
-The dashboard estimates costs for today, the last 7 days, and the last 30 days, with a daily chart
-and a per-model breakdown:
+The dashboard puts locally retained lifetime, today, 7-day, and 30-day estimates above aligned
+cost and token charts:
 
-<img src="docs/images/dashboard.png" alt="UsageBeacon usage dashboard with cost cards, daily chart, and per-model table" width="820">
+<img src="docs/images/dashboard.png" alt="UsageBeacon dashboard with summary cards and aligned daily cost and token charts" width="820">
+
+The daily figures below the charts show each day's estimated cost and token count without hovering.
+Select a day to see its service split and exact input and output totals:
+
+<img src="docs/images/dashboard-daily.png" alt="Daily cost and token figures with selected-day details in the UsageBeacon dashboard" width="820">
 
 > [!NOTE]
-> Dollar amounts are blurred in the screenshot above. They are real values from the author's machine,
-> not a limitation of the app.
+> The dashboard screenshots were captured from the app with illustrative usage data. They do not
+> show the author's usage history.
 
 ## Requirements
 
@@ -147,6 +152,11 @@ Codex already write locally (`~/.claude/projects` and `~/.codex/sessions`), pric
 embedded per-model table, and reports estimated costs for today, the last 7 days, and the last 30
 days, plus a lifetime total split between Claude and Codex.
 
+Choose USD, JPY, or EUR at the top of the dashboard. JPY and EUR use fixed approximate display
+rates; the underlying estimates stay in USD. Switch between 7-day and 30-day views to compare
+daily estimated cost and token volume, and select a day for exact figures. The model breakdown
+is available below the charts.
+
 > [!NOTE]
 > These are API-price equivalents, not bills. Subscription plans do not charge per token. The
 > lifetime figure covers only what UsageBeacon has retained on this computer, so logs deleted before
@@ -166,7 +176,9 @@ See [the dashboard documentation](docs/DASHBOARD.md) for data sources, retention
   price override, and crash logs live in `%LOCALAPPDATA%\UsageBeacon`.
 - There is no telemetry and no analytics. Unhandled exceptions go only to
   `%LOCALAPPDATA%\UsageBeacon\logs\crash.log`, a size-capped local file that is never transmitted and
-  is redacted for your profile path, account name, and credential-shaped values.
+  uses best-effort redaction for your profile path, account name, and recognized credential fields
+  and token formats. Review the complete record and remove remaining sensitive information before
+  sharing it; arbitrary exception text may contain data the redactor cannot recognize.
 
 When upgrading from Token Checker for Windows, UsageBeacon migrates `%APPDATA%\TokenChecker` and the
 legacy startup entry automatically. If migration is blocked, it keeps using the existing data

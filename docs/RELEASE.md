@@ -9,7 +9,9 @@ workflow uses only the automatic `GITHUB_TOKEN`; no additional secrets are confi
 2. Update `<Version>` in `UsageBeacon/UsageBeacon.csproj`.
 3. In `docs/CHANGELOG.md`, rename `## Unreleased` to `## X.Y.Z - YYYY-MM-DD` and add a fresh
    `## Unreleased` heading above it.
-4. Run the local checks with UsageBeacon not running, because a live process locks the output paths:
+4. Write `docs/releases/vX.Y.Z.md` when the release needs curated notes. If the file is absent,
+   the workflow falls back to GitHub's generated notes.
+5. Run the local checks with UsageBeacon not running, because a live process locks the output paths:
 
     ```powershell
     dotnet test UsageBeacon.sln -c Debug
@@ -18,13 +20,13 @@ workflow uses only the automatic `GITHUB_TOKEN`; no additional secrets are confi
     ```
 
    `ReleaseMetadataTests` fails if the project version and the newest changelog heading disagree.
-5. Commit the version and changelog changes.
+6. Commit the version, changelog, and release notes with the implementation.
 
 ## Tagging
 
 ```powershell
-git tag v1.1.0
-git push fork v1.1.0
+git tag v1.2.0
+git push fork v1.2.0
 ```
 
 The tag name must be the project version with a leading `v`. The workflow verifies this before it
@@ -37,7 +39,8 @@ was not built from.
 2. Runs the test suite.
 3. Publishes the self-contained single-file `win-x64` executable.
 4. Writes `UsageBeacon.exe.sha256` next to it.
-5. Creates the GitHub release with both files attached and generated notes.
+5. Creates the GitHub release with both files attached. It uses `docs/releases/vX.Y.Z.md` when
+   present and generates notes only when no dedicated file exists.
 
 ## After the run
 
