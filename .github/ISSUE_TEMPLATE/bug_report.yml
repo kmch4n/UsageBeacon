@@ -80,7 +80,8 @@ body:
           label: Additional context
           description: >-
               Add sanitized logs, screenshots, or other context. If the application crashed, attach
-              the relevant record from %LOCALAPPDATA%\UsageBeacon\logs\crash.log; it is already
-              redacted for your account name, profile path, and credential-shaped values. Review it
-              before pasting and remove anything else you do not want to share.
+              the relevant record from %LOCALAPPDATA%\UsageBeacon\logs\crash.log. The logger attempts
+              to mask your account name, profile path, and recognized credential fields and token
+              formats, but arbitrary exception text may contain other sensitive data. Review the
+              complete record before sharing and remove all remaining sensitive information.
           render: shell

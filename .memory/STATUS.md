@@ -2,6 +2,17 @@
 
 Last verified: 2026-07-31
 
+## Issues 17 and 18 local validation (2026-09-12)
+
+- Working-tree fixes apply full-response HTTP limits (D-016) and structured crash redaction (D-012 amendment). They are not committed or released; Issue states have not been changed.
+- Red phase: 12 expected HTTP/redaction failures, a separate view-model body-timeout failure, then three additional structured-value failures. A final punctuation case caught a regression during self-review before it was corrected.
+- Final `dotnet test UsageBeacon.sln -c Debug --no-restore`: 210 passed, 0 failed, 0 skipped (26 added cases over the prior 184).
+- Final Debug and Release builds: 0 warnings, 0 errors. `git diff --check` passed.
+- Tests use synthetic HTTP responses, credentials, and temporary directories; no live provider or real credential validation was performed. Existing timeout-redaction omission and other logger tests remain passing.
+- Independent review was requested but could not run because of an execution-service usage limit. The implementation received a local self-review; independent review remains pending.
+- Generated `UsageBeacon/bin`, `UsageBeacon/obj`, `UsageBeacon.Tests/bin`, and `UsageBeacon.Tests/obj` remain locally because execution policy rejected cleanup, including a retry with explicit verified workspace paths. `publish/latest` was not modified.
+- Plan and scope: [`docs/superpowers/plans/2026-09-12-issues-17-18.md`](../docs/superpowers/plans/2026-09-12-issues-17-18.md).
+
 ## Git and naming state
 
 - The active development branch is `main`.

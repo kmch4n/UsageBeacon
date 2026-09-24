@@ -61,7 +61,8 @@ public sealed class ClaudeOAuthClient : IClaudeTokenRefresher
         {
             response = await _http.SendAsync(
                 request,
-                HttpCompletionOption.ResponseHeadersRead,
+                // Include the body in HttpClient's timeout and buffer limit.
+                HttpCompletionOption.ResponseContentRead,
                 ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

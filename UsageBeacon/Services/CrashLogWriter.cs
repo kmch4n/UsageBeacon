@@ -37,8 +37,12 @@ public sealed class CrashLogWriter
         new(@"sk-[A-Za-z0-9]{20,}", RegexOptions.Compiled | RegexOptions.CultureInvariant, RedactionTimeout),
         new(@"eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}(\.[A-Za-z0-9_\-]+)?",
             RegexOptions.Compiled | RegexOptions.CultureInvariant, RedactionTimeout),
-        // The optional scheme keeps "Authorization: Bearer <value>" from stopping at "Bearer".
-        new(@"\b(authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|secret)\b\s*[:=]\s*(?:bearer\s+)?\S+",
+        // Consume complete quoted values, including escaped quotes and whitespace.
+        // An unterminated quoted value consumes the remaining record, failing closed.
+        // Compound or escaped representations also omit the rest of the record:
+        // finding a safe end would require parsing arbitrary exception text.
+        // The optional scheme keeps an unquoted Authorization value intact.
+        new("""\b(authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|secret)\b(?:\\?["'])?\s*[:=]\s*(?:[{\[\\][\s\S]*|"(?:\\[\s\S]|[^"\\])*(?:"|\z)|'(?:\\[\s\S]|[^'\\])*(?:'|\z)|(?:bearer\s+)?\S+)""",
             RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, RedactionTimeout),
         new(@"\bbearer\s+[A-Za-z0-9._~+/=\-]{8,}",
             RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, RedactionTimeout),

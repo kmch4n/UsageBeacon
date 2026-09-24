@@ -45,7 +45,9 @@ public sealed class AnthropicUsageApiClient : IAnthropicUsageApiClient
         HttpResponseMessage resp;
         try
         {
-            resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            // Buffer the complete response so HttpClient enforces both its
+            // deadline and size limit while reading the body, not just headers.
+            resp = await _http.SendAsync(req, HttpCompletionOption.ResponseContentRead, ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

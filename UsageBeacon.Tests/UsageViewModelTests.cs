@@ -12,6 +12,40 @@ namespace UsageBeacon.Tests;
 public sealed class UsageViewModelTests
 {
     [Fact]
+    public async Task RefreshAsync_ReleasesGateAfterBodyTimeout_AndPublishesNextResult()
+    {
+        using var directory = new TempDirectory();
+        var requests = 0;
+        using var http = ClaudeHttpResponseTests.CreateHttp(() => ++requests == 1
+            ? new ClaudeHttpResponseTests.StalledContent()
+            : new StringContent("""{"five_hour":{"utilization":25}}"""));
+        await using var vm = CreateViewModel(directory.Path, new HttpUsageProvider(http));
+        using var cleanup = new CancellationTokenSource();
+        try
+        {
+            await vm.RefreshAsync(cleanup.Token).WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Equal(DomainErrorKind.Timeout, vm.Snapshot.ClaudeError?.Kind);
+            Assert.NotNull(vm.Snapshot.CodexUsage);
+            Assert.False(vm.IsLoading);
+
+            await vm.RefreshAsync(cleanup.Token).WaitAsync(TimeSpan.FromSeconds(3));
+            Assert.Null(vm.Snapshot.ClaudeError);
+            Assert.Equal(0.25, vm.Snapshot.ClaudeUsage?.FiveHour?.Utilization);
+        }
+        finally { cleanup.Cancel(); }
+    }
+
+    private sealed class HttpUsageProvider(HttpClient http) : IUsageProvider
+    {
+        public async Task<ServiceUsage> FetchAsync(CancellationToken ct = default)
+        {
+            var cl = new AnthropicUsageApiClient(http);
+            var usage = await cl.FetchAsync("test-access", ct);
+            return new ServiceUsage(usage.FiveHour?.ToRateLimit(), null, null);
+        }
+    }
+
+    [Fact]
     public async Task RunPollingLoopAsync_KeepsRunning_WhenSnapshotSubscriberThrows()
     {
         using var directory = new TempDirectory();
@@ -76,6 +110,26 @@ public sealed class UsageViewModelTests
         Assert.Equal(0, claude.CallCount);
         Assert.Equal(0.42, vm.Snapshot.ClaudeUsage?.FiveHour?.Utilization);
         await vm.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task DashboardCurrency_Set_PersistsAcrossOtherSettingsChanges()
+    {
+        using var directory = new TempDirectory();
+        var vm = CreateViewModel(directory.Path, new StubUsageProvider());
+        try
+        {
+            vm.DashboardCurrency = "EUR";
+            vm.PollingInterval = PollingInterval.Min10;
+
+            var saved = new AppSettingsStore(
+                Path.Combine(directory.Path, "settings.json")).Load();
+            Assert.Equal("EUR", saved.DashboardCurrency);
+        }
+        finally
+        {
+            await vm.DisposeAsync();
+        }
     }
 
     [Fact]

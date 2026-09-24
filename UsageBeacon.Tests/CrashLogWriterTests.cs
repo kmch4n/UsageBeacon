@@ -177,6 +177,47 @@ public sealed class CrashLogWriterTests
 
     // Rotation
 
+    [Theory]
+    [InlineData("{\"refresh_token\":\"fixture alpha beta\"}")]
+    [InlineData("{\"password\" : \"fixture alpha \\\"beta\\\"\"}")]
+    [InlineData("{'accessToken': 'fixture alpha beta'}")]
+    [InlineData("password=\"fixture alpha beta\"")]
+    [InlineData("{\"SECRET\":\"fixture alpha\\nbeta\",\"status\":\"failed\"}")]
+    [InlineData("{\"password\": [\"fixture alpha beta\"]}")]
+    [InlineData("{\"secret\": {\"value\": \"fixture alpha beta\"}}")]
+    [InlineData("{\\\"refresh_token\\\":\\\"fixture alpha beta\\\"}")]
+    [InlineData("{\"password\":\"fixture alpha beta")]
+    [InlineData("password=fixture,alpha;beta")]
+    public void Redact_RemovesCompleteQuotedCredentialValues(string text)
+    {
+        var redacted = CrashLogWriter.Redact(text);
+
+        Assert.DoesNotContain("fixture", redacted);
+        Assert.DoesNotContain("alpha", redacted);
+        Assert.DoesNotContain("beta", redacted);
+        Assert.Contains("<redacted>", redacted);
+    }
+
+    [Fact]
+    public void Write_RedactsStructuredValuesThroughoutExceptionChain()
+    {
+        using var directory = new TempDirectory();
+        var writer = new CrashLogWriter(directory.Path);
+        var inner = new IOException("""{"password":"fixture inner secret"}""");
+        var exception = new InvalidOperationException(
+            """failed: {"refresh_token":"fixture outer secret","status":"retry"}""", inner);
+
+        writer.Write("Dispatcher", exception);
+
+        var text = File.ReadAllText(writer.CurrentFilePath);
+        Assert.DoesNotContain("fixture", text);
+        Assert.DoesNotContain("inner secret", text);
+        Assert.DoesNotContain("outer secret", text);
+        Assert.Contains("InvalidOperationException", text);
+        Assert.Contains("IOException", text);
+        Assert.Contains("retry", text);
+    }
+
     [Fact]
     public void Write_TruncatesOversizedRecords()
     {
