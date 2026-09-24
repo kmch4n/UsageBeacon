@@ -35,7 +35,7 @@ public static class UsageAggregator
         var todayTotals = new PeriodAccumulator();
         var weekTotals = new PeriodAccumulator();
         var monthTotals = new PeriodAccumulator();
-        var dayCosts = new Dictionary<DateOnly, (decimal Claude, decimal Codex)>();
+        var dayCosts = new Dictionary<DateOnly, PeriodAccumulator>();
         var models = new Dictionary<(string Model, UsageService Service), ModelAccumulator>();
         var unknownModels = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -97,10 +97,9 @@ public static class UsageAggregator
                 if (day >= last7Start) weekTotals.Add(entry, cost);
                 if (day == today) todayTotals.Add(entry, cost);
 
-                var costs = dayCosts.TryGetValue(day, out var existing) ? existing : (0m, 0m);
-                if (entry.Service == UsageService.Claude) costs.Item1 += cost ?? 0m;
-                else costs.Item2 += cost ?? 0m;
-                dayCosts[day] = costs;
+                if (!dayCosts.TryGetValue(day, out var daily))
+                    dayCosts[day] = daily = new PeriodAccumulator();
+                daily.Add(entry, cost);
 
                 var key = (entry.Model, entry.Service);
                 if (!models.TryGetValue(key, out var model))
@@ -112,8 +111,11 @@ public static class UsageAggregator
         var days = new List<DailyUsagePoint>(30);
         for (var day = last30Start; day <= today; day = day.AddDays(1))
         {
-            var costs = dayCosts.TryGetValue(day, out var found) ? found : (0m, 0m);
-            days.Add(new DailyUsagePoint(day, costs.Item1, costs.Item2));
+            var daily = dayCosts.TryGetValue(day, out var found)
+                ? found.ToSummary()
+                : new UsagePeriodSummary(0, 0, 0, 0, 0, false);
+            days.Add(new DailyUsagePoint(day, daily.ClaudeCostUsd, daily.CodexCostUsd,
+                daily.TotalInputTokens, daily.TotalOutputTokens, daily.HasUnknownModels));
         }
 
         var breakdown = models

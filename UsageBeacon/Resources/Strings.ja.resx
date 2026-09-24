@@ -105,8 +105,25 @@
   <data name="DashboardLifetime" xml:space="preserve"><value>このPCで記録できた累計</value></data>
   <data name="DashboardLifetimeSince" xml:space="preserve"><value>保持している最古の記録: {0}。それ以前や削除済みのログは含まれない場合があります。</value></data>
   <data name="DashboardTokens" xml:space="preserve"><value>入力 {0} / 出力 {1} トークン</value></data>
-  <data name="DashboardChartTitle" xml:space="preserve"><value>日別推定コスト(過去30日)</value></data>
+  <data name="DashboardChartTitle" xml:space="preserve"><value>日別の使用状況</value></data>
+  <data name="DashboardDailyValuesTitle" xml:space="preserve"><value>日別の数値 · 推定コスト / トークン</value></data>
+  <data name="DashboardCostChartTitle" xml:space="preserve"><value>推定コスト</value></data>
+  <data name="DashboardTokenChartTitle" xml:space="preserve"><value>使用トークン数</value></data>
+  <data name="DashboardInputLegend" xml:space="preserve"><value>入力</value></data>
+  <data name="DashboardOutputLegend" xml:space="preserve"><value>出力</value></data>
+  <data name="DashboardPeakCost" xml:space="preserve"><value>料金判明分の最大 · {0} · {1}</value></data>
+  <data name="DashboardPeakTokens" xml:space="preserve"><value>トークン最多 · {0} · {1}</value></data>
+  <data name="DashboardIncompleteCost" xml:space="preserve"><value>料金不明の利用は推定コストに含みません。トークン数には含めています。</value></data>
+  <data name="DashboardIncompleteDayCost" xml:space="preserve"><value>料金不明の利用は、この日の推定コストに含みません。</value></data>
+  <data name="DashboardRange7" xml:space="preserve"><value>7日</value></data>
+  <data name="DashboardRange30" xml:space="preserve"><value>30日</value></data>
+  <data name="DashboardCurrencyNote" xml:space="preserve"><value>JPY・EUR は表示用の固定概算レート（1 USD = 150 JPY = 0.90 EUR）です。集計値は USD のまま保持します。</value></data>
+  <data name="DashboardMinimize" xml:space="preserve"><value>ダッシュボードを最小化</value></data>
+  <data name="DashboardMaximize" xml:space="preserve"><value>ダッシュボードを最大化または元に戻す</value></data>
+  <data name="DashboardClose" xml:space="preserve"><value>ダッシュボードを閉じる</value></data>
   <data name="DashboardTableTitle" xml:space="preserve"><value>モデル別(過去30日)</value></data>
+  <data name="DashboardShowBreakdown" xml:space="preserve"><value>内訳を表示</value></data>
+  <data name="DashboardHideBreakdown" xml:space="preserve"><value>内訳を閉じる</value></data>
   <data name="DashboardColModel" xml:space="preserve"><value>モデル</value></data>
   <data name="DashboardColService" xml:space="preserve"><value>サービス</value></data>
   <data name="DashboardColInput" xml:space="preserve"><value>入力</value></data>

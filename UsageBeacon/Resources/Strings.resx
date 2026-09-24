@@ -105,8 +105,25 @@
   <data name="DashboardLifetime" xml:space="preserve"><value>Recorded on this PC</value></data>
   <data name="DashboardLifetimeSince" xml:space="preserve"><value>Earliest retained record: {0}. Earlier or deleted logs may be missing.</value></data>
   <data name="DashboardTokens" xml:space="preserve"><value>Input {0} / Output {1} tokens</value></data>
-  <data name="DashboardChartTitle" xml:space="preserve"><value>Estimated cost per day (last 30 days)</value></data>
+  <data name="DashboardChartTitle" xml:space="preserve"><value>Daily usage</value></data>
+  <data name="DashboardDailyValuesTitle" xml:space="preserve"><value>Daily figures · estimated cost / tokens</value></data>
+  <data name="DashboardCostChartTitle" xml:space="preserve"><value>Estimated cost</value></data>
+  <data name="DashboardTokenChartTitle" xml:space="preserve"><value>Tokens used</value></data>
+  <data name="DashboardInputLegend" xml:space="preserve"><value>Input</value></data>
+  <data name="DashboardOutputLegend" xml:space="preserve"><value>Output</value></data>
+  <data name="DashboardPeakCost" xml:space="preserve"><value>Highest known cost · {0} · {1}</value></data>
+  <data name="DashboardPeakTokens" xml:space="preserve"><value>Most tokens · {0} · {1}</value></data>
+  <data name="DashboardIncompleteCost" xml:space="preserve"><value>Some usage has no price. Cost totals include priced usage only; token counts still include it.</value></data>
+  <data name="DashboardIncompleteDayCost" xml:space="preserve"><value>Cost excludes usage with no price.</value></data>
+  <data name="DashboardRange7" xml:space="preserve"><value>7 days</value></data>
+  <data name="DashboardRange30" xml:space="preserve"><value>30 days</value></data>
+  <data name="DashboardCurrencyNote" xml:space="preserve"><value>JPY and EUR use fixed approximate display rates: $1 = ¥150 = €0.90. USD estimates remain the source values.</value></data>
+  <data name="DashboardMinimize" xml:space="preserve"><value>Minimize dashboard</value></data>
+  <data name="DashboardMaximize" xml:space="preserve"><value>Maximize or restore dashboard</value></data>
+  <data name="DashboardClose" xml:space="preserve"><value>Close dashboard</value></data>
   <data name="DashboardTableTitle" xml:space="preserve"><value>By model (last 30 days)</value></data>
+  <data name="DashboardShowBreakdown" xml:space="preserve"><value>Show breakdown</value></data>
+  <data name="DashboardHideBreakdown" xml:space="preserve"><value>Hide breakdown</value></data>
   <data name="DashboardColModel" xml:space="preserve"><value>Model</value></data>
   <data name="DashboardColService" xml:space="preserve"><value>Service</value></data>
   <data name="DashboardColInput" xml:space="preserve"><value>Input</value></data>

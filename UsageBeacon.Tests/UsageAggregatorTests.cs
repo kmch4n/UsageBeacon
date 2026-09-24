@@ -102,6 +102,21 @@ public sealed class UsageAggregatorTests
     }
 
     [Fact]
+    public void Aggregate_DailyDetailsIncludeTokensAndUnknownPrice()
+    {
+        var timestamp = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc);
+        var data = Aggregate(
+            Entry(1, timestamp, input: 100, output: 40),
+            Entry(2, timestamp, model: "unknown-model", input: 50, output: 10));
+
+        Assert.Equal(150, data.Days[^1].InputTokens);
+        Assert.Equal(50, data.Days[^1].OutputTokens);
+        Assert.True(data.Days[^1].HasUnknownModels);
+        Assert.Equal(0, data.Days[^2].InputTokens);
+        Assert.False(data.Days[^2].HasUnknownModels);
+    }
+
+    [Fact]
     public void Aggregate_FlagsUnknownModels_AndExcludesThemFromCost()
     {
         var timestamp = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc);

@@ -274,12 +274,13 @@ public partial class App : System.Windows.Application
 
     private void OpenDashboard()
     {
+        if (_vm is null) return;
         if (_dashboard is { IsLoaded: true })
         {
             _dashboard.Activate();
             return;
         }
-        _dashboard = new DashboardWindow();
+        _dashboard = new DashboardWindow(_vm);
         _dashboard.Closed += (_, _) => _dashboard = null;
         _dashboard.Show();
         _dashboard.Activate();

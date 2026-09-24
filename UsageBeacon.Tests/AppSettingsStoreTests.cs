@@ -35,6 +35,7 @@ public sealed class AppSettingsStoreTests
             Assert.True(settings.LoginPrompted);
             Assert.Equal("system", settings.UiLanguage);
             Assert.Equal("System", settings.AppTheme);
+            Assert.Equal("USD", settings.DashboardCurrency);
         }
         finally
         {
@@ -59,6 +60,7 @@ public sealed class AppSettingsStoreTests
                 LoginPrompted = true,
                 UiLanguage = "en",
                 AppTheme = "Dark",
+                DashboardCurrency = "EUR",
             });
 
             var settings = store.Load();
@@ -67,6 +69,7 @@ public sealed class AppSettingsStoreTests
             Assert.Equal("en", settings.UiLanguage);
             Assert.Equal(600, settings.PollingInterval);
             Assert.Equal("Dark", settings.AppTheme);
+            Assert.Equal("EUR", settings.DashboardCurrency);
             Assert.Equal("en", document.RootElement.GetProperty("uiLanguage").GetString());
             Assert.Equal("Dark", document.RootElement.GetProperty("appTheme").GetString());
         }

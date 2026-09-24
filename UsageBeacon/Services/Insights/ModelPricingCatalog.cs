@@ -141,7 +141,13 @@ public sealed class ModelPricingCatalog
             var merged = new Dictionary<string, IReadOnlyList<PricingPeriod>>(
                 catalog._models, StringComparer.OrdinalIgnoreCase);
             foreach (var (key, schedule) in overlay._models) merged[key] = schedule;
-            var asOf = string.IsNullOrEmpty(overlay.AsOf) ? catalog.AsOf : overlay.AsOf;
+            var builtInDate = DateOnly.TryParseExact(catalog.AsOf, "yyyy-MM-dd",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedBuiltIn)
+                ? parsedBuiltIn : DateOnly.MinValue;
+            var overrideDate = DateOnly.TryParseExact(overlay.AsOf, "yyyy-MM-dd",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedOverride)
+                ? parsedOverride : DateOnly.MinValue;
+            var asOf = overrideDate > builtInDate ? overlay.AsOf : catalog.AsOf;
             return new ModelPricingCatalog(asOf, merged);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)

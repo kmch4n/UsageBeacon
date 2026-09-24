@@ -27,7 +27,10 @@ public sealed record LifetimeCostSummary(
 public sealed record DailyUsagePoint(
     DateOnly Day,
     decimal ClaudeCostUsd,
-    decimal CodexCostUsd)
+    decimal CodexCostUsd,
+    long InputTokens = 0,
+    long OutputTokens = 0,
+    bool HasUnknownModels = false)
 {
     public decimal TotalCostUsd => ClaudeCostUsd + CodexCostUsd;
 }

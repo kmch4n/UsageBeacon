@@ -111,7 +111,7 @@ public sealed class ModelPricingCatalogTests
         var catalog = ModelPricingCatalog.ParseDocument(File.ReadAllText(path));
 
         Assert.NotNull(catalog);
-        Assert.Equal("2026-07-30", catalog!.AsOf);
+        Assert.Equal("2026-09-25", catalog!.AsOf);
         Assert.Equal(
             new ModelPricing(5m, 0.5m, 6.25m, 10m, 25m),
             catalog.Resolve("claude-opus-5"));
@@ -130,6 +130,25 @@ public sealed class ModelPricingCatalogTests
         Assert.Equal(
             new ModelPricing(1.75m, 0.175m, 0m, 0m, 14m),
             catalog.Resolve("gpt-5.2-codex"));
+    }
+
+    [Fact]
+    public void EmbeddedPricing_PricesGpt6AstraAndSolUsage()
+    {
+        var path = Path.Combine(RepositoryRoot(), "UsageBeacon", "Resources", "model-pricing.json");
+        var catalog = ModelPricingCatalog.ParseDocument(File.ReadAllText(path));
+
+        Assert.NotNull(catalog);
+        Assert.Equal(new ModelPricing(10m, 1m, 0m, 0m, 50m),
+            catalog!.Resolve("gpt-6-astra"));
+        Assert.Equal(new ModelPricing(2m, 0.2m, 0m, 0m, 10m),
+            catalog.Resolve("gpt-6-sol"));
+        Assert.Equal(61m, catalog.TryGetCost(new TokenUsageEntry(
+            1, DateTime.UtcNow, UsageService.Codex, "gpt-6-astra",
+            1_000_000, 1_000_000, 0, 0, 1_000_000)));
+        Assert.Equal(12.2m, catalog.TryGetCost(new TokenUsageEntry(
+            2, DateTime.UtcNow, UsageService.Codex, "gpt-6-sol",
+            1_000_000, 1_000_000, 0, 0, 1_000_000)));
     }
 
     [Fact]
@@ -167,6 +186,21 @@ public sealed class ModelPricingCatalogTests
         Assert.Equal(4m, merged.Resolve("gpt-5.5")!.Input);
         Assert.Equal(0.3m, merged.Resolve("gemini-3-flash")!.Input);
         Assert.Equal(10m, merged.Resolve("claude-fable-5")!.Input);
+    }
+
+    [Fact]
+    public void MergeOverride_DoesNotShowAnOlderDateThanTheBuiltInRates()
+    {
+        using var directory = new TempDirectory();
+        var overridePath = Path.Combine(directory.Path, "model-pricing.json");
+        File.WriteAllText(overridePath,
+            """{"asOf":"2026-07-29","models":{"claude-opus-5":{"input":5,"cachedInput":0.5,"cacheWrite5m":6.25,"cacheWrite1h":10,"output":25}}}""");
+        var builtIn = new ModelPricingCatalog("2026-09-25",
+            new Dictionary<string, ModelPricing> { ["gpt-6-astra"] = new(10, 1, 0, 0, 50) });
+
+        var merged = ModelPricingCatalog.MergeOverride(builtIn, overridePath);
+
+        Assert.Equal("2026-09-25", merged.AsOf);
     }
 
     [Fact]

@@ -34,6 +34,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool _loginPrompted;
     private string _uiLanguage;
     private AppTheme _appTheme;
+    private string _dashboardCurrency;
     private string? _settingsErrorKey;
     private DateTime _claudeCooldownUntilUtc;
     private ServiceUsage? _lastClaudeUsage;
@@ -196,6 +197,20 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
 
     public string? SettingsErrorKey => _settingsErrorKey;
 
+    public string DashboardCurrency
+    {
+        get => _dashboardCurrency;
+        set
+        {
+            var normalized = Services.Insights.DashboardCurrency.Normalize(value);
+            if (_dashboardCurrency == normalized) return;
+            var previous = _dashboardCurrency;
+            _dashboardCurrency = normalized;
+            if (!TrySaveSettings()) _dashboardCurrency = previous;
+            Notify();
+        }
+    }
+
     // ── Init ─────────────────────────────────────────────────────────────
 
     public UsageViewModel(
@@ -223,6 +238,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         _uiLanguage = LocalizationService.NormalizePreference(settings.UiLanguage);
         LocalizationService.SetLanguage(_uiLanguage);
         _appTheme = ThemeService.NormalizePreference(settings.AppTheme);
+        _dashboardCurrency = Services.Insights.DashboardCurrency.Normalize(settings.DashboardCurrency);
         ThemeService.SetTheme(_appTheme);
         try
         {
@@ -467,6 +483,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
                 LoginPrompted = _loginPrompted,
                 UiLanguage = _uiLanguage,
                 AppTheme = _appTheme.ToString(),
+                DashboardCurrency = _dashboardCurrency,
             });
             ClearSettingsError();
             return true;

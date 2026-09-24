@@ -1,6 +1,10 @@
 # Usage Dashboard
 
-The dashboard window (popup settings → "Usage dashboard", or the tray menu) shows the estimated lifetime USD cost retained on this computer, estimated costs for today, the last 7 days, and the last 30 days, a daily cost chart, and a per-model breakdown. The lifetime card splits the estimate into Claude and Codex.
+The dashboard window (popup settings → "Usage dashboard", or the tray menu) shows the estimated lifetime cost retained on this computer and estimates for today, the last 7 days, and the last 30 days above its daily charts. The lifetime card splits the estimate into Claude and Codex. A per-model breakdown is available below the daily charts.
+
+The dashboard uses an integrated, theme-aware title bar with the usual drag, resize, minimize, maximize, and close controls. Its upper toolbar switches estimated costs among USD, JPY, and EUR; the preference is saved with the other application settings. All calculations and cached costs remain in USD. JPY and EUR are display-only approximations using fixed rates of 1 USD = 150 JPY = 0.90 EUR, shown in the dashboard. Two aligned daily charts show known-price API-equivalent cost (Claude/Codex split) and total tokens (input/output split) for 7 or 30 days. Their tick intervals and upper bounds are rounded from the maximum in the displayed range. A numeric day grid under the plots makes every day's cost and token count visible without hover. Selecting a bar or numeric day shows its exact values in one detail area. Peak-day shortcuts identify the highest known cost and highest token volume. The model breakdown is collapsed initially.
+
+Unknown-priced models still contribute to token totals, but cannot contribute to cost estimates. The dashboard uses an explicit coverage note wherever cost totals may be partial; it does not use an unexplained `+` suffix.
 
 ## Data sources
 
@@ -21,9 +25,9 @@ Parsed results are cached at `%LOCALAPPDATA%\UsageBeacon\insights-cache.json`, k
 
 Detailed cached entries older than 180 days are moved into a path-independent archive. Each archived usage event retains its exact timestamp, service, model, five token buckets, and identity hash, but no message content. Repeated model names are stored once in a model table, and event fields use compact positional rows. This pricing-neutral format lets the lifetime Claude/Codex estimates be recalculated after a price-table update and lets future-dated records remain excluded. Identity hashes prevent a modified file or parser migration from counting the same usage twice. The per-file record is also kept after compaction, because removing it would make the next scan reparse a file that may be hundreds of megabytes.
 
-The detailed window supports the 30-day cost chart and per-model table. Both detailed and archived events are priced for the "Recorded on this PC" lifetime card. The cache is rewritten only when a file or archive changed, and serialization streams directly to a temporary file before the atomic replacement.
+The detailed window supports the daily charts and per-model table. Both detailed and archived events are priced for the "Recorded on this PC" lifetime card. The cache is rewritten only when a file or archive changed, and serialization streams directly to a temporary file before the atomic replacement.
 
-The lifetime card is the history UsageBeacon can still observe, not an account-level total. Logs deleted before UsageBeacon scanned them, history lost before this format was introduced, cache deletion or corruption, and unreadable files can leave gaps. The earliest retained record shown in the card is therefore a lower bound, not a guarantee of continuous coverage. Schema-v1 token-only archives are reparsed once when their source logs still exist. Any legacy totals whose source logs are gone remain explicitly unpriced, and the card shows a `+` with an explanatory notice rather than inventing a Claude/Codex split.
+The lifetime card is the history UsageBeacon can still observe, not an account-level total. Logs deleted before UsageBeacon scanned them, history lost before this format was introduced, cache deletion or corruption, and unreadable files can leave gaps. The earliest retained record shown in the card is therefore a lower bound, not a guarantee of continuous coverage. Schema-v1 token-only archives are reparsed once when their source logs still exist. Any legacy totals whose source logs are gone remain explicitly unpriced, with a written coverage note rather than an invented Claude/Codex split.
 
 ## Cost estimation
 
@@ -40,6 +44,8 @@ The built-in price table is an embedded resource (`Resources/model-pricing.json`
 
 `gpt-5.2-codex` uses OpenAI's published API rates of $1.75 input, $0.175 cached input, and $14 output per million tokens. See [GPT-5.2-Codex model](https://developers.openai.com/api/docs/models/gpt-5.2-codex).
 
+`gpt-6-astra` and `gpt-6-sol` use OpenAI's Standard short-context API rates as of 2026-09-25. Astra is $10 input, $1 cached input, and $50 output per million tokens; Sol is $2 input, $0.20 cached input, and $10 output. Codex logs do not reveal whether a request entered the long-context tier, so the estimator applies the short-context rate. See [OpenAI API pricing](https://developers.openai.com/api/docs/pricing), [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra), and [GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol).
+
 Known estimation gaps (both cause **under**-estimation and cannot be derived from the logs):
 
 - OpenAI bills prompt-cache **writes** separately (1.25x input), but Codex rollouts do not record cache-write token counts.
@@ -49,6 +55,8 @@ Known estimation gaps (both cause **under**-estimation and cannot be derived fro
 ### Overriding prices
 
 Create `%LOCALAPPDATA%\UsageBeacon\model-pricing.json` to correct or extend prices without a new build. Entries replace the complete built-in schedule for that model; unknown names are added. A legacy object remains a timeless rate. Use an array with `effectiveFrom` dates for historical rates. Dates without an offset start at 00:00 UTC. All values are USD per million tokens:
+
+The dashboard's displayed price-table date is the later of the built-in and override `asOf` dates, so an old local override does not hide newer built-in pricing updates.
 
 ```json
 {

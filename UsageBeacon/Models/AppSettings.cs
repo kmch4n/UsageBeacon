@@ -24,4 +24,7 @@ public sealed class AppSettings
 
     [JsonPropertyName("appTheme")]
     public string AppTheme { get; init; } = "System";
+
+    [JsonPropertyName("dashboardCurrency")]
+    public string DashboardCurrency { get; init; } = "USD";
 }
