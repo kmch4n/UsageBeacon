@@ -1,11 +1,70 @@
 using System.Reflection;
 using System.Text.Json;
+using UsageBeacon.Models;
 using UsageBeacon.Services;
 
 namespace UsageBeacon.Tests;
 
 public sealed class CodexAppServerClientTests
 {
+    [Fact]
+    public async Task StartAsync_RestartsServerAfterInitializeTimesOut()
+    {
+        var directory = Directory.CreateTempSubdirectory("UsageBeaconCodex-");
+        try
+        {
+            var launcher = Path.Combine(directory.FullName, "fake-codex.cmd");
+            var script = Path.Combine(directory.FullName, "fake-server.ps1");
+            var starts = Path.Combine(directory.FullName, "starts.txt");
+            File.WriteAllText(launcher,
+                "@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%~dp0fake-server.ps1\"\r\n");
+            File.WriteAllText(script, """
+                $startsPath = Join-Path $PSScriptRoot 'starts.txt'
+                [System.IO.File]::AppendAllText($startsPath, "start`n")
+                $startCount = @(Get-Content $startsPath).Count
+                while (($line = [Console]::ReadLine()) -ne $null) {
+                    $request = $line | ConvertFrom-Json
+                    if ($request.method -eq 'initialize' -and $startCount -ge 2) {
+                        [Console]::WriteLine('{"jsonrpc":"2.0","id":' + $request.id + ',"result":{}}')
+                    }
+                }
+                """);
+
+            await using var cl = new CodexAppServerClient(
+                [launcher], TimeSpan.FromSeconds(4));
+            var failure = await Assert.ThrowsAsync<DomainError>(() => cl.StartAsync());
+            Assert.Equal(DomainErrorKind.Timeout, failure.Kind);
+
+            await cl.StartAsync();
+
+            Assert.Equal(2, File.ReadAllLines(starts).Length);
+        }
+        finally
+        {
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ReadRateLimitsAsync_ClearsPendingRequest_WhenPipeWriteFails()
+    {
+        await using var cl = new CodexAppServerClient([]);
+        var stdin = new StreamWriter(new MemoryStream());
+        stdin.Dispose();
+        typeof(CodexAppServerClient)
+            .GetField("_stdin", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(cl, stdin);
+
+        var error = await Assert.ThrowsAsync<DomainError>(
+            () => cl.ReadRateLimitsAsync());
+
+        Assert.Equal(DomainErrorKind.CodexProcessExited, error.Kind);
+        var pending = (System.Collections.IDictionary)typeof(CodexAppServerClient)
+            .GetField("_pending", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .GetValue(cl)!;
+        Assert.Empty(pending.Keys);
+    }
+
     [Fact]
     public void Window_UsesNoResetSentinel_WhenResetsAtIsMissing()
     {

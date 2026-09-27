@@ -90,13 +90,22 @@ public sealed class CodexAppServerClient : IAsyncDisposable
             // Drain stderr so a full pipe cannot block the child process.
             _ = Task.Run(() => DrainStderrAsync(stderr, readToken), readToken);
 
-            // Initialize handshake.
-            _ = await SendRequestAsync("initialize", new
+            // Initialize handshake. A failed handshake leaves the child alive,
+            // so discard it before a later StartAsync can reuse it.
+            try
             {
-                clientInfo   = new { name = "usage-beacon", version = "0.1.0" },
-                capabilities = new { }
-            }, ct);
-            SendNotification("initialized", new { });
+                _ = await SendRequestAsync("initialize", new
+                {
+                    clientInfo   = new { name = "usage-beacon", version = "0.1.0" },
+                    capabilities = new { }
+                }, ct);
+                SendNotification("initialized", new { });
+            }
+            catch
+            {
+                Stop();
+                throw;
+            }
         }
         finally
         {
@@ -236,7 +245,15 @@ public sealed class CodexAppServerClient : IAsyncDisposable
             lock (_pendingLock) { _pending.Remove(id); }
             throw DomainError.CodexProcessExited();
         }
-        lock (_writeLock) { stdin.WriteLine(json); }
+        try
+        {
+            lock (_writeLock) { stdin.WriteLine(json); }
+        }
+        catch (Exception e) when (e is IOException or ObjectDisposedException)
+        {
+            lock (_pendingLock) { _pending.Remove(id); }
+            throw DomainError.CodexProcessExited();
+        }
 
         using var timeoutCts = new CancellationTokenSource(_timeout);
         using var linked     = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
