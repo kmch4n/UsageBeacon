@@ -16,25 +16,28 @@ public sealed class CodexAppServerClientTests
             var launcher = Path.Combine(directory.FullName, "fake-codex.cmd");
             var script = Path.Combine(directory.FullName, "fake-server.ps1");
             var starts = Path.Combine(directory.FullName, "starts.txt");
+            var respond = Path.Combine(directory.FullName, "respond.txt");
             File.WriteAllText(launcher,
                 "@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%~dp0fake-server.ps1\"\r\n");
             File.WriteAllText(script, """
                 $startsPath = Join-Path $PSScriptRoot 'starts.txt'
                 [System.IO.File]::AppendAllText($startsPath, "start`n")
-                $startCount = @(Get-Content $startsPath).Count
                 while (($line = [Console]::ReadLine()) -ne $null) {
                     $request = $line | ConvertFrom-Json
-                    if ($request.method -eq 'initialize' -and $startCount -ge 2) {
+                    if ($request.method -eq 'initialize' -and
+                        (Test-Path (Join-Path $PSScriptRoot 'respond.txt'))) {
                         [Console]::WriteLine('{"jsonrpc":"2.0","id":' + $request.id + ',"result":{}}')
                     }
                 }
                 """);
 
             await using var cl = new CodexAppServerClient(
-                [launcher], TimeSpan.FromSeconds(4));
+                [launcher], TimeSpan.FromSeconds(8));
             var failure = await Assert.ThrowsAsync<DomainError>(() => cl.StartAsync());
             Assert.Equal(DomainErrorKind.Timeout, failure.Kind);
+            Assert.True(File.Exists(starts), "The first fake server did not start.");
 
+            File.WriteAllText(respond, string.Empty);
             await cl.StartAsync();
 
             Assert.Equal(2, File.ReadAllLines(starts).Length);
