@@ -17,8 +17,11 @@ public sealed class CodexAppServerClientTests
             var script = Path.Combine(directory.FullName, "fake-server.ps1");
             var starts = Path.Combine(directory.FullName, "starts.txt");
             var respond = Path.Combine(directory.FullName, "respond.txt");
+            var powershell = Path.Combine(
+                Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
+            Assert.True(File.Exists(powershell), "Windows PowerShell is unavailable.");
             File.WriteAllText(launcher,
-                "@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -File \"%~dp0fake-server.ps1\"\r\n");
+                $"@echo off\r\n\"{powershell}\" -NoProfile -ExecutionPolicy Bypass -File \"%~dp0fake-server.ps1\"\r\n");
             File.WriteAllText(script, """
                 $startsPath = Join-Path $PSScriptRoot 'starts.txt'
                 [System.IO.File]::AppendAllText($startsPath, "start`n")
@@ -35,7 +38,8 @@ public sealed class CodexAppServerClientTests
                 [launcher], TimeSpan.FromSeconds(8));
             var failure = await Assert.ThrowsAsync<DomainError>(() => cl.StartAsync());
             Assert.Equal(DomainErrorKind.Timeout, failure.Kind);
-            Assert.True(File.Exists(starts), "The first fake server did not start.");
+            Assert.True(File.Exists(starts),
+                $"The first fake server did not start. stderr: {cl.LastStderr}");
 
             File.WriteAllText(respond, string.Empty);
             await cl.StartAsync();
