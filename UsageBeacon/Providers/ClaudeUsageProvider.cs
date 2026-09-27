@@ -11,6 +11,7 @@ public sealed class ClaudeUsageProvider : IUsageProvider
     private readonly IClaudeTokenRefresher _tokenRefresher;
     private readonly SemaphoreSlim _credentialGate = new(1, 1);
     private ClaudeCredential? _cachedCredential;
+    private ClaudeCredential? _lastSourceCredential;
     private PendingCredentialUpdate? _pendingUpdate;
 
     public ClaudeUsageProvider(
@@ -55,14 +56,38 @@ public sealed class ClaudeUsageProvider : IUsageProvider
             await TryPersistPendingUpdateAsync();
             var now = DateTimeOffset.UtcNow;
             var pending = _pendingUpdate;
+            if (pending != null)
+            {
+                ClaudeCredential? latest = null;
+                try
+                {
+                    latest = await _credentialSource.ReadCredentialAsync(ct);
+                }
+                catch (DomainError)
+                {
+                    // Preserve a rotated token after a temporary source failure.
+                }
+
+                if (latest != null)
+                {
+                    _lastSourceCredential = latest;
+                    if (HasSameOAuthState(latest, pending.Refreshed) ||
+                        !HasSameOAuthState(latest, pending.Original))
+                    {
+                        // The refreshed token reached the source, or a new login
+                        // replaced the old grant. Neither needs the pending write.
+                        _pendingUpdate = null;
+                        _cachedCredential = latest;
+                        pending = null;
+                    }
+                }
+            }
             if (pending != null && !pending.Refreshed.IsUsableAt(now))
                 return await RenewExpiredPendingCredentialAsync(pending, now, ct);
 
             var credential = pending?.Refreshed.IsUsableAt(now) == true
                 ? pending.Refreshed
-                : _cachedCredential?.IsUsableAt(now) == true
-                    ? _cachedCredential
-                    : await _credentialSource.ReadCredentialAsync(ct);
+                : await ReadCurrentCredentialAsync(now, ct);
             if (credential.IsUsableAt(now))
             {
                 _cachedCredential = credential;
@@ -75,6 +100,22 @@ public sealed class ClaudeUsageProvider : IUsageProvider
         {
             _credentialGate.Release();
         }
+    }
+
+    private async Task<ClaudeCredential> ReadCurrentCredentialAsync(
+        DateTimeOffset now,
+        CancellationToken ct)
+    {
+        var source = await _credentialSource.ReadCredentialAsync(ct);
+        var sourceChanged = _lastSourceCredential != null &&
+            !HasSameOAuthState(source, _lastSourceCredential);
+        _lastSourceCredential = source;
+
+        // A new login is authoritative, while a just-refreshed in-memory token
+        // remains usable if a source has not yet observed its persisted update.
+        return sourceChanged || _cachedCredential?.IsUsableAt(now) != true
+            ? source
+            : _cachedCredential;
     }
 
     // The refresh token held by an unpersisted pending update is newer than the

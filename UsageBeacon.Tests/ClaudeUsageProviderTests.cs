@@ -7,6 +7,79 @@ namespace UsageBeacon.Tests;
 public sealed class ClaudeUsageProviderTests
 {
     [Fact]
+    public async Task FetchAsync_UsesNewSourceCredential_AfterAccountSwitch()
+    {
+        var original = new ClaudeCredential(
+            "account-a", "refresh-a", DateTimeOffset.UtcNow.AddHours(1), [], "test");
+        var source = new StubCredentialSource(original);
+        var api = new StubUsageApiClient();
+        var refresher = new StubTokenRefresher(original);
+        var provider = new ClaudeUsageProvider(source, api, refresher, new StubCredentialStore());
+
+        await provider.FetchAsync();
+        source.Credential = original with
+        {
+            AccessToken = "account-b",
+            RefreshToken = "refresh-b",
+        };
+        await provider.FetchAsync();
+
+        Assert.Equal("account-b", api.LastAccessToken);
+        Assert.Equal(0, refresher.CallCount);
+    }
+
+    [Fact]
+    public async Task FetchAsync_DoesNotReuseCachedCredential_AfterSignOut()
+    {
+        var original = new ClaudeCredential(
+            "account-a", "refresh-a", DateTimeOffset.UtcNow.AddHours(1), [], "test");
+        var source = new StubCredentialSource(original);
+        var api = new StubUsageApiClient();
+        var provider = new ClaudeUsageProvider(
+            source, api, new StubTokenRefresher(original), new StubCredentialStore());
+
+        await provider.FetchAsync();
+        source.ReadError = DomainError.TokenMissing();
+
+        var error = await Assert.ThrowsAsync<DomainError>(() => provider.FetchAsync());
+
+        Assert.Equal(DomainErrorKind.TokenMissing, error.Kind);
+        Assert.Equal(1, api.CallCount);
+    }
+
+    [Fact]
+    public async Task FetchAsync_AdoptsNewLogin_WhileRefreshedCredentialIsPending()
+    {
+        var original = new ClaudeCredential(
+            "expired", "refresh-a", DateTimeOffset.UtcNow.AddHours(-1), [], "test");
+        var source = new StubCredentialSource(original);
+        var refreshed = original with
+        {
+            AccessToken = "rotated-a",
+            RefreshToken = "rotated-refresh-a",
+            ExpiresAt = DateTimeOffset.UtcNow.AddHours(1),
+        };
+        var api = new StubUsageApiClient();
+        var store = new StubCredentialStore(status: ClaudeCredentialPersistenceStatus.Failed);
+        var provider = new ClaudeUsageProvider(
+            source, api, new StubTokenRefresher(refreshed), store);
+
+        await provider.FetchAsync();
+        source.Credential = original with
+        {
+            AccessToken = "account-b",
+            RefreshToken = "refresh-b",
+            ExpiresAt = DateTimeOffset.UtcNow.AddHours(1),
+        };
+        await provider.FetchAsync();
+        var callsAfterSwitch = store.CallCount;
+        await provider.FetchAsync();
+
+        Assert.Equal("account-b", api.LastAccessToken);
+        Assert.Equal(callsAfterSwitch, store.CallCount);
+    }
+
+    [Fact]
     public async Task FetchAsync_RefreshesExpiredCredential_BeforeFetchingUsage()
     {
         var expired = new ClaudeCredential(
@@ -146,6 +219,31 @@ public sealed class ClaudeUsageProviderTests
     }
 
     [Fact]
+    public async Task FetchAsync_UsesPendingCredential_WhenSourceReadTemporarilyFails()
+    {
+        var expired = new ClaudeCredential(
+            "expired", "original-refresh", DateTimeOffset.UtcNow.AddHours(-1), [], "test");
+        var refreshed = expired with
+        {
+            AccessToken = "rotated",
+            RefreshToken = "rotated-refresh",
+            ExpiresAt = DateTimeOffset.UtcNow.AddHours(1),
+        };
+        var source = new StubCredentialSource(expired);
+        var api = new StubUsageApiClient();
+        var provider = new ClaudeUsageProvider(
+            source, api, new StubTokenRefresher(refreshed),
+            new StubCredentialStore(status: ClaudeCredentialPersistenceStatus.Failed));
+
+        await provider.FetchAsync();
+        source.ReadError = DomainError.TokenMissing();
+        await provider.FetchAsync();
+
+        Assert.Equal(2, api.CallCount);
+        Assert.Equal("rotated", api.LastAccessToken);
+    }
+
+    [Fact]
     public async Task FetchAsync_RefreshesFromPendingCredential_WhenItExpiresBeforePersistence()
     {
         var fileCredential = new ClaudeCredential(
@@ -231,9 +329,12 @@ public sealed class ClaudeUsageProviderTests
     private sealed class StubCredentialSource(ClaudeCredential credential) : IClaudeCredentialSource
     {
         public ClaudeCredential Credential { get; set; } = credential;
+        public DomainError? ReadError { get; set; }
 
         public Task<ClaudeCredential> ReadCredentialAsync(CancellationToken ct = default)
-            => Task.FromResult(Credential);
+            => ReadError is { } error
+                ? Task.FromException<ClaudeCredential>(error)
+                : Task.FromResult(Credential);
     }
 
     private sealed class StubTokenRefresher : IClaudeTokenRefresher
