@@ -431,6 +431,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         IUsageProvider provider, CancellationToken ct)
     {
         try   { return (await provider.FetchAsync(ct), null); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (DomainError e)  { return (null, e); }
         catch (Exception   e)  { return (null, DomainError.Network(e.Message)); }
     }

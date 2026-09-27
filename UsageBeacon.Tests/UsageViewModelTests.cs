@@ -12,6 +12,37 @@ namespace UsageBeacon.Tests;
 public sealed class UsageViewModelTests
 {
     [Fact]
+    public async Task RefreshAsync_PreservesCallerCancellation_WithoutPublishingNetworkError()
+    {
+        using var directory = new TempDirectory();
+        var claude = new CancelledUsageProvider();
+        await using var vm = CreateViewModel(directory.Path, claude);
+        using var cts = new CancellationTokenSource();
+
+        var refresh = vm.RefreshAsync(cts.Token);
+        await claude.Started.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => refresh);
+        Assert.Equal(DateTime.MinValue, vm.Snapshot.FetchedAt);
+        Assert.Null(vm.Snapshot.ClaudeError);
+        Assert.False(vm.IsLoading);
+    }
+
+    private sealed class CancelledUsageProvider : IUsageProvider
+    {
+        public TaskCompletionSource Started { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task<ServiceUsage> FetchAsync(CancellationToken ct = default)
+        {
+            Started.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, ct);
+            throw new InvalidOperationException("unreachable");
+        }
+    }
+
+    [Fact]
     public async Task RefreshAsync_ReleasesGateAfterBodyTimeout_AndPublishesNextResult()
     {
         using var directory = new TempDirectory();
