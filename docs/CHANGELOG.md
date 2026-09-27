@@ -4,6 +4,13 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- The dashboard rebuilds from available logs when a syntactically valid insights cache has the wrong JSON root or schema-version type.
+- Retained recent and lifetime usage remains visible when both source log directories are missing.
+- Incomplete pricing overrides no longer replace built-in rates with implicit zero prices; explicitly specified zero rates remain valid.
+- Settings pickers return to their accepted value after a failed save and can retry the same choice once saving succeeds.
+
 ## 1.2.0 - 2026-09-25
 
 ### Added

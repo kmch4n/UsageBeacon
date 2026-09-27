@@ -1,6 +1,14 @@
 # Current Repository Status
 
-Last verified: 2026-09-25
+Last verified: 2026-09-27
+
+## Bug fixes awaiting release (2026-09-27)
+
+- GitHub Issues #17 and #18 were closed as completed after their v1.2.0 release inclusion and 46 focused regression tests passed. Issue #13 remains open because its CI and release workflow exists but its warnings-as-errors acceptance criterion is not configured.
+- Fixes for #20 (`13354c5`), #21 (`38623e8`), #22 (`a0fd03e`), and #19 (`711f334`) cover wrong-typed cache JSON, retained dashboard history without source directories, incomplete pricing overrides, and rejected popup picker selections. These Issues remain open until the fixes are distributed.
+- Tests for the local changes: Debug and Release each passed 253 tests; Debug and Release builds each passed with `-warnaserror`, 0 warnings and 0 errors. WPF UI tests use synthetic cache/settings fixtures. An independent review found no blocking defects; live interaction and rendering remain unverified.
+- The #21 empty-state decision currently infers retained usage from the first recorded day, unknown-cost flag, and model rows. Revisit that decision if aggregation adds a new history category that does not set one of these signals.
+- Plan: [`docs/superpowers/plans/2026-09-27-open-bug-fixes.md`](../docs/superpowers/plans/2026-09-27-open-bug-fixes.md).
 
 ## Release v1.2.0 validation
 
