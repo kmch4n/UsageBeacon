@@ -5,6 +5,7 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="AppStartupErrorTitle" xml:space="preserve"><value>UsageBeacon - Startup Error</value></data>
+  <data name="AppUnexpectedError" xml:space="preserve"><value>UsageBeacon encountered an unexpected error. See the local crash log for details.</value></data>
   <data name="LanguageSystemDefault" xml:space="preserve"><value>System default</value></data>
   <data name="LanguageNativeName" xml:space="preserve"><value>English</value></data>
   <data name="CommonLogin" xml:space="preserve"><value>Sign in</value></data>
@@ -50,7 +51,7 @@
   <data name="IntegrationTitle" xml:space="preserve"><value>Claude Code integration</value></data>
   <data name="IntegrationEnablePrompt" xml:space="preserve"><value>Add the UsageBeacon bridge to the Claude Code status line? The existing status line will be preserved and called after the bridge runs.</value></data>
   <data name="IntegrationChangedWarning" xml:space="preserve"><value>The Claude Code setting changed after integration was enabled. UsageBeacon did not disconnect automatically to avoid overwriting the current setting.</value></data>
-  <data name="IntegrationFailed" xml:space="preserve"><value>Failed to update Claude Code integration.&#xA;{0}</value></data>
+  <data name="IntegrationFailed" xml:space="preserve"><value>Failed to update Claude Code integration. See the local crash log for details.</value></data>
   <data name="DurationSeconds" xml:space="preserve"><value>{0} sec</value></data>
   <data name="DurationMinutes" xml:space="preserve"><value>{0} min</value></data>
   <data name="TransparencyOpaque" xml:space="preserve"><value>0% (opaque)</value></data>
@@ -78,11 +79,11 @@
   <data name="ErrorAnthropicHttp" xml:space="preserve"><value>Anthropic API error (status {0})</value></data>
   <data name="ErrorCodexNotFound" xml:space="preserve"><value>Codex CLI was not found. Run `npm i -g @openai/codex`.</value></data>
   <data name="ErrorCodexProcessExited" xml:space="preserve"><value>The Codex app-server exited. UsageBeacon will try to restart it.</value></data>
-  <data name="ErrorCodexRpc" xml:space="preserve"><value>Codex RPC error: {0}</value></data>
+  <data name="ErrorCodexRpc" xml:space="preserve"><value>Codex RPC request failed.</value></data>
   <data name="ErrorCodexUnauthorized" xml:space="preserve"><value>Codex authentication has expired. Run `codex login` to sign in again.</value></data>
-  <data name="ErrorDecoding" xml:space="preserve"><value>Failed to decode the response: {0}</value></data>
+  <data name="ErrorDecoding" xml:space="preserve"><value>Failed to decode the response.</value></data>
   <data name="ErrorTimeout" xml:space="preserve"><value>The request timed out.</value></data>
-  <data name="ErrorNetwork" xml:space="preserve"><value>Network error: {0}</value></data>
+  <data name="ErrorNetwork" xml:space="preserve"><value>Network error. Check your connection and try again.</value></data>
   <data name="TrayRunningTitle" xml:space="preserve"><value>UsageBeacon is running</value></data>
   <data name="TrayRunningText" xml:space="preserve"><value>Select the widget next to the taskbar notification area to open details.</value></data>
   <data name="TrayShowHide" xml:space="preserve"><value>Show/hide details</value></data>

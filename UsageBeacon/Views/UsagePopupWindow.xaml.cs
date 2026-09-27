@@ -462,8 +462,9 @@ public partial class UsagePopupWindow : Window
         }
         catch (Exception ex)
         {
+            new CrashLogWriter().Write("ClaudeIntegration", ex);
             System.Windows.MessageBox.Show(
-                LocalizationService.Format("IntegrationFailed", ex.Message),
+                LocalizedText.UnexpectedError(ex, "IntegrationFailed"),
                 "UsageBeacon",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);

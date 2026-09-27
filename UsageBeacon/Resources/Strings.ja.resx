@@ -5,6 +5,7 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="AppStartupErrorTitle" xml:space="preserve"><value>UsageBeacon - 起動エラー</value></data>
+  <data name="AppUnexpectedError" xml:space="preserve"><value>UsageBeaconで予期しないエラーが発生しました。詳細はローカルのクラッシュログを確認してください。</value></data>
   <data name="LanguageSystemDefault" xml:space="preserve"><value>システム既定</value></data>
   <data name="LanguageNativeName" xml:space="preserve"><value>日本語</value></data>
   <data name="CommonLogin" xml:space="preserve"><value>ログイン</value></data>
@@ -50,7 +51,7 @@
   <data name="IntegrationTitle" xml:space="preserve"><value>Claude Code連携</value></data>
   <data name="IntegrationEnablePrompt" xml:space="preserve"><value>Claude Codeのstatus lineにUsageBeacon bridgeを追加しますか？既存のstatus lineは保持され、bridge実行後にそのまま呼び出されます。</value></data>
   <data name="IntegrationChangedWarning" xml:space="preserve"><value>Claude Codeの設定が連携後に変更されています。現在の設定を保護するため、自動解除しませんでした。</value></data>
-  <data name="IntegrationFailed" xml:space="preserve"><value>Claude Code連携の更新に失敗しました。&#xA;{0}</value></data>
+  <data name="IntegrationFailed" xml:space="preserve"><value>Claude Code連携の更新に失敗しました。詳細はローカルのクラッシュログを確認してください。</value></data>
   <data name="DurationSeconds" xml:space="preserve"><value>{0}秒</value></data>
   <data name="DurationMinutes" xml:space="preserve"><value>{0}分</value></data>
   <data name="TransparencyOpaque" xml:space="preserve"><value>0% (不透明)</value></data>
@@ -78,11 +79,11 @@
   <data name="ErrorAnthropicHttp" xml:space="preserve"><value>Anthropic APIエラー (status {0})</value></data>
   <data name="ErrorCodexNotFound" xml:space="preserve"><value>Codex CLIが見つかりません。`npm i -g @openai/codex`を実行してください。</value></data>
   <data name="ErrorCodexProcessExited" xml:space="preserve"><value>Codex app-serverが終了しました。再起動を試みます。</value></data>
-  <data name="ErrorCodexRpc" xml:space="preserve"><value>Codex RPCエラー: {0}</value></data>
+  <data name="ErrorCodexRpc" xml:space="preserve"><value>Codex RPCリクエストに失敗しました。</value></data>
   <data name="ErrorCodexUnauthorized" xml:space="preserve"><value>Codexの認証が切れています。`codex login`で再ログインしてください。</value></data>
-  <data name="ErrorDecoding" xml:space="preserve"><value>レスポンスのデコードに失敗: {0}</value></data>
+  <data name="ErrorDecoding" xml:space="preserve"><value>レスポンスのデコードに失敗しました。</value></data>
   <data name="ErrorTimeout" xml:space="preserve"><value>通信がタイムアウトしました。</value></data>
-  <data name="ErrorNetwork" xml:space="preserve"><value>ネットワークエラー: {0}</value></data>
+  <data name="ErrorNetwork" xml:space="preserve"><value>ネットワークエラーです。接続を確認して再試行してください。</value></data>
   <data name="TrayRunningTitle" xml:space="preserve"><value>UsageBeacon起動中</value></data>
   <data name="TrayRunningText" xml:space="preserve"><value>タスクバー右端のウィジェットをクリックすると詳細が開きます。</value></data>
   <data name="TrayShowHide" xml:space="preserve"><value>詳細を表示/非表示</value></data>

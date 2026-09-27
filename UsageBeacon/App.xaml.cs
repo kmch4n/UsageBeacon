@@ -72,9 +72,7 @@ public partial class App : System.Windows.Application
         DispatcherUnhandledException += (_, ex) =>
         {
             _crashLog?.Write("Dispatcher", ex.Exception);
-            // Show only the exception summary because a full stack can expose local
-            // paths; the redacted stack goes to the crash log instead.
-            System.Windows.MessageBox.Show(ex.Exception.Message,
+            System.Windows.MessageBox.Show(LocalizedText.UnexpectedError(ex.Exception, "AppUnexpectedError"),
                 LocalizationService.Get("AppStartupErrorTitle"),
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Error);
@@ -156,7 +154,7 @@ public partial class App : System.Windows.Application
         catch (Exception ex)
         {
             _crashLog?.Write("Startup", ex);
-            System.Windows.MessageBox.Show(ex.Message,
+            System.Windows.MessageBox.Show(LocalizedText.UnexpectedError(ex, "AppUnexpectedError"),
                 LocalizationService.Get("AppStartupErrorTitle"),
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Error);

@@ -5,6 +5,11 @@ namespace UsageBeacon.Localization;
 
 public static class LocalizedText
 {
+    // Unexpected exceptions can contain credentials or local paths. Keep their
+    // details in the redacted crash log instead of placing them in a dialog.
+    public static string UnexpectedError(Exception _, string resourceKey)
+        => LocalizationService.Get(resourceKey);
+
     public static string DomainError(DomainError error) => error.Kind switch
     {
         DomainErrorKind.TokenMissing => LocalizationService.Get("ErrorTokenMissing"),
@@ -19,12 +24,12 @@ public static class LocalizedText
             error.StatusCode),
         DomainErrorKind.CodexNotFound => LocalizationService.Get("ErrorCodexNotFound"),
         DomainErrorKind.CodexProcessExited => LocalizationService.Get("ErrorCodexProcessExited"),
-        DomainErrorKind.CodexRpcError => LocalizationService.Format("ErrorCodexRpc", error.Detail),
+        DomainErrorKind.CodexRpcError => LocalizationService.Get("ErrorCodexRpc"),
         DomainErrorKind.CodexUnauthorized => LocalizationService.Get("ErrorCodexUnauthorized"),
-        DomainErrorKind.Decoding => LocalizationService.Format("ErrorDecoding", error.Detail),
+        DomainErrorKind.Decoding => LocalizationService.Get("ErrorDecoding"),
         DomainErrorKind.Timeout => LocalizationService.Get("ErrorTimeout"),
-        DomainErrorKind.Network => LocalizationService.Format("ErrorNetwork", error.Detail),
-        _ => error.Message,
+        DomainErrorKind.Network => LocalizationService.Get("ErrorNetwork"),
+        _ => LocalizationService.Get("AppUnexpectedError"),
     };
 
     public static string PollingInterval(PollingInterval interval) => interval switch

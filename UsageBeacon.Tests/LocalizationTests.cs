@@ -65,6 +65,45 @@ public sealed class LocalizationTests
     }
 
     [Theory]
+    [InlineData("AppUnexpectedError")]
+    [InlineData("IntegrationFailed")]
+    public void UnexpectedErrorMessage_DoesNotExposeExceptionDetails(string resourceKey)
+    {
+        var secret = "Authorization: Bearer synthetic-credential-123456";
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var exception = new InvalidOperationException($"{secret} in {profile}\\private.json");
+
+        var message = LocalizedText.UnexpectedError(exception, resourceKey);
+
+        Assert.Equal(LocalizationService.Get(resourceKey), message);
+        Assert.DoesNotContain(secret, message, StringComparison.Ordinal);
+        Assert.DoesNotContain(profile, message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("private.json", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("[", message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("network")]
+    [InlineData("rpc")]
+    [InlineData("decoding")]
+    public void DomainErrorMessage_DoesNotExposeUntrustedDetails(string kind)
+    {
+        var detail = "Authorization: Bearer synthetic-secret at C:\\Private\\credential.json";
+        var error = kind switch
+        {
+            "network" => DomainError.Network(detail),
+            "rpc" => DomainError.CodexRpcError(detail),
+            _ => DomainError.Decoding(detail),
+        };
+
+        var message = LocalizedText.DomainError(error);
+
+        Assert.DoesNotContain("synthetic-secret", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("credential.json", message, StringComparison.Ordinal);
+        Assert.NotEmpty(message);
+    }
+
+    [Theory]
     [InlineData(null, "system")]
     [InlineData("", "system")]
     [InlineData("fr", "en")]
