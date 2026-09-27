@@ -136,6 +136,25 @@ public partial class UsagePopupWindow : Window
             _syncingStartup = false;
         }
 
+        _pickerReady = false;
+        _transparencyPickerReady = false;
+        _languagePickerReady = false;
+        _themePickerReady = false;
+        try
+        {
+            SyncIntervalPicker();
+            SyncTransparencyPicker();
+            SyncLanguagePicker();
+            SyncThemePicker();
+        }
+        finally
+        {
+            _pickerReady = true;
+            _transparencyPickerReady = true;
+            _languagePickerReady = true;
+            _themePickerReady = true;
+        }
+
         SettingsErrorText.Visibility = _vm.SettingsErrorKey is null
             ? Visibility.Collapsed
             : Visibility.Visible;
@@ -317,9 +336,14 @@ public partial class UsagePopupWindow : Window
         TransparencyPicker.ItemsSource = PopupTransparencyExtensions.All
             .Select(p => new TransparencyItem(p)).ToList();
         TransparencyPicker.DisplayMemberPath = "Label";
+        SyncTransparencyPicker();
+        _transparencyPickerReady = true;
+    }
+
+    private void SyncTransparencyPicker()
+    {
         var items = (IList<TransparencyItem>?)TransparencyPicker.ItemsSource;
         TransparencyPicker.SelectedItem = items?.FirstOrDefault(i => i.Value == _vm.PopupTransparency);
-        _transparencyPickerReady = true;
     }
 
     private void TransparencyPicker_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -340,9 +364,14 @@ public partial class UsagePopupWindow : Window
         ThemePicker.ItemsSource = AppThemeExtensions.All
             .Select(t => new ThemeItem(t)).ToList();
         ThemePicker.DisplayMemberPath = "Label";
+        SyncThemePicker();
+        _themePickerReady = true;
+    }
+
+    private void SyncThemePicker()
+    {
         var items = (IList<ThemeItem>?)ThemePicker.ItemsSource;
         ThemePicker.SelectedItem = items?.FirstOrDefault(i => i.Value == _vm.AppTheme);
-        _themePickerReady = true;
     }
 
     private void ThemePicker_SelectionChanged(
@@ -364,9 +393,12 @@ public partial class UsagePopupWindow : Window
         LanguagePicker.ItemsSource = LocalizationService.SupportedLanguages;
         LanguagePicker.DisplayMemberPath = nameof(LanguageOption.DisplayName);
         LanguagePicker.SelectedValuePath = nameof(LanguageOption.Code);
-        LanguagePicker.SelectedValue = _vm.UiLanguage;
+        SyncLanguagePicker();
         _languagePickerReady = true;
     }
+
+    private void SyncLanguagePicker()
+        => LanguagePicker.SelectedValue = _vm.UiLanguage;
 
     private void LanguagePicker_SelectionChanged(
         object sender,
