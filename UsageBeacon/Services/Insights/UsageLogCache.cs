@@ -61,7 +61,9 @@ public sealed class UsageLogCache
 
             var json = File.ReadAllText(cachePath);
             using var parsed = JsonDocument.Parse(json);
-            if (!parsed.RootElement.TryGetProperty("schemaVersion", out var versionElement) ||
+            if (parsed.RootElement.ValueKind != JsonValueKind.Object ||
+                !parsed.RootElement.TryGetProperty("schemaVersion", out var versionElement) ||
+                versionElement.ValueKind != JsonValueKind.Number ||
                 !versionElement.TryGetInt32(out var schemaVersion))
                 return CreateEmpty(cachePath);
 

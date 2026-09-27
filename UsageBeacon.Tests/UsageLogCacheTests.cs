@@ -125,6 +125,23 @@ public sealed class UsageLogCacheTests
         Assert.Empty(cache.AllEntries());
     }
 
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("null")]
+    [InlineData("\"cache\"")]
+    [InlineData("{\"schemaVersion\":\"2\"}")]
+    [InlineData("{\"schemaVersion\":null}")]
+    public void Load_DiscardsCacheWithWrongJsonKinds(string json)
+    {
+        using var directory = new TempDirectory();
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        File.WriteAllText(cachePath, json);
+
+        var cache = UsageLogCache.Load(cachePath);
+
+        Assert.Empty(cache.AllEntries());
+    }
+
     [Fact]
     public void Load_DiscardsCacheWithDifferentSchemaVersion()
     {

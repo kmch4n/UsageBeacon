@@ -54,6 +54,32 @@ public sealed class DashboardViewModelTests
     }
 
     [Fact]
+    public async Task LoadAsync_RebuildsFromLogs_WhenCacheHasWrongJsonKind()
+    {
+        using var directory = new TempDirectory();
+        var claudeDir = Directory.CreateDirectory(Path.Combine(directory.Path, "claude"));
+        var logPath = Path.Combine(claudeDir.FullName, "session.jsonl");
+        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        File.WriteAllText(logPath,
+            """
+            {"type":"assistant","timestamp":"__TS__","requestId":"req_1","message":{"id":"msg_1","model":"claude-fable-5","usage":{"input_tokens":1000000,"cache_read_input_tokens":0,"output_tokens":0}}}
+            """.Replace("__TS__", timestamp));
+        var cachePath = Path.Combine(directory.Path, "cache.json");
+        File.WriteAllText(cachePath, "[]");
+        var vm = new DashboardViewModel(
+            Pricing,
+            claudeProjectsDirectory: claudeDir.FullName,
+            codexSessionsDirectory: Path.Combine(directory.Path, "missing"),
+            cachePath: cachePath,
+            timeZone: TimeZoneInfo.Utc);
+
+        var data = await vm.LoadAsync(CancellationToken.None);
+
+        Assert.Equal(10m, data.Today.ClaudeCostUsd);
+        Assert.Equal(10m, data.Lifetime.ClaudeCostUsd);
+    }
+
+    [Fact]
     public async Task LoadAsync_ReparsesLegacyCodexCacheWithUnknownModel()
     {
         using var directory = new TempDirectory();
