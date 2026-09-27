@@ -215,6 +215,39 @@ public sealed class ModelPricingCatalogTests
         Assert.Equal(5m, ModelPricingCatalog.MergeOverride(CreateCatalog(), broken).Resolve("gpt-5.5")!.Input);
     }
 
+    [Theory]
+    [InlineData("{\"models\":{\"gpt-5.5\":{}}}")]
+    [InlineData("{\"models\":{\"gpt-5.5\":{\"input\":0,\"output\":0}}}")]
+    [InlineData("{\"models\":{\"gpt-5.5\":[{\"effectiveFrom\":\"2026-01-01\",\"input\":0,\"cachedInput\":0,\"cacheWrite5m\":0,\"output\":0}]}}")]
+    public void MergeOverride_PreservesBuiltInRates_WhenPriceFieldsAreMissing(string json)
+    {
+        using var directory = new TempDirectory();
+        var overridePath = Path.Combine(directory.Path, "model-pricing.json");
+        File.WriteAllText(overridePath, json);
+        var entry = new TokenUsageEntry(
+            1, new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc),
+            UsageService.Codex, "gpt-5.5", 1_000_000, 0, 0, 0, 1_000_000);
+
+        var merged = ModelPricingCatalog.MergeOverride(CreateCatalog(), overridePath);
+
+        Assert.Equal(5m, merged.Resolve("gpt-5.5")!.Input);
+        Assert.Equal(35m, merged.TryGetCost(entry));
+    }
+
+    [Fact]
+    public void MergeOverride_AcceptsExplicitZeroRates()
+    {
+        using var directory = new TempDirectory();
+        var overridePath = Path.Combine(directory.Path, "model-pricing.json");
+        File.WriteAllText(overridePath,
+            """{"models":{"gpt-5.5":{"input":0,"cachedInput":0,"cacheWrite5m":0,"cacheWrite1h":0,"output":0}}}""");
+
+        var merged = ModelPricingCatalog.MergeOverride(CreateCatalog(), overridePath);
+
+        Assert.Equal(0m, merged.Resolve("gpt-5.5")!.Input);
+        Assert.Equal(0m, merged.Resolve("gpt-5.5")!.Output);
+    }
+
     [Fact]
     public void MergeOverride_ScheduleReplacesTheWholeBuiltInModelSchedule()
     {

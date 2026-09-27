@@ -226,6 +226,13 @@ public sealed class ModelPricingCatalog
     private static bool TryParsePricing(JsonElement element, out ModelPricing pricing)
     {
         pricing = null!;
+        if (element.ValueKind != JsonValueKind.Object ||
+            !element.TryGetProperty("input", out _) ||
+            !element.TryGetProperty("cachedInput", out _) ||
+            !element.TryGetProperty("cacheWrite5m", out _) ||
+            !element.TryGetProperty("cacheWrite1h", out _) ||
+            !element.TryGetProperty("output", out _))
+            return false;
         try
         {
             var parsed = element.Deserialize<ModelPricing>();

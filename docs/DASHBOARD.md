@@ -56,6 +56,8 @@ Known estimation gaps (both cause **under**-estimation and cannot be derived fro
 
 Create `%LOCALAPPDATA%\UsageBeacon\model-pricing.json` to correct or extend prices without a new build. Entries replace the complete built-in schedule for that model; unknown names are added. A legacy object remains a timeless rate. Use an array with `effectiveFrom` dates for historical rates. Dates without an offset start at 00:00 UTC. All values are USD per million tokens:
 
+Every rate object must explicitly include `input`, `cachedInput`, `cacheWrite5m`, `cacheWrite1h`, and `output`, including rates that are intentionally zero. An incomplete override is ignored so it cannot silently replace a built-in rate with zero.
+
 The dashboard's displayed price-table date is the later of the built-in and override `asOf` dates, so an old local override does not hide newer built-in pricing updates.
 
 ```json
