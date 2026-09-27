@@ -69,6 +69,24 @@ public sealed class InsightsReaderTests
     }
 
     [Fact]
+    public void ClaudeParseFile_ReadsTranscriptWhileWriterKeepsItOpen()
+    {
+        using var directory = new TempDirectory();
+        var path = Path.Combine(directory.Path, "session.jsonl");
+        File.WriteAllText(path, ClaudeLine + Environment.NewLine);
+        using var writer = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Write,
+            FileShare.ReadWrite | FileShare.Delete);
+
+        var entry = Assert.Single(ClaudeTranscriptReader.ParseFile(path));
+
+        Assert.Equal("claude-fable-5", entry.Model);
+        Assert.Equal(10, entry.InputTokens);
+    }
+
+    [Fact]
     public void CodexParseFile_UsesCumulativeDeltas_NotLastTokenUsage()
     {
         using var directory = new TempDirectory();

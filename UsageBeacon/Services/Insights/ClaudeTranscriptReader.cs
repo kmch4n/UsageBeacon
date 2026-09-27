@@ -24,7 +24,13 @@ public static class ClaudeTranscriptReader
     public static IReadOnlyList<TokenUsageEntry> ParseFile(string path)
     {
         var byId = new Dictionary<long, TokenUsageEntry>();
-        foreach (var line in File.ReadLines(path))
+        using var stream = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        while (reader.ReadLine() is { } line)
         {
             // Cheap pre-filter before paying for JSON parsing.
             if (!line.Contains("\"assistant\"", StringComparison.Ordinal) ||
