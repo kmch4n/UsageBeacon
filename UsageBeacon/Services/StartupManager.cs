@@ -24,10 +24,11 @@ public sealed class StartupManager : IStartupManager
         using var key = Registry.CurrentUser.CreateSubKey(RunKey, writable: true);
         if (key.GetValue(LegacyAppName) is null) return;
 
-        if (key.GetValue(AppName) is null)
+        var exe = Environment.ProcessPath;
+        if (exe is null) return;
+        if (ShouldReplaceRegistrationDuringLegacyMigration(
+                key.GetValue(AppName) as string, exe))
         {
-            var exe = Environment.ProcessPath;
-            if (exe is null) return;
             key.SetValue(AppName, $"\"{exe}\"");
         }
 
@@ -39,7 +40,9 @@ public sealed class StartupManager : IStartupManager
         get
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: false);
-            return key?.GetValue(AppName) is not null ||
+            return IsCurrentExecutableRegistration(
+                       key?.GetValue(AppName) as string,
+                       Environment.ProcessPath) ||
                    key?.GetValue(LegacyAppName) is not null;
         }
         set
@@ -61,4 +64,23 @@ public sealed class StartupManager : IStartupManager
             }
         }
     }
+
+    internal static bool IsCurrentExecutableRegistration(
+        string? registration,
+        string? executablePath)
+    {
+        if (string.IsNullOrWhiteSpace(registration) ||
+            string.IsNullOrWhiteSpace(executablePath))
+            return false;
+
+        var path = registration.Trim();
+        if (path.Length >= 2 && path[0] == '"' && path[^1] == '"')
+            path = path[1..^1];
+        return string.Equals(path, executablePath, StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static bool ShouldReplaceRegistrationDuringLegacyMigration(
+        string? registration,
+        string executablePath) =>
+        !IsCurrentExecutableRegistration(registration, executablePath);
 }
