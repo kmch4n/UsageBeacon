@@ -32,10 +32,15 @@ public partial class DashboardWindow : Window
     private DateOnly? _selectedDay;
 
     public DashboardWindow(UsageViewModel settings)
+        : this(settings, new DashboardViewModel(ModelPricingCatalog.LoadDefault()))
+    {
+    }
+
+    internal DashboardWindow(UsageViewModel settings, DashboardViewModel vm)
     {
         InitializeComponent();
         _settings = settings;
-        _vm = new DashboardViewModel(ModelPricingCatalog.LoadDefault());
+        _vm = vm;
 
         ApplyTheme();
         ApplyLocalization();
@@ -154,13 +159,16 @@ public partial class DashboardWindow : Window
         ContentScroll.Visibility = Visibility.Collapsed;
         try
         {
-            if (!_vm.HasAnyLogDirectory)
+            _data = await _vm.LoadAsync(_cts.Token);
+            _lastScanLocal = DateTime.Now;
+            if (!_vm.HasAnyLogDirectory &&
+                _data.Lifetime.FirstUsageDay is null &&
+                !_data.Lifetime.HasUnknownCost &&
+                _data.Models.Count == 0)
             {
                 StatusText.Text = LocalizationService.Get("DashboardNoData");
                 return;
             }
-            _data = await _vm.LoadAsync(_cts.Token);
-            _lastScanLocal = DateTime.Now;
             StatusText.Visibility = Visibility.Collapsed;
             ContentScroll.Visibility = Visibility.Visible;
             Render();
