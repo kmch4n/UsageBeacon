@@ -6,6 +6,12 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ### Fixed
 
+- Unexpected startup and Claude integration dialogs and popup error messages no longer display raw exception details that may contain local paths or credentials.
+- Claude transcript scans include files still held open by a writing process.
+- A failed Codex app-server initialization discards the process and allows the next connection attempt to start cleanly.
+- Claude usage follows account changes and sign-out instead of reusing a cached credential; an unpersisted rotated token remains usable when its source is temporarily unreadable.
+- Canceling a usage refresh no longer publishes a network error.
+- Startup settings detect registrations pointing to an old executable, and legacy registrations repair a stale entry during migration.
 - The dashboard rebuilds from available logs when a syntactically valid insights cache has the wrong JSON root or schema-version type.
 - Retained recent and lifetime usage remains visible when both source log directories are missing.
 - Incomplete pricing overrides no longer replace built-in rates with implicit zero prices; explicitly specified zero rates remain valid.

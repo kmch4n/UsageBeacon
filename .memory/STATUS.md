@@ -2,6 +2,13 @@
 
 Last verified: 2026-09-27
 
+## Additional bug audit before the next release (2026-09-27)
+
+- Regressions covered: raw exception details in dialogs and popup usage errors, Claude transcript files open for writing, Codex app-server initialize timeout recovery and pipe-write cleanup, Claude account switch/sign-out while credentials are cached, caller cancellation, stale startup registration and legacy migration, and pending rotated credential fallback during temporary source read failure.
+- Synthetic tests were observed failing before the associated corrections. Full Debug and Release test suites each passed 274 tests with `-warnaserror`; both solution builds passed with zero warnings and errors. `git diff --check` passed. An independent review identified the pending-credential and startup-migration regressions; both were corrected and retested. A follow-up privacy review found no remaining direct exception-detail display path.
+- Live Claude/Codex authentication, real concurrent log writing, Windows login startup, and interactive UI behavior remain unverified. Generic popup errors now omit untrusted details; those details are not written to a diagnostic log, which may limit troubleshooting.
+- Six focused code commits through `ed6e1ba` contain these fixes. The accompanying changelog and [`docs/superpowers/plans/2026-09-27-bug-audit-fixes.md`](../docs/superpowers/plans/2026-09-27-bug-audit-fixes.md) record the scope and validation. Existing bug Issues remain open; feature Issues and the next release remain deferred.
+
 ## Bug fixes awaiting release (2026-09-27)
 
 - GitHub Issues #17 and #18 were closed as completed after their v1.2.0 release inclusion and 46 focused regression tests passed. Issue #13 remains open because its CI and release workflow exists but its warnings-as-errors acceptance criterion is not configured.
