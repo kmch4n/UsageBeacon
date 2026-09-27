@@ -14,25 +14,18 @@ public sealed class CodexAppServerClientTests
         try
         {
             var launcher = Path.Combine(directory.FullName, "fake-codex.cmd");
-            var script = Path.Combine(directory.FullName, "fake-server.ps1");
             var starts = Path.Combine(directory.FullName, "starts.txt");
             var respond = Path.Combine(directory.FullName, "respond.txt");
-            var powershell = Path.Combine(
-                Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
-            Assert.True(File.Exists(powershell), "Windows PowerShell is unavailable.");
             File.WriteAllText(launcher,
-                $"@echo off\r\n\"{powershell}\" -NoProfile -ExecutionPolicy Bypass -File \"%~dp0fake-server.ps1\"\r\n");
-            File.WriteAllText(script, """
-                $startsPath = Join-Path $PSScriptRoot 'starts.txt'
-                [System.IO.File]::AppendAllText($startsPath, "start`n")
-                while (($line = [Console]::ReadLine()) -ne $null) {
-                    $request = $line | ConvertFrom-Json
-                    if ($request.method -eq 'initialize' -and
-                        (Test-Path (Join-Path $PSScriptRoot 'respond.txt'))) {
-                        [Console]::WriteLine('{"jsonrpc":"2.0","id":' + $request.id + ',"result":{}}')
-                    }
-                }
-                """);
+                "@echo off\r\n" +
+                "echo start>>\"%~dp0starts.txt\"\r\n" +
+                ":read\r\n" +
+                "set /p line=\r\n" +
+                "if errorlevel 1 goto end\r\n" +
+                // The first request uses id 1; the restarted client's id is 2.
+                "if exist \"%~dp0respond.txt\" echo {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}\r\n" +
+                "goto read\r\n" +
+                ":end\r\n");
 
             await using var cl = new CodexAppServerClient(
                 [launcher], TimeSpan.FromSeconds(8));
