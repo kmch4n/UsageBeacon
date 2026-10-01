@@ -69,6 +69,10 @@ public static class TaskbarPosition
     internal static bool IsOutsideTaskbar(Rectangle widget, Rectangle taskbar)
         => !widget.IntersectsWith(taskbar);
 
+    internal static bool IsWithinTaskbar(Rectangle widget, Rectangle taskbar)
+        => widget.Left >= taskbar.Left && widget.Top >= taskbar.Top &&
+           widget.Right <= taskbar.Right && widget.Bottom <= taskbar.Bottom;
+
     // UI Automation scans of the taskbar are expensive cross-process queries,
     // so their results are cached and refreshed only when the cheap window
     // rectangles change, the cache is invalidated, or the entry grows stale.

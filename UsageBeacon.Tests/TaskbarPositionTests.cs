@@ -36,6 +36,22 @@ public sealed class TaskbarPositionTests
             Rectangle.FromLTRB(2037, 44, 2155, 84), taskbar));
     }
 
+    [Fact]
+    public void IsWithinTaskbar_RejectsDesktopAndPartialOverlap()
+    {
+        var taskbar = Rectangle.FromLTRB(0, 0, 2560, 40);
+
+        Assert.True(TaskbarPosition.IsWithinTaskbar(
+            Rectangle.FromLTRB(2000, 0, 2150, 40), taskbar));
+        Assert.False(TaskbarPosition.IsWithinTaskbar(
+            Rectangle.FromLTRB(2000, 44, 2150, 84), taskbar));
+        Assert.False(TaskbarPosition.IsWithinTaskbar(
+            Rectangle.FromLTRB(2000, 10, 2150, 50), taskbar));
+        Assert.True(TaskbarPosition.IsWithinTaskbar(
+            Rectangle.FromLTRB(2000, 960, 2150, 1000),
+            Rectangle.FromLTRB(0, 960, 2560, 1000)));
+    }
+
     private static readonly DateTime Now = new(2026, 7, 19, 12, 0, 0, DateTimeKind.Utc);
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(5);
 

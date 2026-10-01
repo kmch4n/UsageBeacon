@@ -2,6 +2,12 @@
 
 Last verified: 2026-10-02
 
+## Taskbar-only widget placement correction (2026-10-02)
+
+- The desktop retreat was an intentional fallback in `TaskbarWidget.ApplyLayout`, `RetreatOutsideTaskbar`, and `PositionAtScreenEdge`, triggered by insufficient measured width or unavailable taskbar geometry. It is now removed. The widget hides when no safe taskbar slot or notification-area bounds can be verified, and the one-second layout refresh restores it when space returns. Its actual HWND rectangle must fit inside the taskbar before it is shown.
+- Right-aligned widget content now fills the window to its right edge instead of retaining symmetric internal padding. The separate 26 physical pixel notification-area clearance remains to protect nearby system icons.
+- Debug and Release each passed 293 tests with warnings treated as errors. Live placement and mixed-DPI behavior are pending verification.
+
 ## Release v1.3.0 validation (2026-10-01)
 
 - `UsageBeacon/UsageBeacon.csproj` and `docs/CHANGELOG.md` now identify v1.3.0. The README's four screenshots were regenerated from the current WPF views using synthetic usage only; the app icon image has no PNG metadata. `docs/releases/v1.3.0.md` contains the curated release notes.

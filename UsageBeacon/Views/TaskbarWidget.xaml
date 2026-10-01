@@ -12,11 +12,12 @@
         WindowStartupLocation="Manual">
 
     <!--
-        The widget sits next to the taskbar at the same height.
+        The widget sits inside the taskbar while its slot is available.
         AllowsTransparency keeps the idle surface visually integrated with the taskbar.
     -->
     <Button x:Name="Root"
             Cursor="Hand"
+            HorizontalContentAlignment="Stretch"
             Background="Transparent"
             BorderThickness="0"
             Padding="0"
@@ -27,7 +28,7 @@
                     <Border x:Name="BackgroundBorder"
                             Background="{TemplateBinding Background}"
                             CornerRadius="6">
-                        <ContentPresenter/>
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
                     </Border>
                     <Border x:Name="FocusBorder"
                             BorderBrush="#FFFFFFFF"
@@ -57,7 +58,7 @@
             </ControlTemplate>
         </Button.Template>
 
-        <Grid>
+        <Grid HorizontalAlignment="Stretch">
         <StackPanel x:Name="WideContent" Orientation="Horizontal"
                     VerticalAlignment="Center"
                     HorizontalAlignment="Center"

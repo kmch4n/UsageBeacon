@@ -4,6 +4,11 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- Keep the widget inside the taskbar: hide it when no safe slot exists, then restore it when space returns.
+- Align widget content to the selected edge so right placement has no internal right padding.
+
 ## 1.3.0 - 2026-10-01
 
 ### Added

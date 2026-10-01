@@ -153,8 +153,9 @@ The 2026-09-12 amendment for #18 covers recognized credential keys in quoted str
 ## D-017: Offer an optional weekly taskbar widget layout
 
 - Date: 2026-10-01
+- Amended: 2026-10-02
 - Status: Active
 - Decision: Keep Claude and Codex as two horizontal groups, with each five-hour percentage to the left of its weekly percentage. Show the weekly values only when the user enables the persisted setting; keep all four numbers at the existing 14 DIP font size and omit visible period labels. Use packaged official Claude and OpenAI images for the service marks.
 - Reason: The compact widget should expose weekly limits for users with taskbar space without reducing number legibility for other users.
-- Consequences: The setting defaults off. A wider inline layout needs verified free space; otherwise the widget moves outside the taskbar. Unknown left-side button boundaries cannot establish free space. The tooltip and accessible name identify each period, and icon attribution remains in `docs/NOTICE.md`.
+- Consequences: The setting defaults off. A wider inline layout needs verified free space; otherwise the widget hides until space returns. It never retreats into the desktop. Unknown left-side button boundaries cannot establish free space. Right placement removes internal right padding while retaining the 26 physical pixel clearance before the notification area. The tooltip and accessible name identify each period, and icon attribution remains in `docs/NOTICE.md`.
 - Evidence: [`UsageBeacon/Views/TaskbarWidget.xaml`](../UsageBeacon/Views/TaskbarWidget.xaml), [`UsageBeacon/Views/TaskbarWidget.xaml.cs`](../UsageBeacon/Views/TaskbarWidget.xaml.cs), and [`UsageBeacon/Views/UsagePopupWindow.xaml`](../UsageBeacon/Views/UsagePopupWindow.xaml).

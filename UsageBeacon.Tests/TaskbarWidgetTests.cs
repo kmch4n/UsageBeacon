@@ -105,7 +105,7 @@ public sealed class TaskbarWidgetTests
     }
 
     [Fact]
-    public void WeeklyOption_RetreatsOutsideTaskbarRatherThanDroppingValues()
+    public void WeeklyOption_DoesNotMoveIntoDesktopWhenTaskbarSlotIsTooNarrow()
     {
         RunOnStaThread(() =>
         {
@@ -117,7 +117,8 @@ public sealed class TaskbarWidgetTests
             ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 200);
 
             Assert.Equal(240, fixture.Widget.Width);
-            Assert.True(fixture.Widget.Top >= 44);
+            Assert.InRange(fixture.Widget.Top, taskbar.TaskbarTop,
+                taskbar.TaskbarBottom - fixture.Widget.Height);
             Assert.Equal(Visibility.Visible,
                 Assert.IsType<System.Windows.Controls.TextBlock>(
                     fixture.Widget.FindName("ClaudeWeeklyLabel")).Visibility);
@@ -218,7 +219,7 @@ public sealed class TaskbarWidgetTests
     }
 
     [Fact]
-    public void ApplyLayout_RetreatsAboveBottomTaskbar_WhenInlineSlotIsTooNarrow()
+    public void ApplyLayout_DoesNotMoveAboveBottomTaskbar_WhenInlineSlotIsTooNarrow()
     {
         RunOnStaThread(() =>
         {
@@ -228,13 +229,13 @@ public sealed class TaskbarWidgetTests
 
             ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 4);
 
-            Assert.True(fixture.Widget.Top + fixture.Widget.Height <= 956,
-                $"Widget bottom edge was {fixture.Widget.Top + fixture.Widget.Height}");
+            Assert.InRange(fixture.Widget.Top, taskbar.TaskbarTop,
+                taskbar.TaskbarBottom - fixture.Widget.Height);
         });
     }
 
     [Fact]
-    public void ApplyLayout_RetreatsBelowTopTaskbar_WhenInlineSlotIsTooNarrow()
+    public void ApplyLayout_DoesNotMoveBelowTopTaskbar_WhenInlineSlotIsTooNarrow()
     {
         RunOnStaThread(() =>
         {
@@ -244,13 +245,13 @@ public sealed class TaskbarWidgetTests
 
             ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 4);
 
-            Assert.True(fixture.Widget.Top >= 44,
-                $"Widget top edge was {fixture.Widget.Top}");
+            Assert.InRange(fixture.Widget.Top, taskbar.TaskbarTop,
+                taskbar.TaskbarBottom - fixture.Widget.Height);
         });
     }
 
     [Fact]
-    public void ApplyLayout_KeepsOutsidePositionOnSelectedScreen_WhenTrayExpandsLeft()
+    public void ApplyLayout_DoesNotMoveOutsideTaskbar_WhenTrayExpandsLeft()
     {
         RunOnStaThread(() =>
         {
@@ -260,8 +261,35 @@ public sealed class TaskbarWidgetTests
 
             ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 4);
 
-            Assert.InRange(fixture.Widget.Left, 4, 878);
-            Assert.True(fixture.Widget.Top >= 44);
+            Assert.InRange(fixture.Widget.Top, taskbar.TaskbarTop,
+                taskbar.TaskbarBottom - fixture.Widget.Height);
+        });
+    }
+
+    [Fact]
+    public void RightPlacement_AlignsWideContentToWindowRightEdge()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            var taskbar = new TaskbarPosition.Info(0, 0, 40, 1000, 40,
+                800, 100, 400, 500);
+            fixture.Widget.Show();
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 274);
+            fixture.Widget.UpdateLayout();
+
+            var content = Assert.IsType<System.Windows.Controls.StackPanel>(
+                fixture.Widget.FindName("WideContent"));
+            var right = content.TranslatePoint(new Point(content.ActualWidth, 0),
+                fixture.Widget).X;
+            Assert.InRange(fixture.Widget.Width - right, 0, 1);
+
+            fixture.ViewModel.ShowWeeklyInWidget = true;
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 274);
+            fixture.Widget.UpdateLayout();
+            right = content.TranslatePoint(new Point(content.ActualWidth, 0),
+                fixture.Widget).X;
+            Assert.InRange(fixture.Widget.Width - right, 0, 1);
         });
     }
 
@@ -271,8 +299,7 @@ public sealed class TaskbarWidgetTests
         var layoutType = typeof(TaskbarWidget).GetNestedType("Layout",
             BindingFlags.NonPublic)!;
         var layout = Activator.CreateInstance(layoutType,
-            placement, taskbar, taskbar.TaskbarLeft + 4, availableWidth,
-            0.0, 1000.0, 0.0, 1000.0)!;
+            placement, taskbar, taskbar.TaskbarLeft + 4, availableWidth)!;
         typeof(TaskbarWidget).GetMethod("ApplyLayout",
             BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(widget, [layout]);
     }

@@ -31,7 +31,7 @@ what that usage would have cost at API prices.
 
 ## Features
 
-- **Always-visible taskbar widget** with Claude Code and Codex utilization at a glance, plus optional weekly percentages
+- **Taskbar widget** with Claude Code and Codex utilization at a glance, plus optional weekly percentages
 - **Detailed usage windows** — five-hour and weekly limits with reset countdowns
 - **Native Claude Code integration** that reads rate limits from the status line, with no extra usage API requests
 - **Usage dashboard** estimating API-price-equivalent costs from your local session logs
@@ -49,6 +49,9 @@ Claude Code and Codex are both optional; either one can be used on its own.
 
 The widget updates on your chosen interval. This example has the optional weekly display enabled;
 each service shows its five-hour percentage on the left and its weekly percentage on the right:
+
+If the selected taskbar has no safe space, the widget hides until a space becomes available;
+the notification-area icon remains available.
 
 <img src="docs/images/widget.png" alt="UsageBeacon widget showing five-hour and weekly percentages for Claude and Codex" width="360">
 
