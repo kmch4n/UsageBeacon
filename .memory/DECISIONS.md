@@ -149,3 +149,12 @@ The 2026-09-12 amendment for #18 covers recognized credential keys in quoted str
 - Reason: `ResponseHeadersRead` applied those limits only to headers and allowed body reads to hold the shared refresh gate indefinitely (#17).
 - Consequences: Caller cancellation remains cancellation, client deadlines become `DomainError.Timeout`, and oversized bodies become `DomainError.Network`. Normal HTTP errors keep their status and Retry-After mapping. Since error bodies are buffered too, an error body that stalls or exceeds the cap becomes a transport error before status classification. Endpoints, redirect rejection, and polling cooldown policy remain unchanged. No request or response body is logged.
 - Evidence: [`UsageBeacon/Services/AnthropicUsageApiClient.cs`](../UsageBeacon/Services/AnthropicUsageApiClient.cs), [`UsageBeacon/Services/ClaudeOAuthClient.cs`](../UsageBeacon/Services/ClaudeOAuthClient.cs), [`UsageBeacon.Tests/ClaudeHttpResponseTests.cs`](../UsageBeacon.Tests/ClaudeHttpResponseTests.cs), and [`UsageBeacon.Tests/UsageViewModelTests.cs`](../UsageBeacon.Tests/UsageViewModelTests.cs).
+
+## D-017: Offer an optional weekly taskbar widget layout
+
+- Date: 2026-10-01
+- Status: Active
+- Decision: Keep Claude and Codex as two horizontal groups, with each five-hour percentage to the left of its weekly percentage. Show the weekly values only when the user enables the persisted setting; keep all four numbers at the existing 14 DIP font size and omit visible period labels. Use packaged official Claude and OpenAI images for the service marks.
+- Reason: The compact widget should expose weekly limits for users with taskbar space without reducing number legibility for other users.
+- Consequences: The setting defaults off. A wider inline layout needs verified free space; otherwise the widget moves outside the taskbar. Unknown left-side button boundaries cannot establish free space. The tooltip and accessible name identify each period, and icon attribution remains in `docs/NOTICE.md`.
+- Evidence: [`UsageBeacon/Views/TaskbarWidget.xaml`](../UsageBeacon/Views/TaskbarWidget.xaml), [`UsageBeacon/Views/TaskbarWidget.xaml.cs`](../UsageBeacon/Views/TaskbarWidget.xaml.cs), and [`UsageBeacon/Views/UsagePopupWindow.xaml`](../UsageBeacon/Views/UsagePopupWindow.xaml).

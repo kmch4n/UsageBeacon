@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/images/app-icon.png" alt="UsageBeacon icon" width="88">
+
 # UsageBeacon
 
 *Keep Claude Code and Codex usage on your Windows taskbar*
@@ -29,7 +31,7 @@ what that usage would have cost at API prices.
 
 ## Features
 
-- **Always-visible taskbar widget** with Claude Code and Codex utilization at a glance
+- **Always-visible taskbar widget** with Claude Code and Codex utilization at a glance, plus optional weekly percentages
 - **Detailed usage windows** — five-hour and weekly limits with reset countdowns
 - **Native Claude Code integration** that reads rate limits from the status line, with no extra usage API requests
 - **Usage dashboard** estimating API-price-equivalent costs from your local session logs
@@ -45,9 +47,10 @@ Claude Code and Codex are both optional; either one can be used on its own.
 
 ## Screenshots
 
-The widget stays on the taskbar and updates on your chosen interval:
+The widget updates on your chosen interval. This example has the optional weekly display enabled;
+each service shows its five-hour percentage on the left and its weekly percentage on the right:
 
-<img src="docs/images/widget.png" alt="UsageBeacon taskbar widget showing Claude and Codex percentages" width="177">
+<img src="docs/images/widget.png" alt="UsageBeacon widget showing five-hour and weekly percentages for Claude and Codex" width="360">
 
 The dashboard puts locally retained lifetime, today, 7-day, and 30-day estimates above aligned
 cost and token charts:
@@ -60,8 +63,8 @@ Select a day to see its service split and exact input and output totals:
 <img src="docs/images/dashboard-daily.png" alt="Daily cost and token figures with selected-day details in the UsageBeacon dashboard" width="820">
 
 > [!NOTE]
-> The dashboard screenshots were captured from the app with illustrative usage data. They do not
-> show the author's usage history.
+> These screenshots were captured from the app with illustrative usage data. They do not show the
+> author's usage history.
 
 ## Requirements
 
@@ -106,8 +109,10 @@ The application is written to `UsageBeacon\bin\Release\net8.0-windows\UsageBeaco
 To produce the same self-contained, single-file build that releases ship:
 
 ```powershell
-dotnet publish UsageBeacon\UsageBeacon.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish\
+dotnet publish UsageBeacon\UsageBeacon.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish\latest\
 ```
+
+The latest local standalone executable is always `publish\latest\UsageBeacon.exe`.
 
 ## Usage
 
@@ -120,7 +125,7 @@ codex login
 
 - Click the taskbar widget to open the usage popup
 - Use the tray menu for refresh, monitor switching, and exit
-- Adjust refresh interval, transparency, monitor, position, language, and theme from the popup
+- Adjust refresh interval, transparency, monitor, position, weekly widget display, language, and theme from the popup
 
 ### Claude Code integration
 

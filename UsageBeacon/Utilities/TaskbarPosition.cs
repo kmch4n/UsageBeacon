@@ -31,6 +31,44 @@ public static class TaskbarPosition
         double? ContentLeft,   // Left edge of centered taskbar items.
         double? ContentRight); // Right edge of centered taskbar items.
 
+    public record CurrentBounds(Rectangle Taskbar, Rectangle? Notification);
+
+    // This read is intentionally independent of Get(): the widget checks it
+    // frequently, while Get() may run a cross-process UI Automation scan.
+    public static CurrentBounds? ReadCurrentBounds(int screenIndex)
+    {
+        var screens = Screen.AllScreens;
+        if (screens.Length == 0) return null;
+        var target = screens[Math.Clamp(screenIndex, 0, screens.Length - 1)];
+        var taskbar = FindTaskbar(target.Bounds);
+        if (taskbar == IntPtr.Zero || !TryReadRectangle(taskbar, out var taskbarRect) ||
+            taskbarRect.Width <= 4 || taskbarRect.Height <= 4)
+            return null;
+
+        var notify = FindWindowEx(taskbar, IntPtr.Zero, "TrayNotifyWnd", null);
+        Rectangle? notifyRect = notify != IntPtr.Zero &&
+            TryReadRectangle(notify, out var measured) &&
+            measured.Width > 0 && measured.Height > 0
+            ? measured : null;
+        return new CurrentBounds(taskbarRect, notifyRect);
+    }
+
+    public static bool TryReadRectangle(IntPtr hwnd, out Rectangle rectangle)
+    {
+        rectangle = default;
+        if (hwnd == IntPtr.Zero || !GetWindowRect(hwnd, out var rect)) return false;
+        rectangle = Rectangle.FromLTRB(rect.Left, rect.Top, rect.Right, rect.Bottom);
+        return rectangle.Width > 0 && rectangle.Height > 0;
+    }
+
+    internal static bool HasNotificationClearance(
+        Rectangle widget, Rectangle notification, int clearance)
+        => widget.Bottom <= notification.Top || widget.Top >= notification.Bottom ||
+           widget.Right <= notification.Left - clearance;
+
+    internal static bool IsOutsideTaskbar(Rectangle widget, Rectangle taskbar)
+        => !widget.IntersectsWith(taskbar);
+
     // UI Automation scans of the taskbar are expensive cross-process queries,
     // so their results are cached and refreshed only when the cheap window
     // rectangles change, the cache is invalidated, or the entry grows stale.

@@ -28,6 +28,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
     private bool _isLoading;
     private PollingInterval _pollingInterval;
     private WidgetPlacement _widgetPlacement;
+    private bool _showWeeklyInWidget;
     private PopupTransparency _popupTransparency;
     private string? _monitorDeviceName;
     private bool _startupEnabled;
@@ -83,6 +84,19 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
             var previous = _widgetPlacement;
             _widgetPlacement = value;
             if (!TrySaveSettings()) _widgetPlacement = previous;
+            Notify();
+        }
+    }
+
+    public bool ShowWeeklyInWidget
+    {
+        get => _showWeeklyInWidget;
+        set
+        {
+            if (_showWeeklyInWidget == value) return;
+            var previous = _showWeeklyInWidget;
+            _showWeeklyInWidget = value;
+            if (!TrySaveSettings()) _showWeeklyInWidget = previous;
             Notify();
         }
     }
@@ -232,6 +246,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         _codex           = codex  ?? new CodexUsageProvider();
         _pollingInterval = ParsePollingInterval(settings.PollingInterval);
         _widgetPlacement = ParseWidgetPlacement(settings.WidgetPlacement);
+        _showWeeklyInWidget = settings.ShowWeeklyInWidget;
         _popupTransparency = ParsePopupTransparency(settings.PopupTransparency);
         _monitorDeviceName = settings.MonitorDeviceName;
         _loginPrompted = settings.LoginPrompted;
@@ -479,6 +494,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
             {
                 PollingInterval = (int)_pollingInterval,
                 WidgetPlacement = _widgetPlacement.ToString(),
+                ShowWeeklyInWidget = _showWeeklyInWidget,
                 PopupTransparency = _popupTransparency.ToString(),
                 MonitorDeviceName = _monitorDeviceName,
                 LoginPrompted = _loginPrompted,

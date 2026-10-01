@@ -16,6 +16,8 @@
   <data name="TooltipRefreshNow" xml:space="preserve"><value>今すぐ更新</value></data>
   <data name="TooltipClose" xml:space="preserve"><value>閉じる</value></data>
   <data name="WidgetOpenUsage" xml:space="preserve"><value>UsageBeaconの使用量詳細を開く</value></data>
+  <data name="WidgetUnavailable" xml:space="preserve"><value>取得不可</value></data>
+  <data name="WidgetWeeklyDescription" xml:space="preserve"><value>UsageBeaconの使用量詳細を開く。Claudeの5時間: {0}、週間: {1}。Codexの5時間: {2}、週間: {3}。</value></data>
   <data name="StatusLoading" xml:space="preserve"><value>取得中…</value></data>
   <data name="UsageFiveHour" xml:space="preserve"><value>5時間</value></data>
   <data name="UsageWeekly" xml:space="preserve"><value>週次 (7日)</value></data>
@@ -35,6 +37,7 @@
   <data name="SettingsTransparency" xml:space="preserve"><value>背景透明度</value></data>
   <data name="SettingsMonitor" xml:space="preserve"><value>表示モニター</value></data>
   <data name="SettingsPosition" xml:space="preserve"><value>表示位置</value></data>
+  <data name="SettingsShowWeeklyInWidget" xml:space="preserve"><value>ウィジェットに週間使用率を表示</value></data>
   <data name="SettingsLanguage" xml:space="preserve"><value>言語</value></data>
   <data name="SettingsTheme" xml:space="preserve"><value>テーマ</value></data>
   <data name="ThemeSystem" xml:space="preserve"><value>システム設定に従う</value></data>

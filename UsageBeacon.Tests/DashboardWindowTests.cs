@@ -47,6 +47,8 @@ public sealed class DashboardWindowTests
             var window = new DashboardWindow(settings, vm);
             try
             {
+                Assert.NotNull(window.Icon);
+                Assert.NotNull(window.TitleBarIcon.Source);
                 await RefreshAsync(window);
 
                 Assert.Equal(Visibility.Visible, window.ContentScroll.Visibility);

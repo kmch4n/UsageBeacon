@@ -344,6 +344,12 @@
                             Style="{StaticResource LinkBtn}" Click="Placement_Click"/>
                 </Grid>
                 <Grid Margin="0,0,0,6">
+                    <TextBlock x:Name="WeeklyWidgetLabel" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                    <CheckBox x:Name="WeeklyWidgetChk" HorizontalAlignment="Right"
+                              AutomationProperties.LabeledBy="{Binding ElementName=WeeklyWidgetLabel}"
+                              Checked="WeeklyWidgetChk_Changed" Unchecked="WeeklyWidgetChk_Changed"/>
+                </Grid>
+                <Grid Margin="0,0,0,6">
                     <TextBlock x:Name="LanguageLabel" Style="{StaticResource Label}" VerticalAlignment="Center"/>
                     <ComboBox x:Name="LanguagePicker" HorizontalAlignment="Right" Width="130"
                               SelectionChanged="LanguagePicker_SelectionChanged"/>

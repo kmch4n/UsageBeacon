@@ -16,6 +16,8 @@
   <data name="TooltipRefreshNow" xml:space="preserve"><value>Refresh now</value></data>
   <data name="TooltipClose" xml:space="preserve"><value>Close</value></data>
   <data name="WidgetOpenUsage" xml:space="preserve"><value>Open UsageBeacon usage details</value></data>
+  <data name="WidgetUnavailable" xml:space="preserve"><value>unavailable</value></data>
+  <data name="WidgetWeeklyDescription" xml:space="preserve"><value>Open UsageBeacon usage details. Claude 5 hours: {0}; weekly: {1}. Codex 5 hours: {2}; weekly: {3}.</value></data>
   <data name="StatusLoading" xml:space="preserve"><value>Loading...</value></data>
   <data name="UsageFiveHour" xml:space="preserve"><value>5 hours</value></data>
   <data name="UsageWeekly" xml:space="preserve"><value>Weekly (7 days)</value></data>
@@ -35,6 +37,7 @@
   <data name="SettingsTransparency" xml:space="preserve"><value>Background transparency</value></data>
   <data name="SettingsMonitor" xml:space="preserve"><value>Display monitor</value></data>
   <data name="SettingsPosition" xml:space="preserve"><value>Display position</value></data>
+  <data name="SettingsShowWeeklyInWidget" xml:space="preserve"><value>Show weekly usage in widget</value></data>
   <data name="SettingsLanguage" xml:space="preserve"><value>Language</value></data>
   <data name="SettingsTheme" xml:space="preserve"><value>Theme</value></data>
   <data name="ThemeSystem" xml:space="preserve"><value>System default</value></data>

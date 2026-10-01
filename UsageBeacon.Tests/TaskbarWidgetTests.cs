@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -6,6 +7,7 @@ using System.Windows.Automation.Provider;
 using UsageBeacon.Models;
 using UsageBeacon.Providers;
 using UsageBeacon.Services;
+using UsageBeacon.Utilities;
 using UsageBeacon.ViewModels;
 using UsageBeacon.Views;
 using WpfButton = System.Windows.Controls.Button;
@@ -14,6 +16,291 @@ namespace UsageBeacon.Tests;
 
 public sealed class TaskbarWidgetTests
 {
+    [Fact]
+    public void ServiceIcons_LoadPackagedImagesInEveryDisplayMode()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            foreach (var name in new[]
+            {
+                "ClaudeIconWide", "OpenAiIconWide",
+                "ClaudeIconCompact", "OpenAiIconCompact",
+                "ClaudeIconVertical", "OpenAiIconVertical",
+            })
+            {
+                var icon = Assert.IsType<System.Windows.Controls.Image>(
+                    fixture.Widget.FindName(name));
+                Assert.NotNull(icon.Source);
+                Assert.Equal(System.Windows.Media.Stretch.Uniform, icon.Stretch);
+            }
+        });
+    }
+
+    [Fact]
+    public void WeeklyOption_ExpandsHorizontalLayoutWithoutShrinkingPercentages()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            var taskbar = new TaskbarPosition.Info(0, 0, 40, 1000, 40,
+                800, 100, 400, 500);
+
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 274);
+            Assert.Equal(136, fixture.Widget.Width);
+
+            fixture.ViewModel.ShowWeeklyInWidget = true;
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 274);
+
+            var claudeWeekly = Assert.IsType<System.Windows.Controls.TextBlock>(
+                fixture.Widget.FindName("ClaudeWeeklyLabel"));
+            var codexWeekly = Assert.IsType<System.Windows.Controls.TextBlock>(
+                fixture.Widget.FindName("CodexWeeklyLabel"));
+            var claudeFiveHour = Assert.IsType<System.Windows.Controls.TextBlock>(
+                fixture.Widget.FindName("ClaudeLabel"));
+            Assert.InRange(fixture.Widget.Width, 200, 274);
+            Assert.Equal(Visibility.Visible, claudeWeekly.Visibility);
+            Assert.Equal(Visibility.Visible, codexWeekly.Visibility);
+            Assert.Equal(claudeFiveHour.FontSize, claudeWeekly.FontSize);
+            Assert.True(fixture.Widget.Left + fixture.Widget.Width <= 774);
+
+            fixture.ViewModel.ShowWeeklyInWidget = false;
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 274);
+            Assert.Equal(136, fixture.Widget.Width);
+            Assert.Equal(Visibility.Collapsed, claudeWeekly.Visibility);
+        });
+    }
+
+    [Fact]
+    public void WeeklyOption_KeepsMissingFiveHourSeparateFromWeeklyValue()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            fixture.ViewModel.ShowWeeklyInWidget = true;
+            var usage = new UsageSnapshot
+            {
+                ClaudeUsage = new ServiceUsage(null,
+                    new RateLimit(0.62, DateTime.UtcNow.AddDays(1)), null),
+                CodexUsage = new ServiceUsage(
+                    new RateLimit(0.20, DateTime.UtcNow.AddHours(1)),
+                    new RateLimit(0.48, DateTime.UtcNow.AddDays(1)), null),
+            };
+            typeof(UsageViewModel).GetProperty(nameof(UsageViewModel.Snapshot))!
+                .SetValue(fixture.ViewModel, usage);
+
+            var claudeFiveHour = Assert.IsType<System.Windows.Controls.TextBlock>(
+                fixture.Widget.FindName("ClaudeLabel"));
+            var claudeWeekly = Assert.IsType<System.Windows.Controls.TextBlock>(
+                fixture.Widget.FindName("ClaudeWeeklyLabel"));
+            var codexWeekly = Assert.IsType<System.Windows.Controls.TextBlock>(
+                fixture.Widget.FindName("CodexWeeklyLabel"));
+            Assert.Equal("--%", claudeFiveHour.Text);
+            Assert.Equal("62%", claudeWeekly.Text);
+            Assert.Equal("48%", codexWeekly.Text);
+            var accessibleName = AutomationProperties.GetName(fixture.Widget.ToggleButton);
+            Assert.Contains("62%", accessibleName);
+            Assert.Contains("48%", accessibleName);
+        });
+    }
+
+    [Fact]
+    public void WeeklyOption_RetreatsOutsideTaskbarRatherThanDroppingValues()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            fixture.ViewModel.ShowWeeklyInWidget = true;
+            var taskbar = new TaskbarPosition.Info(0, 0, 40, 1000, 40,
+                800, 100, 400, 500);
+
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 200);
+
+            Assert.Equal(240, fixture.Widget.Width);
+            Assert.True(fixture.Widget.Top >= 44);
+            Assert.Equal(Visibility.Visible,
+                Assert.IsType<System.Windows.Controls.TextBlock>(
+                    fixture.Widget.FindName("ClaudeWeeklyLabel")).Visibility);
+        });
+    }
+
+    [Fact]
+    public void LeftPlacement_RequiresBothWidgetAndContentBoundaries()
+    {
+        var unknown = new TaskbarPosition.Info(0, 0, 40, 1000, 40,
+            800, null, null, 500);
+        Assert.Equal(-1, TaskbarWidget.AvailableLeftWidth(unknown));
+
+        var known = unknown with { WidgetsRight = 100, ContentLeft = 400 };
+        Assert.Equal(292, TaskbarWidget.AvailableLeftWidth(known));
+    }
+
+    [Fact]
+    public void WideLayout_FitsFourHundredPercentLabelsWithoutClipping()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            var full = new RateLimit(1, DateTime.UtcNow.AddHours(1));
+            typeof(UsageViewModel).GetProperty(nameof(UsageViewModel.Snapshot))!
+                .SetValue(fixture.ViewModel, new UsageSnapshot
+                {
+                    ClaudeUsage = new ServiceUsage(full, full, null),
+                    CodexUsage = new ServiceUsage(full, full, null),
+                });
+            var content = Assert.IsType<System.Windows.Controls.StackPanel>(
+                fixture.Widget.FindName("WideContent"));
+
+            content.Measure(new Size(double.PositiveInfinity, 40));
+            Assert.True(content.DesiredSize.Width <= fixture.Widget.Width,
+                $"Default content needs {content.DesiredSize.Width} DIP");
+
+            fixture.ViewModel.ShowWeeklyInWidget = true;
+            content.Measure(new Size(double.PositiveInfinity, 40));
+            Assert.True(content.DesiredSize.Width <= fixture.Widget.Width,
+                $"Weekly content needs {content.DesiredSize.Width} DIP");
+        });
+    }
+
+    [Fact]
+    public void CompactAndVerticalLayouts_FitTheirPercentagesWithOfficialIcons()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            var full = new RateLimit(1, DateTime.UtcNow.AddHours(1));
+            typeof(UsageViewModel).GetProperty(nameof(UsageViewModel.Snapshot))!
+                .SetValue(fixture.ViewModel, new UsageSnapshot
+                {
+                    ClaudeUsage = new ServiceUsage(full, null, null),
+                    CodexUsage = new ServiceUsage(full, null, null),
+                });
+            var taskbar = new TaskbarPosition.Info(0, 0, 40, 1000, 40,
+                800, 100, 400, 500);
+
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 84);
+            var compact = Assert.IsType<System.Windows.Controls.StackPanel>(
+                fixture.Widget.FindName("CompactContent"));
+            Assert.Equal(Visibility.Visible, compact.Visibility);
+            compact.Measure(new Size(double.PositiveInfinity, 40));
+            Assert.True(compact.DesiredSize.Width <= fixture.Widget.Width,
+                $"Compact content needs {compact.DesiredSize.Width} DIP");
+
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 44);
+            var vertical = Assert.IsType<System.Windows.Controls.StackPanel>(
+                fixture.Widget.FindName("VerticalContent"));
+            Assert.Equal(Visibility.Visible, vertical.Visibility);
+            vertical.Measure(new Size(double.PositiveInfinity, 40));
+            Assert.True(vertical.DesiredSize.Width <= fixture.Widget.Width,
+                $"Vertical content needs {vertical.DesiredSize.Width} DIP");
+        });
+    }
+
+    [Fact]
+    public void ApplyLayout_ReservesNotificationAreaClearance()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            var taskbar = new TaskbarPosition.Info(100, 0, 140, 1000, 40,
+                800, 100, 400, 600);
+
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 696);
+
+            Assert.True(fixture.Widget.Left + fixture.Widget.Width <= 774,
+                $"Widget right edge was {fixture.Widget.Left + fixture.Widget.Width}");
+
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 696);
+
+            Assert.True(fixture.Widget.Left + fixture.Widget.Width <= 774,
+                "A later full layout must preserve the clearance");
+        });
+    }
+
+    [Fact]
+    public void ApplyLayout_RetreatsAboveBottomTaskbar_WhenInlineSlotIsTooNarrow()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            var taskbar = new TaskbarPosition.Info(960, 0, 1000, 1000, 40,
+                800, 100, 400, 790);
+
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 4);
+
+            Assert.True(fixture.Widget.Top + fixture.Widget.Height <= 956,
+                $"Widget bottom edge was {fixture.Widget.Top + fixture.Widget.Height}");
+        });
+    }
+
+    [Fact]
+    public void ApplyLayout_RetreatsBelowTopTaskbar_WhenInlineSlotIsTooNarrow()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            var taskbar = new TaskbarPosition.Info(0, 0, 40, 1000, 40,
+                800, 100, 400, 790);
+
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 4);
+
+            Assert.True(fixture.Widget.Top >= 44,
+                $"Widget top edge was {fixture.Widget.Top}");
+        });
+    }
+
+    [Fact]
+    public void ApplyLayout_KeepsOutsidePositionOnSelectedScreen_WhenTrayExpandsLeft()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            var taskbar = new TaskbarPosition.Info(0, 0, 40, 1000, 40,
+                60, 100, 400, 790);
+
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 4);
+
+            Assert.InRange(fixture.Widget.Left, 4, 878);
+            Assert.True(fixture.Widget.Top >= 44);
+        });
+    }
+
+    private static void ApplyLayout(TaskbarWidget widget, WidgetPlacement placement,
+        TaskbarPosition.Info taskbar, double availableWidth)
+    {
+        var layoutType = typeof(TaskbarWidget).GetNestedType("Layout",
+            BindingFlags.NonPublic)!;
+        var layout = Activator.CreateInstance(layoutType,
+            placement, taskbar, taskbar.TaskbarLeft + 4, availableWidth,
+            0.0, 1000.0, 0.0, 1000.0)!;
+        typeof(TaskbarWidget).GetMethod("ApplyLayout",
+            BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(widget, [layout]);
+    }
+
+    private sealed class WidgetFixture : IDisposable
+    {
+        private readonly DirectoryInfo _directory =
+            Directory.CreateTempSubdirectory("UsageBeaconWidgetTests-");
+        private readonly UsageViewModel _vm;
+
+        public TaskbarWidget Widget { get; }
+        public UsageViewModel ViewModel => _vm;
+
+        public WidgetFixture()
+        {
+            _vm = new UsageViewModel(new StubUsageProvider(), new StubUsageProvider(),
+                new StubSettingsStore(), new StubStartupManager(), _directory.FullName);
+            Widget = new TaskbarWidget(_vm);
+        }
+
+        public void Dispose()
+        {
+            Widget.Close();
+            _vm.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            _directory.Delete(recursive: true);
+        }
+    }
+
     [Fact]
     public void ToggleControl_ExposesButtonInvokeSemanticsAndAccessibleName()
     {

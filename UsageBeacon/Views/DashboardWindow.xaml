@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="UsageBeacon"
+        Icon="pack://application:,,,/UsageBeacon;component/Resources/tray.ico"
         Width="920" Height="740" MinWidth="720" MinHeight="520"
         WindowStyle="None" ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen"
@@ -152,8 +153,14 @@
                 <Grid Grid.Column="0" Margin="20,0,0,0" Background="Transparent"
                       MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"
                       MouseRightButtonUp="TitleBar_MouseRightButtonUp">
-                    <TextBlock x:Name="TitleText" Style="{StaticResource H1}"
-                               VerticalAlignment="Center" IsHitTestVisible="False"/>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                IsHitTestVisible="False">
+                        <Image x:Name="TitleBarIcon"
+                               Source="pack://application:,,,/UsageBeacon;component/Resources/tray.ico"
+                               Width="24" Height="24" Margin="0,0,10,0"/>
+                        <TextBlock x:Name="TitleText" Style="{StaticResource H1}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
                 </Grid>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock x:Name="LastScanText" Style="{StaticResource Tiny}"

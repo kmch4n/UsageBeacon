@@ -10,6 +10,9 @@ public sealed class AppSettings
     [JsonPropertyName("widgetPlacement")]
     public string WidgetPlacement { get; init; } = "Right";
 
+    [JsonPropertyName("showWeeklyInWidget")]
+    public bool ShowWeeklyInWidget { get; init; }
+
     [JsonPropertyName("popupTransparency")]
     public string PopupTransparency { get; init; } = "Percent20";
 

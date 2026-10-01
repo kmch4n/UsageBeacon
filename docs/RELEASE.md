@@ -25,8 +25,8 @@ workflow uses only the automatic `GITHUB_TOKEN`; no additional secrets are confi
 ## Tagging
 
 ```powershell
-git tag v1.2.0
-git push fork v1.2.0
+git tag vX.Y.Z
+git push fork vX.Y.Z
 ```
 
 The tag name must be the project version with a leading `v`. The workflow verifies this before it

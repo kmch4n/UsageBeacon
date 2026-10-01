@@ -12,10 +12,12 @@
     <ApplicationIcon>Resources\tray.ico</ApplicationIcon>
     <Platforms>AnyCPU</Platforms>
     <NeutralLanguage>en</NeutralLanguage>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Resources\tray.ico" />
+    <Resource Include="Resources\claude.png" />
+    <Resource Include="Resources\openai.png" />
     <Resource Include="Resources\model-pricing.json" />
     <EmbeddedResource Include="Resources\ClaudeStatusLineBridge.ps1" />
   </ItemGroup>

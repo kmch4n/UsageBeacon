@@ -164,6 +164,26 @@ public sealed class UsageViewModelTests
     }
 
     [Fact]
+    public async Task ShowWeeklyInWidget_PersistsAndRollsBackWhenSavingFails()
+    {
+        using var directory = new TempDirectory();
+        var store = new StubSettingsStore();
+        await using var vm = new UsageViewModel(
+            new StubUsageProvider(), new StubUsageProvider(), store,
+            new FakeStartupManager(), directory.Path);
+
+        Assert.False(vm.ShowWeeklyInWidget);
+        vm.ShowWeeklyInWidget = true;
+        Assert.True(vm.ShowWeeklyInWidget);
+        Assert.True(store.Saved?.ShowWeeklyInWidget);
+
+        store.ThrowOnSave = true;
+        vm.ShowWeeklyInWidget = false;
+        Assert.True(vm.ShowWeeklyInWidget);
+        Assert.Equal("SettingsSaveFailed", vm.SettingsErrorKey);
+    }
+
+    [Fact]
     public async Task AppTheme_Set_PersistsToSettingsAndAppliesTheme()
     {
         using var directory = new TempDirectory();

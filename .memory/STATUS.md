@@ -1,6 +1,39 @@
 # Current Repository Status
 
-Last verified: 2026-09-27
+Last verified: 2026-10-01
+
+## v1.3.0 release preparation (2026-10-01)
+
+- `UsageBeacon/UsageBeacon.csproj` and `docs/CHANGELOG.md` now identify v1.3.0. The README's four screenshots were regenerated from the current WPF views using synthetic usage only; the app icon image has no PNG metadata. `docs/releases/v1.3.0.md` contains the curated release notes.
+- A screenshot exposed an initially blank popup language selection. A failing WPF test reproduced it, and the popup now selects the saved language item. The corrected screenshot visibly shows English.
+- Debug and Release each passed 291 tests; both solution builds passed with `-warnaserror`, zero warnings, and zero errors. `git diff --check` passed. The local branch matched `fork/main` before release commits, and the configured Git author and GitHub account were both `kmch4n`.
+- The local self-contained v1.3.0 executable was republished to `publish/latest/UsageBeacon.exe`, SHA-256 `28bafe4c6d2ac6817fc24a0bdffacaba9acaa8909a333d19e9e9bd84980c2d58`, and the running app was switched to it. This is a pre-tag local build; the GitHub Actions release asset may differ because it is built from the tagged commit. The published release and hosted CI are pending.
+
+## Optional weekly widget and official service images (2026-10-01)
+
+- The taskbar widget now has an opt-in weekly setting. Each service keeps its five-hour value on the left and weekly value on the right at the same 14 DIP text size. The default remains off. Missing five-hour data stays separate from weekly data, and a failed settings save restores the accepted checkbox and widget state.
+- Bundled official Claude and OpenAI PNGs replace the widget's placeholder symbols across wide, compact, and vertical layouts. Source URLs and ownership are recorded in `docs/NOTICE.md`.
+- Independent review found that unknown left-side button boundaries could be mistaken for free space; that case now retreats outside the taskbar. The new checkbox is associated with its localized label for assistive technology.
+- At this implementation checkpoint, Debug and Release each passed 290 tests. Both solution builds passed with `-warnaserror`, zero warnings, and zero errors; `git diff --check` passed. Width and resource-loading tests use WPF layout measurements. Live widget appearance and mixed-DPI interaction were not yet verified at that checkpoint.
+- At this earlier checkpoint, the self-contained single-file build was republished to `publish/latest/UsageBeacon.exe` on 2026-10-01 at 12:21:15 UTC, SHA-256 `8d3595ea0e7c220fc1d41aaf147f8b2075e03c2dec12e3baf0ae422e1415826d`. The v1.3.0 build above superseded it. The older `publish/latest/UsageBeacon.pdb` and `publish/v1.2.0-local` remain after cleanup was rejected by execution policy.
+- Taskbar button boundaries are cached for up to five seconds when the notification-area rectangle is stable. If a button moves during that interval, a temporary overlap remains possible. The native notification-area clearance is still checked every 200 ms.
+- Plan: [`docs/superpowers/plans/2026-10-01-widget-weekly-icons.md`](../docs/superpowers/plans/2026-10-01-widget-weekly-icons.md).
+
+## Taskbar widget notification-area overlap (2026-10-01)
+
+- At this earlier checkpoint, the local standalone executable was published to `publish/latest/UsageBeacon.exe` with SHA-256 `2a90d950945a7612bb0879ac1a1d867b237802f0a7af1852a15575a904fdd09f`. It has since been superseded by the build recorded above. The running process used `UsageBeacon/bin/Debug/net8.0-windows/UsageBeacon.exe` at that time; the user later switched to `publish/latest`. README, agent, and localization instructions point local publish commands to `publish/latest`.
+- Cleanup of the old `publish/v1.2.0-local` directory and stale `publish/latest/UsageBeacon.pdb` was rejected by the execution policy. They remain locally; the executable in `publish/latest` is the canonical current build. The active Debug process also prevents complete generated-output cleanup without interrupting the user.
+- A read-only 100 ms probe observed six consecutive samples with a 22 px overlap between the widget and `TrayNotifyWnd`. The previous placement used a 2 px gap and repositioned every second while reasserting topmost every 200 ms.
+- The widget now checks Win32 rectangles before each topmost assertion, reserves 26 physical pixels at the notification-area edge, and moves outside the taskbar when the inline corridor cannot be verified. It rechecks its actual HWND rectangle after moving and hides until a later successful check if clearance cannot be confirmed. A top taskbar uses space below it; a bottom taskbar uses space above it.
+- Synthetic placement and geometry tests passed, including a leftward tray expansion, narrow inline slot, top/bottom taskbars, and screen-edge clamping. Debug and Release each passed 281 tests, and both builds passed with zero warnings and errors under `-warnaserror`. Independent plan and final-diff reviews found no remaining confirmed blocker. The running application was not replaced, so live interaction and mixed-DPI placement of this build remain unverified. The Windows notification area can move between 200 ms samples, so a brief overlap is still possible before the next check.
+- Plan: [`docs/superpowers/plans/2026-10-01-taskbar-widget-overlap.md`](../docs/superpowers/plans/2026-10-01-taskbar-widget-overlap.md).
+
+## Application icon integration (2026-09-28)
+
+- The transparent source artwork is in [`docs/images/app-icon.png`](../docs/images/app-icon.png), and its multi-size Windows icon is [`UsageBeacon/Resources/tray.ico`](../UsageBeacon/Resources/tray.ico) with 16, 24, 32, 48, 64, 128, and 256 px frames. The user-provided JPEG had a baked-in checkerboard, so it was not used directly as an application asset.
+- [`UsageBeacon/UsageBeacon.csproj`](../UsageBeacon/UsageBeacon.csproj) embeds the icon as the executable icon and a WPF resource; [`UsageBeacon/App.xaml.cs`](../UsageBeacon/App.xaml.cs) uses that resource for the notification area. The dashboard window now sets the same icon explicitly for its taskbar entry and displays it in the custom title bar.
+- A running copy of an older executable must be restarted or replaced to display the new icon. Windows icon caching may retain an older executable icon until it refreshes; this is distinct from the WPF window icon.
+- The source PNG has a real alpha channel, and the ICO frames were inspected at 16 and 32 px on light and dark backgrounds. Debug built with zero warnings and 274 tests passed. Release built with zero warnings and 274 tests passed from a separate output directory because a running UsageBeacon process holds the ordinary Release executable and DLL open. Dashboard window tests instantiate the XAML and assert that the window and title-bar icon sources load. The running application was not interrupted, so its live taskbar rendering remains unverified.
 
 ## Additional bug audit before the next release (2026-09-27)
 
@@ -64,43 +97,22 @@ Pending: `publish/latest/UsageBeacon.exe` is still 1.0.0. The application was ru
 
 ## README screenshots
 
-`README.md` embeds PNGs under `docs/images/`. The widget and popup were captured from a live
-UsageBeacon process on 2026-08-16. The two dashboard images were recaptured on 2026-09-25 from
-the actual WPF view using illustrative data in a separate screenshot process:
+`README.md` embeds PNGs under `docs/images/`. On 2026-10-01, the widget, popup, and both dashboard
+images were recaptured from the current WPF views with illustrative data in separate screenshot
+processes:
 
-- The dashboard images expose no personal usage data. Future replacements should preserve that
-  property rather than relying on blur. The widget and popup still show live utilization data.
+- None of the four screenshots contains personal usage data. The widget and popup use synthetic
+  rate-limit snapshots; the dashboard uses synthetic daily usage. Future replacements should
+  preserve this property rather than relying on blur.
 - Screenshots use the English UI because repository documentation is English (D-003). The separate
-  dashboard process sets English without changing the user's app language preference.
+  screenshot processes set English without changing the user's app language preference.
 - The popup composes its surface with the transparency setting (D-009), so any non-zero transparency
-  bleeds the desktop behind it into the image. Set transparency to 0% while capturing.
-- Window rectangles must be read with the capturing process marked DPI-aware, otherwise the coordinates
-  do not match the physical pixels that a screen copy returns.
-- `GetWindowRect` includes the shadow margin and the popup's corners are rounded, so a capture at the
-  reported rectangle keeps desktop pixels in the corner arcs. Crop inside the arc (about 14 px per side
-  for the popup at 150% scaling) rather than to the border stroke; cropping to the stroke leaves
-  visible background at the corners.
-- The widget sits next to the notification area, so a capture with margin picks up the overflow
-  chevron and the user's tray icons. Crop to the widget's own window rectangle, which already leaves
-  even padding around the glyphs, and verify that no content columns fall outside it.
-- The taskbar widget exposes the UIA Invoke pattern (D-014), so the popup and dashboard can be opened
-  without synthetic mouse input.
-
-A dashboard window was seen once during the capture in a loaded-but-hidden state (`WS_VISIBLE`
-clear), after which the popup's "Open" button did nothing. The investigation on 2026-08-16 did not
-establish a root cause and did not reproduce it:
-
-- No application code hides a window other than the popup's own `Deactivated` handler
-  (`App.xaml.cs:110`). `TaskbarWidget` declares `SW_HIDE` but never uses it, and its `ShowWindow`
-  call targets the widget's own handle.
-- An open dashboard stayed visible across a 60-second observation with no external window calls.
-- The state is reachable in principle, because `App.OpenDashboard` calls only `Activate()` when
-  `_dashboard is { IsLoaded: true }`, and `Activate()` does not restore a hidden window. Whether
-  normal interaction can produce that state is unknown.
-
-The single observation followed direct `ShowWindow`/`BringWindowToTop`/`SetForegroundWindow` calls
-from the capture tooling, so external manipulation is the more likely cause than an application
-defect. No code change was made. Treat this as an open question, not a confirmed bug.
+  bleeds the background into the image. Set transparency to 0% while capturing.
+- The widget and popup captures render the WPF content at 150% bitmap scale against a controlled
+  background. The dashboard captures render the full WPF window with a synthetic `DashboardData`.
+  They do not include other desktop windows, tray icons, or credentials.
+- The screenshot harness uncovered a blank initial language selection in the popup. A regression
+  test and fix now select the saved language item before the image was finalized.
 
 `docs/NOTICE.md` and `README.md` both link to `https://github.com/satonico/Token-Checker`, which
 returned HTTP 404 on 2026-08-16. Upstream's own README carries the same dead link, so the repository

@@ -4,8 +4,22 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+## 1.3.0 - 2026-10-01
+
+### Added
+
+- An optional taskbar widget setting shows each service's five-hour and weekly utilization side by side at the same text size.
+
+### Changed
+
+- Replaced the widget's placeholder symbols with bundled official Claude and OpenAI images.
+- Replaced the application and notification-area icon with a transparent multi-size beacon mark, and displayed it in the dashboard taskbar entry and custom title bar.
+
 ### Fixed
 
+- The taskbar widget checks the live notification-area bounds before reasserting topmost, keeps a 26 px clearance, and moves outside the taskbar when no safe inline slot can be verified.
+- Left-side widget placement retreats outside the taskbar when button boundaries cannot be verified.
+- The popup now selects the saved language on first display instead of leaving its language field blank.
 - Unexpected startup and Claude integration dialogs and popup error messages no longer display raw exception details that may contain local paths or credentials.
 - Claude transcript scans include files still held open by a writing process.
 - A failed Codex app-server initialization discards the process and allows the next connection attempt to start cleanly.

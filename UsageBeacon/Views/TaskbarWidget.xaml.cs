@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
@@ -6,6 +7,7 @@ using System.Windows.Threading;
 using UsageBeacon.Localization;
 using UsageBeacon.Utilities;
 using UsageBeacon.ViewModels;
+using DrawingRectangle = System.Drawing.Rectangle;
 using MediaColor = System.Windows.Media.Color;
 using WpfButton = System.Windows.Controls.Button;
 
@@ -15,9 +17,11 @@ public partial class TaskbarWidget : Window
 {
     private enum DisplayMode { Wide, Compact, Vertical, AboveTaskbar }
 
-    private const double WideWidth = 118;
-    private const double CompactWidth = 70;
+    private const double WideWidth = 136;
+    private const double ExtendedWidth = 240;
+    private const double CompactWidth = 84;
     private const double VerticalWidth = 44;
+    private const int NotificationClearance = 26;
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(
         IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
@@ -37,6 +41,9 @@ public partial class TaskbarWidget : Window
     private DispatcherTimer?        _topmostTimer;
     private int                     _screenIndex;
     private int                     _positionTick;
+    private DrawingRectangle?       _lastNotificationBounds;
+    private DateTime                _lastNotificationChangeUtc;
+    private bool                    _outsideTaskbar;
 
     public event Action? PopupToggleRequested;
 
@@ -50,8 +57,10 @@ public partial class TaskbarWidget : Window
         Loaded += OnLoaded;
         Closed += OnClosed;
         LocalizationService.LanguageChanged += OnLanguageChanged;
-        vm.SnapshotChanged += () => Dispatcher.Invoke(UpdateLabels);
+        vm.SnapshotChanged += OnSnapshotChanged;
+        vm.PropertyChanged += OnViewModelPropertyChanged;
         ApplyLocalization();
+        ApplyWeeklySetting();
         UpdateLabels();
     }
 
@@ -61,11 +70,43 @@ public partial class TaskbarWidget : Window
     {
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         LocalizationService.LanguageChanged -= OnLanguageChanged;
+        _vm.SnapshotChanged -= OnSnapshotChanged;
+        _vm.PropertyChanged -= OnViewModelPropertyChanged;
         _topmostTimer?.Stop();
     }
 
     private void OnLanguageChanged()
-        => Dispatcher.Invoke(ApplyLocalization);
+        => Dispatcher.Invoke(() =>
+        {
+            ApplyLocalization();
+            UpdateLabels();
+        });
+
+    private void OnSnapshotChanged()
+        => Dispatcher.Invoke(UpdateLabels);
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(UsageViewModel.ShowWeeklyInWidget)) return;
+        if (Dispatcher.CheckAccess()) ApplyWeeklySetting();
+        else Dispatcher.BeginInvoke(ApplyWeeklySetting);
+    }
+
+    private void ApplyWeeklySetting()
+    {
+        var visibility = _vm.ShowWeeklyInWidget ? Visibility.Visible : Visibility.Collapsed;
+        ClaudeWeeklySeparator.Visibility = visibility;
+        ClaudeWeeklyLabel.Visibility = visibility;
+        CodexWeeklySeparator.Visibility = visibility;
+        CodexWeeklyLabel.Visibility = visibility;
+        Width = _vm.ShowWeeklyInWidget ? ExtendedWidth : WideWidth;
+        if (IsLoaded)
+        {
+            PositionOnSelectedTaskbar(_vm.WidgetPlacement);
+            HideIfClearanceCannotBeVerified();
+        }
+        UpdateLabels();
+    }
 
     private void ApplyLocalization()
     {
@@ -107,13 +148,21 @@ public partial class TaskbarWidget : Window
                 // Move to the active desktop and show again after a desktop change.
                 VirtualDesktopHelper.MoveToCurrentDesktop(hwnd);
             }
+            if (!EnsureNotificationClearance())
+            {
+                ShowWindow(hwnd, SW_HIDE);
+                return;
+            }
             ShowWindow(hwnd, SW_SHOWNA);
             ReassertTopmost();
             if (++_positionTick % 5 == 0)
                 PositionOnSelectedTaskbar(_vm.WidgetPlacement);
         };
         _topmostTimer.Start();
-        ReassertTopmost();
+        if (EnsureNotificationClearance())
+            ReassertTopmost();
+        else
+            ShowWindow(initialHwnd, SW_HIDE);
     }
 
     private void ReassertTopmost()
@@ -137,34 +186,74 @@ public partial class TaskbarWidget : Window
         WidgetPlacement Placement,
         TaskbarPosition.Info Taskbar,
         double LeftSlot,
-        double AvailableWidth);
+        double AvailableWidth,
+        double ScreenLeft,
+        double ScreenRight,
+        double ScreenTop,
+        double ScreenBottom);
+
+    private double LogicalPixelsPerWindowPixel
+        => PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice.M11 ?? 1.0;
 
     private void PositionOnSelectedTaskbar(WidgetPlacement placement)
     {
         var screens = System.Windows.Forms.Screen.AllScreens;
         if (screens.Length == 0) return;
 
+        if (TaskbarPosition.ReadCurrentBounds(_screenIndex)?.Notification is null)
+        {
+            PositionAtScreenEdge(_screenIndex, placement);
+            HideIfClearanceCannotBeVerified();
+            return;
+        }
+
         var selected = CreateLayout(_screenIndex, placement);
         if (selected != null)
         {
+            if (placement == WidgetPlacement.Right && _outsideTaskbar &&
+                DateTime.UtcNow - _lastNotificationChangeUtc < TimeSpan.FromSeconds(1))
+                return;
             ApplyLayout(selected);
+            HideIfClearanceCannotBeVerified();
             return;
         }
 
         PositionAtScreenEdge(_screenIndex, placement);
+        HideIfClearanceCannotBeVerified();
     }
 
-    private static Layout? CreateLayout(int screenIndex, WidgetPlacement placement)
+    private void HideIfClearanceCannotBeVerified()
+    {
+        if (IsLoaded && !EnsureNotificationClearance())
+            ShowWindow(new WindowInteropHelper(this).Handle, SW_HIDE);
+    }
+
+    private Layout? CreateLayout(int screenIndex, WidgetPlacement placement)
     {
         var tb = TaskbarPosition.Get(screenIndex);
         if (tb == null) return null;
 
+        var screen = System.Windows.Forms.Screen.AllScreens[screenIndex];
+        var logicalScale = LogicalPixelsPerWindowPixel;
+        var clearance = NotificationClearance * logicalScale;
         var leftSlot = (tb.WidgetsRight ?? tb.TaskbarLeft) + 4;
         var available = placement == WidgetPlacement.Left
-            ? (tb.ContentLeft ?? tb.NotifyLeft) - leftSlot - 4
-            : tb.NotifyLeft - (tb.ContentRight ?? (tb.WidgetsRight ?? tb.TaskbarLeft)) - 6;
-        return new Layout(placement, tb, leftSlot, available);
+            ? AvailableLeftWidth(tb)
+            : tb.ContentRight is { } contentRight
+                ? tb.NotifyLeft - contentRight - clearance
+                : -1;
+        return new Layout(placement, tb, leftSlot, available,
+            screen.Bounds.Left * logicalScale,
+            screen.Bounds.Right * logicalScale,
+            screen.Bounds.Top * logicalScale,
+            screen.Bounds.Bottom * logicalScale);
     }
+
+    internal static double AvailableLeftWidth(TaskbarPosition.Info taskbar)
+        => taskbar.WidgetsRight is { } widgetsRight &&
+           taskbar.ContentLeft is { } contentLeft
+            ? contentLeft - widgetsRight - 8
+            : -1;
 
     private void ApplyLayout(Layout layout)
     {
@@ -172,30 +261,97 @@ public partial class TaskbarWidget : Window
         var mode = ApplyDisplayMode(layout.AvailableWidth);
         Left = layout.Placement == WidgetPlacement.Left
             ? layout.LeftSlot
-            : layout.Taskbar.NotifyLeft - Width - 2;
+            : layout.Taskbar.NotifyLeft - Width -
+              NotificationClearance * LogicalPixelsPerWindowPixel;
+        if (mode == DisplayMode.AboveTaskbar)
+            Left = Math.Clamp(Left, layout.ScreenLeft + 4,
+                Math.Max(layout.ScreenLeft + 4, layout.ScreenRight - Width - 4));
         Top = mode == DisplayMode.AboveTaskbar
-            ? layout.Taskbar.TaskbarTop - Height - 4
+            ? OutsideTaskbarTop(layout.Taskbar.TaskbarTop,
+                layout.Taskbar.TaskbarBottom, layout.ScreenTop,
+                layout.ScreenBottom, Height)
             : layout.Taskbar.TaskbarTop;
+        _outsideTaskbar = mode == DisplayMode.AboveTaskbar;
+    }
+
+    internal static double OutsideTaskbarTop(double taskbarTop, double taskbarBottom,
+        double screenTop, double screenBottom, double widgetHeight)
+        => taskbarTop - screenTop <= screenBottom - taskbarBottom
+            ? taskbarBottom + 4
+            : taskbarTop - widgetHeight - 4;
+
+    private bool EnsureNotificationClearance()
+    {
+        var current = TaskbarPosition.ReadCurrentBounds(_screenIndex);
+        if (current?.Notification is not { } notification)
+        {
+            RetreatOutsideTaskbar(current);
+            var currentHwnd = new WindowInteropHelper(this).Handle;
+            return current is { } bounds &&
+                   TaskbarPosition.TryReadRectangle(currentHwnd, out var outsideWidget) &&
+                   TaskbarPosition.IsOutsideTaskbar(outsideWidget, bounds.Taskbar);
+        }
+
+        if (_lastNotificationBounds != notification)
+        {
+            _lastNotificationBounds = notification;
+            _lastNotificationChangeUtc = DateTime.UtcNow;
+        }
+
+        if (_outsideTaskbar) RetreatOutsideTaskbar(current);
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (!TaskbarPosition.TryReadRectangle(hwnd, out var widget))
+            return false;
+        if (!TaskbarPosition.HasNotificationClearance(widget, notification,
+                NotificationClearance))
+        {
+            RetreatOutsideTaskbar(current);
+            // A WPF move can be delayed or transformed by DPI virtualization.
+            // Do not show a widget whose actual HWND still covers the tray.
+            return TaskbarPosition.TryReadRectangle(hwnd, out widget) &&
+                   TaskbarPosition.HasNotificationClearance(widget, notification,
+                       NotificationClearance);
+        }
+        return true;
+    }
+
+    private void RetreatOutsideTaskbar(TaskbarPosition.CurrentBounds? current)
+    {
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        if (screens.Length == 0) return;
+        var screen = screens[Math.Clamp(_screenIndex, 0, screens.Length - 1)];
+        var scale = LogicalPixelsPerWindowPixel;
+        if (current is { } bounds)
+            Top = OutsideTaskbarTop(bounds.Taskbar.Top * scale,
+                bounds.Taskbar.Bottom * scale, screen.Bounds.Top * scale,
+                screen.Bounds.Bottom * scale, Height);
+        else
+            Top = screen.WorkingArea.Top > screen.Bounds.Top
+                ? screen.WorkingArea.Top * scale + 4
+                : screen.WorkingArea.Bottom * scale - Height - 4;
+        _outsideTaskbar = true;
     }
 
     private void PositionAtScreenEdge(int screenIndex, WidgetPlacement placement)
     {
         var screens = System.Windows.Forms.Screen.AllScreens;
 
-        // Taskbar inspection failed: keep the widget visible at the selected screen edge.
+        // Taskbar inspection failed: keep the widget visible outside its work area edge.
         var screen = screenIndex < screens.Length ? screens[screenIndex] : screens[0];
-        using var g = System.Drawing.Graphics.FromHwnd(IntPtr.Zero);
-        var dpi = g.DpiX / 96.0;
+        var scale = LogicalPixelsPerWindowPixel;
 
-        // Estimate taskbar height, using the primary taskbar when available.
-        double tbHeight = TaskbarPosition.Get()?.TaskbarHeight ?? 48 / dpi;
+        // Estimate the selected taskbar's height when its geometry is available.
+        double tbHeight = TaskbarPosition.Get(screenIndex)?.TaskbarHeight ?? 48 * scale;
         Height = tbHeight;
         ApplyDisplayMode(WideWidth);
-        var fallbackRightSlot = screen.Bounds.Right / dpi - Width - 4;
+        var fallbackRightSlot = screen.Bounds.Right * scale - Width - 4;
         Left   = placement == WidgetPlacement.Left
-            ? fallbackRightSlot - ActualWidth - 6
+            ? screen.Bounds.Left * scale + 4
             : fallbackRightSlot;
-        Top    = screen.Bounds.Bottom / dpi - tbHeight;
+        Top    = screen.WorkingArea.Top > screen.Bounds.Top
+            ? screen.WorkingArea.Top * scale + 4
+            : screen.WorkingArea.Bottom * scale - tbHeight - 4;
+        _outsideTaskbar = true;
     }
 
     // Label updates.
@@ -203,13 +359,21 @@ public partial class TaskbarWidget : Window
     private void UpdateLabels()
     {
         var snap       = _vm.Snapshot;
-        var claudeUtil = snap.ClaudeUsage?.FiveHour?.Utilization ?? snap.ClaudeUsage?.Weekly?.Utilization;
-        var codexUtil  = snap.CodexUsage?.FiveHour?.Utilization  ?? snap.CodexUsage?.Weekly?.Utilization;
+        var claudeUtil = snap.ClaudeUsage?.FiveHour?.Utilization ??
+            (_vm.ShowWeeklyInWidget ? null : snap.ClaudeUsage?.Weekly?.Utilization);
+        var codexUtil = snap.CodexUsage?.FiveHour?.Utilization ??
+            (_vm.ShowWeeklyInWidget ? null : snap.CodexUsage?.Weekly?.Utilization);
+        var claudeWeekly = snap.ClaudeUsage?.Weekly?.Utilization;
+        var codexWeekly = snap.CodexUsage?.Weekly?.Utilization;
 
         ClaudeLabel.Text       = claudeUtil.HasValue ? $"{(int)(claudeUtil.Value * 100)}%" : "--%";
         ClaudeLabel.Foreground = UtilBrush(claudeUtil);
         CodexLabel.Text        = codexUtil.HasValue  ? $"{(int)(codexUtil.Value  * 100)}%" : "--%";
         CodexLabel.Foreground  = UtilBrush(codexUtil);
+        ClaudeWeeklyLabel.Text = claudeWeekly.HasValue ? $"{(int)(claudeWeekly.Value * 100)}%" : "--%";
+        ClaudeWeeklyLabel.Foreground = UtilBrush(claudeWeekly);
+        CodexWeeklyLabel.Text = codexWeekly.HasValue ? $"{(int)(codexWeekly.Value * 100)}%" : "--%";
+        CodexWeeklyLabel.Foreground = UtilBrush(codexWeekly);
         CompactClaudeLabel.Text       = claudeUtil.HasValue ? $"{(int)(claudeUtil.Value * 100)}" : "--";
         CompactClaudeLabel.Foreground = UtilBrush(claudeUtil);
         CompactCodexLabel.Text        = codexUtil.HasValue ? $"{(int)(codexUtil.Value * 100)}" : "--";
@@ -218,21 +382,45 @@ public partial class TaskbarWidget : Window
         VerticalClaudeLabel.Foreground = UtilBrush(claudeUtil);
         VerticalCodexLabel.Text        = codexUtil.HasValue ? $"{(int)(codexUtil.Value * 100)}" : "--";
         VerticalCodexLabel.Foreground  = UtilBrush(codexUtil);
+        UpdateAccessibleDescription(claudeUtil, claudeWeekly, codexUtil, codexWeekly);
+    }
+
+    private void UpdateAccessibleDescription(double? claudeFiveHour, double? claudeWeekly,
+        double? codexFiveHour, double? codexWeekly)
+    {
+        if (!_vm.ShowWeeklyInWidget)
+        {
+            var action = LocalizationService.Get("WidgetOpenUsage");
+            AutomationProperties.SetName(Root, action);
+            Root.ToolTip = action;
+            return;
+        }
+
+        string Describe(double? value) => value.HasValue
+            ? $"{(int)(value.Value * 100)}%"
+            : LocalizationService.Get("WidgetUnavailable");
+        var description = LocalizationService.Format("WidgetWeeklyDescription",
+            Describe(claudeFiveHour), Describe(claudeWeekly),
+            Describe(codexFiveHour), Describe(codexWeekly));
+        AutomationProperties.SetName(Root, description);
+        Root.ToolTip = description;
     }
 
     private DisplayMode ApplyDisplayMode(double availableWidth)
     {
-        var mode = availableWidth >= WideWidth ? DisplayMode.Wide
+        var requiredWidth = _vm.ShowWeeklyInWidget ? ExtendedWidth : WideWidth;
+        var mode = availableWidth >= requiredWidth ? DisplayMode.Wide
+            : _vm.ShowWeeklyInWidget ? DisplayMode.AboveTaskbar
             : availableWidth >= CompactWidth ? DisplayMode.Compact
             : availableWidth >= VerticalWidth ? DisplayMode.Vertical
             : DisplayMode.AboveTaskbar;
 
         Width = mode switch
         {
-            DisplayMode.Wide => WideWidth,
+            DisplayMode.Wide => requiredWidth,
             DisplayMode.Compact => CompactWidth,
             DisplayMode.Vertical => VerticalWidth,
-            _ => WideWidth,
+            _ => requiredWidth,
         };
         WideContent.Visibility = mode is DisplayMode.Wide or DisplayMode.AboveTaskbar
             ? Visibility.Visible

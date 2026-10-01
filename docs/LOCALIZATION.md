@@ -38,7 +38,7 @@ Run:
 dotnet test UsageBeacon.sln -c Debug
 dotnet build UsageBeacon.sln -c Debug
 dotnet build UsageBeacon.sln -c Release
-dotnet publish UsageBeacon\UsageBeacon.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+dotnet publish UsageBeacon\UsageBeacon.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish\latest\
 ```
 
 The localization tests verify English and Japanese resource-key parity, fallback normalization, runtime language changes, localized domain errors, and legacy settings compatibility.

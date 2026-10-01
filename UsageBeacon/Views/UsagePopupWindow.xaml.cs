@@ -18,6 +18,7 @@ public partial class UsagePopupWindow : Window
     private bool _languagePickerReady;
     private bool _themePickerReady;
     private bool _syncingStartup;
+    private bool _syncingWeeklyWidget;
     private int _monitorIndex;
     private int _monitorTotal = 1;
     private WidgetPlacement _placement;
@@ -71,6 +72,7 @@ public partial class UsagePopupWindow : Window
         TransparencyLabel.Text = LocalizationService.Get("SettingsTransparency");
         MonitorLabel.Text = LocalizationService.Get("SettingsMonitor");
         PositionLabel.Text = LocalizationService.Get("SettingsPosition");
+        WeeklyWidgetLabel.Text = LocalizationService.Get("SettingsShowWeeklyInWidget");
         LanguageLabel.Text = LocalizationService.Get("SettingsLanguage");
         ThemeLabel.Text = LocalizationService.Get("SettingsTheme");
         DashboardLabel.Text = LocalizationService.Get("DashboardTitle");
@@ -134,6 +136,16 @@ public partial class UsagePopupWindow : Window
         finally
         {
             _syncingStartup = false;
+        }
+
+        _syncingWeeklyWidget = true;
+        try
+        {
+            WeeklyWidgetChk.IsChecked = _vm.ShowWeeklyInWidget;
+        }
+        finally
+        {
+            _syncingWeeklyWidget = false;
         }
 
         _pickerReady = false;
@@ -398,7 +410,9 @@ public partial class UsagePopupWindow : Window
     }
 
     private void SyncLanguagePicker()
-        => LanguagePicker.SelectedValue = _vm.UiLanguage;
+        => LanguagePicker.SelectedItem = LanguagePicker.Items
+            .Cast<LanguageOption>()
+            .FirstOrDefault(option => option.Code == _vm.UiLanguage);
 
     private void LanguagePicker_SelectionChanged(
         object sender,
@@ -481,6 +495,13 @@ public partial class UsagePopupWindow : Window
     {
         if (_syncingStartup) return;
         _vm.StartupEnabled = StartupChk.IsChecked == true;
+        SyncSettingsState();
+    }
+
+    private void WeeklyWidgetChk_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncingWeeklyWidget) return;
+        _vm.ShowWeeklyInWidget = WeeklyWidgetChk.IsChecked == true;
         SyncSettingsState();
     }
 

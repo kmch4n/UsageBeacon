@@ -15,6 +15,67 @@ namespace UsageBeacon.Tests;
 [Collection("ThemeServiceState")]
 public sealed class UsagePopupWindowTests
 {
+    [Fact]
+    public void LanguagePicker_SelectsSavedLanguageOnInitialLoad()
+    {
+        RunSta(() =>
+        {
+            using var directory = new TempDirectory();
+            var vm = new UsageViewModel(new StubUsageProvider(),
+                new StubUsageProvider(), new FailingSettingsStore(),
+                new StubStartupManager(), directory.Path);
+            vm.UiLanguage = "en";
+            var popup = new UsagePopupWindow(vm);
+            try
+            {
+                var picker = Assert.IsType<ComboBox>(popup.FindName("LanguagePicker"));
+                Assert.Equal("en", Assert.IsType<LanguageOption>(picker.SelectedItem).Code);
+            }
+            finally
+            {
+                popup.Close();
+                DisposeViewModel(vm);
+            }
+        });
+    }
+
+    [Fact]
+    public void WeeklyWidgetCheckbox_RestoresAcceptedValueAfterSaveFailure()
+    {
+        RunSta(() =>
+        {
+            using var directory = new TempDirectory();
+            var store = new FailingSettingsStore();
+            var vm = new UsageViewModel(
+                new StubUsageProvider(), new StubUsageProvider(), store,
+                new StubStartupManager(), directory.Path);
+            var popup = new UsagePopupWindow(vm);
+            try
+            {
+                var checkbox = Assert.IsType<CheckBox>(popup.FindName("WeeklyWidgetChk"));
+                Assert.Same(popup.FindName("WeeklyWidgetLabel"),
+                    System.Windows.Automation.AutomationProperties.GetLabeledBy(checkbox));
+                Assert.False(checkbox.IsChecked);
+
+                store.ThrowOnSave = true;
+                checkbox.IsChecked = true;
+                Assert.False(checkbox.IsChecked);
+                Assert.False(vm.ShowWeeklyInWidget);
+
+                store.ThrowOnSave = false;
+                checkbox.IsChecked = true;
+                Assert.True(checkbox.IsChecked);
+                Assert.True(vm.ShowWeeklyInWidget);
+                Assert.Equal(2, store.SaveCount);
+            }
+            finally
+            {
+                popup.Close();
+                DisposeViewModel(vm);
+            }
+        });
+    }
+
     [Theory]
     [InlineData("IntervalPicker")]
     [InlineData("TransparencyPicker")]

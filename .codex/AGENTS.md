@@ -30,7 +30,7 @@ dotnet build UsageBeacon.sln -c Release
 Create the distributable executable with:
 
 ```powershell
-dotnet publish UsageBeacon\UsageBeacon.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish\
+dotnet publish UsageBeacon\UsageBeacon.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish\latest\
 ```
 
 Do not track outputs from `bin/`, `obj/`, or `publish/`.
