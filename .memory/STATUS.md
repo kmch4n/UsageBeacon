@@ -5,8 +5,8 @@ Last verified: 2026-10-02
 ## Taskbar-only widget placement correction (2026-10-02)
 
 - The desktop retreat was an intentional fallback in `TaskbarWidget.ApplyLayout`, `RetreatOutsideTaskbar`, and `PositionAtScreenEdge`, triggered by insufficient measured width or unavailable taskbar geometry. It is now removed. The widget hides when no safe taskbar slot or notification-area bounds can be verified, and the one-second layout refresh restores it when space returns. Its actual HWND rectangle must fit inside the taskbar before it is shown.
-- Right-aligned widget content now fills the window to its right edge instead of retaining symmetric internal padding. The separate 26 physical pixel notification-area clearance remains to protect nearby system icons.
-- Debug and Release each passed 293 tests with warnings treated as errors. Live placement and mixed-DPI behavior are pending verification.
+- A follow-up screenshot exposed a large empty hover surface on the left: the first correction right-aligned content inside a fixed 240 DIP window. The window now measures its current text and images for wide, compact, and vertical modes, and repositions when labels change. The separate 26 physical pixel notification-area clearance remains to protect nearby system icons.
+- After the measured-width follow-up, Debug and Release each passed 293 tests; both builds passed with `-warnaserror`, zero warnings and errors. Live placement of the follow-up build and mixed-DPI behavior remain pending verification.
 
 ## Release v1.3.0 validation (2026-10-01)
 

@@ -18,8 +18,6 @@ public partial class TaskbarWidget : Window
 
     private const double WideWidth = 136;
     private const double ExtendedWidth = 240;
-    private const double CompactWidth = 84;
-    private const double VerticalWidth = 44;
     private const int NotificationClearance = 26;
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(
@@ -96,12 +94,8 @@ public partial class TaskbarWidget : Window
         ClaudeWeeklyLabel.Visibility = visibility;
         CodexWeeklySeparator.Visibility = visibility;
         CodexWeeklyLabel.Visibility = visibility;
-        Width = _vm.ShowWeeklyInWidget ? ExtendedWidth : WideWidth;
-        if (IsLoaded)
-        {
-            PositionOnSelectedTaskbar(_vm.WidgetPlacement);
-            HideIfClearanceCannotBeVerified();
-        }
+        if (!IsLoaded)
+            Width = _vm.ShowWeeklyInWidget ? ExtendedWidth : WideWidth;
         UpdateLabels();
     }
 
@@ -243,6 +237,7 @@ public partial class TaskbarWidget : Window
     private void ApplyLayout(Layout layout)
     {
         Height = layout.Taskbar.TaskbarHeight;
+        AlignContent(layout.Placement);
         var mode = ApplyDisplayMode(layout.AvailableWidth);
         _placementInvalid = mode == DisplayMode.Unavailable;
         Top = layout.Taskbar.TaskbarTop;
@@ -251,7 +246,6 @@ public partial class TaskbarWidget : Window
             ? layout.LeftSlot
             : layout.Taskbar.NotifyLeft - Width -
               NotificationClearance * LogicalPixelsPerWindowPixel;
-        AlignContent(layout.Placement);
     }
 
     private void AlignContent(WidgetPlacement placement)
@@ -310,6 +304,8 @@ public partial class TaskbarWidget : Window
         VerticalCodexLabel.Text        = codexUtil.HasValue ? $"{(int)(codexUtil.Value * 100)}" : "--";
         VerticalCodexLabel.Foreground  = UtilBrush(codexUtil);
         UpdateAccessibleDescription(claudeUtil, claudeWeekly, codexUtil, codexWeekly);
+        if (IsLoaded)
+            PositionOnSelectedTaskbar(_vm.WidgetPlacement);
     }
 
     private void UpdateAccessibleDescription(double? claudeFiveHour, double? claudeWeekly,
@@ -335,18 +331,31 @@ public partial class TaskbarWidget : Window
 
     private DisplayMode ApplyDisplayMode(double availableWidth)
     {
-        var requiredWidth = _vm.ShowWeeklyInWidget ? ExtendedWidth : WideWidth;
+        WideContent.Visibility = Visibility.Visible;
+        CompactContent.Visibility = Visibility.Visible;
+        VerticalContent.Visibility = Visibility.Visible;
+        var measureSize = new System.Windows.Size(
+            double.PositiveInfinity, double.PositiveInfinity);
+        WideContent.InvalidateMeasure();
+        CompactContent.InvalidateMeasure();
+        VerticalContent.InvalidateMeasure();
+        WideContent.Measure(measureSize);
+        CompactContent.Measure(measureSize);
+        VerticalContent.Measure(measureSize);
+        var requiredWidth = Math.Ceiling(WideContent.DesiredSize.Width);
+        var compactWidth = Math.Ceiling(CompactContent.DesiredSize.Width);
+        var verticalWidth = Math.Ceiling(VerticalContent.DesiredSize.Width);
         var mode = availableWidth >= requiredWidth ? DisplayMode.Wide
             : _vm.ShowWeeklyInWidget ? DisplayMode.Unavailable
-            : availableWidth >= CompactWidth ? DisplayMode.Compact
-            : availableWidth >= VerticalWidth ? DisplayMode.Vertical
+            : availableWidth >= compactWidth ? DisplayMode.Compact
+            : availableWidth >= verticalWidth ? DisplayMode.Vertical
             : DisplayMode.Unavailable;
 
         Width = mode switch
         {
             DisplayMode.Wide => requiredWidth,
-            DisplayMode.Compact => CompactWidth,
-            DisplayMode.Vertical => VerticalWidth,
+            DisplayMode.Compact => compactWidth,
+            DisplayMode.Vertical => verticalWidth,
             _ => requiredWidth,
         };
         WideContent.Visibility = mode is DisplayMode.Wide or DisplayMode.Unavailable

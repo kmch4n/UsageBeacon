@@ -47,10 +47,16 @@ public sealed class TaskbarWidgetTests
                 800, 100, 400, 500);
 
             ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 274);
-            Assert.Equal(136, fixture.Widget.Width);
+            var defaultWidth = fixture.Widget.Width;
+            Assert.InRange(defaultWidth, 1, 136);
 
             fixture.ViewModel.ShowWeeklyInWidget = true;
             ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 274);
+            var measuredContent = Assert.IsType<System.Windows.Controls.StackPanel>(
+                fixture.Widget.FindName("WideContent"));
+            measuredContent.Measure(new Size(double.PositiveInfinity, 40));
+            Assert.True(measuredContent.DesiredSize.Width > defaultWidth,
+                $"Weekly content measured {measuredContent.DesiredSize.Width} DIP; default width was {defaultWidth}");
 
             var claudeWeekly = Assert.IsType<System.Windows.Controls.TextBlock>(
                 fixture.Widget.FindName("ClaudeWeeklyLabel"));
@@ -58,7 +64,7 @@ public sealed class TaskbarWidgetTests
                 fixture.Widget.FindName("CodexWeeklyLabel"));
             var claudeFiveHour = Assert.IsType<System.Windows.Controls.TextBlock>(
                 fixture.Widget.FindName("ClaudeLabel"));
-            Assert.InRange(fixture.Widget.Width, 200, 274);
+            Assert.InRange(fixture.Widget.Width, defaultWidth + 1, 274);
             Assert.Equal(Visibility.Visible, claudeWeekly.Visibility);
             Assert.Equal(Visibility.Visible, codexWeekly.Visibility);
             Assert.Equal(claudeFiveHour.FontSize, claudeWeekly.FontSize);
@@ -66,7 +72,7 @@ public sealed class TaskbarWidgetTests
 
             fixture.ViewModel.ShowWeeklyInWidget = false;
             ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 274);
-            Assert.Equal(136, fixture.Widget.Width);
+            Assert.Equal(defaultWidth, fixture.Widget.Width);
             Assert.Equal(Visibility.Collapsed, claudeWeekly.Visibility);
         });
     }
@@ -114,9 +120,9 @@ public sealed class TaskbarWidgetTests
             var taskbar = new TaskbarPosition.Info(0, 0, 40, 1000, 40,
                 800, 100, 400, 500);
 
-            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 200);
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 20);
 
-            Assert.Equal(240, fixture.Widget.Width);
+            Assert.True(fixture.Widget.Width > 20);
             Assert.InRange(fixture.Widget.Top, taskbar.TaskbarTop,
                 taskbar.TaskbarBottom - fixture.Widget.Height);
             Assert.Equal(Visibility.Visible,
@@ -280,15 +286,21 @@ public sealed class TaskbarWidgetTests
 
             var content = Assert.IsType<System.Windows.Controls.StackPanel>(
                 fixture.Widget.FindName("WideContent"));
+            var left = content.TranslatePoint(new Point(0, 0),
+                fixture.Widget).X;
             var right = content.TranslatePoint(new Point(content.ActualWidth, 0),
                 fixture.Widget).X;
+            Assert.InRange(left, 0, 8);
             Assert.InRange(fixture.Widget.Width - right, 0, 1);
 
             fixture.ViewModel.ShowWeeklyInWidget = true;
             ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 274);
             fixture.Widget.UpdateLayout();
+            left = content.TranslatePoint(new Point(0, 0),
+                fixture.Widget).X;
             right = content.TranslatePoint(new Point(content.ActualWidth, 0),
                 fixture.Widget).X;
+            Assert.InRange(left, 0, 8);
             Assert.InRange(fixture.Widget.Width - right, 0, 1);
         });
     }
