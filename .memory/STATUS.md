@@ -1,13 +1,15 @@
 # Current Repository Status
 
-Last verified: 2026-10-01
+Last verified: 2026-10-02
 
-## v1.3.0 release preparation (2026-10-01)
+## Release v1.3.0 validation (2026-10-01)
 
 - `UsageBeacon/UsageBeacon.csproj` and `docs/CHANGELOG.md` now identify v1.3.0. The README's four screenshots were regenerated from the current WPF views using synthetic usage only; the app icon image has no PNG metadata. `docs/releases/v1.3.0.md` contains the curated release notes.
 - A screenshot exposed an initially blank popup language selection. A failing WPF test reproduced it, and the popup now selects the saved language item. The corrected screenshot visibly shows English.
 - Debug and Release each passed 291 tests; both solution builds passed with `-warnaserror`, zero warnings, and zero errors. `git diff --check` passed. The local branch matched `fork/main` before release commits, and the configured Git author and GitHub account were both `kmch4n`.
-- The local self-contained v1.3.0 executable was republished to `publish/latest/UsageBeacon.exe`, SHA-256 `28bafe4c6d2ac6817fc24a0bdffacaba9acaa8909a333d19e9e9bd84980c2d58`, and the running app was switched to it. This is a pre-tag local build; the GitHub Actions release asset may differ because it is built from the tagged commit. The published release and hosted CI are pending.
+- The release source was committed as `83e816c92d1f87610a974e3390458cff15ed628f` and tagged `v1.3.0`. Main CI run `36864956699` and tag release run `36865229876` both succeeded. The release is at `https://github.com/kmch4n/UsageBeacon/releases/tag/v1.3.0` with `UsageBeacon.exe` and `UsageBeacon.exe.sha256` attached.
+- The downloaded release asset's SHA-256 matches both its checksum file and GitHub's asset digest: `ceef016ec3fe6031da8d6f365fc5629a1a71807561339c9488741c93e10eb032`. The same executable was copied to `publish/latest/UsageBeacon.exe` and is the running process; its product version includes `1.3.0+83e816c`. An earlier pre-tag local build had SHA-256 `28bafe4c6d2ac6817fc24a0bdffacaba9acaa8909a333d19e9e9bd84980c2d58` and has been superseded.
+- Cleanup of the temporary release-download copies was rejected by automatic execution policy. They remain under the local temporary directory. The older `publish/v1.2.0-local` directory and stale `publish/latest/UsageBeacon.pdb` also remain after earlier policy rejection. The canonical local executable is the one in `publish/latest`.
 
 ## Optional weekly widget and official service images (2026-10-01)
 
