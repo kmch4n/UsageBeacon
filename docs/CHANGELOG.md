@@ -6,7 +6,7 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ### Fixed
 
-- Keep the widget inside the taskbar: hide it when no safe slot exists, then restore it when space returns.
+- Keep the widget inside the taskbar: hide it when no safe slot exists, restore it when space returns, and correct DPI rounding from its actual window bounds.
 - Size the widget window to its measured content and align it to the selected edge, eliminating empty hover space.
 
 ## 1.3.0 - 2026-10-01

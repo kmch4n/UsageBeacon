@@ -270,6 +270,16 @@ public partial class TaskbarWidget : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         if (!TaskbarPosition.TryReadRectangle(hwnd, out var widget))
             return false;
+        if (!TaskbarPosition.IsWithinTaskbar(widget, current.Taskbar))
+            return false;
+        var shift = TaskbarPosition.RequiredNotificationShift(widget,
+            notification, NotificationClearance);
+        if (shift > 0)
+        {
+            Left -= shift * LogicalPixelsPerWindowPixel;
+            if (!TaskbarPosition.TryReadRectangle(hwnd, out widget))
+                return false;
+        }
         return TaskbarPosition.IsWithinTaskbar(widget, current.Taskbar) &&
                TaskbarPosition.HasNotificationClearance(widget, notification,
                    NotificationClearance);

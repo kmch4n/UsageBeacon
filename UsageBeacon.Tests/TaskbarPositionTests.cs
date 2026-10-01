@@ -26,6 +26,16 @@ public sealed class TaskbarPositionTests
     }
 
     [Fact]
+    public void RequiredNotificationShift_UsesActualWindowBounds()
+    {
+        var widget = Rectangle.FromLTRB(1973, 0, 2164, 40);
+        var notification = Rectangle.FromLTRB(2181, 0, 2560, 40);
+
+        Assert.Equal(9, TaskbarPosition.RequiredNotificationShift(
+            widget, notification, 26));
+    }
+
+    [Fact]
     public void IsOutsideTaskbar_RejectsAnUnverifiedFallbackPosition()
     {
         var taskbar = Rectangle.FromLTRB(0, 0, 2560, 40);

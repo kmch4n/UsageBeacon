@@ -66,6 +66,10 @@ public static class TaskbarPosition
         => widget.Bottom <= notification.Top || widget.Top >= notification.Bottom ||
            widget.Right <= notification.Left - clearance;
 
+    internal static int RequiredNotificationShift(
+        Rectangle widget, Rectangle notification, int clearance)
+        => Math.Max(0, widget.Right - (notification.Left - clearance));
+
     internal static bool IsOutsideTaskbar(Rectangle widget, Rectangle taskbar)
         => !widget.IntersectsWith(taskbar);
 
