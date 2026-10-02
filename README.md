@@ -53,7 +53,7 @@ each service shows its five-hour percentage on the left and its weekly percentag
 If the selected taskbar has no safe space, the widget hides until a space becomes available;
 the notification-area icon remains available.
 
-<img src="docs/images/widget.png" alt="UsageBeacon widget showing five-hour and weekly percentages for Claude and Codex" width="360">
+<img src="docs/images/widget.png" alt="UsageBeacon widget showing five-hour and weekly percentages for Claude and Codex" width="321">
 
 The dashboard puts locally retained lifetime, today, 7-day, and 30-day estimates above aligned
 cost and token charts:

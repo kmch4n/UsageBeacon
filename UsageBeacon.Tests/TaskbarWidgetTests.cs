@@ -185,7 +185,7 @@ public sealed class TaskbarWidgetTests
             var taskbar = new TaskbarPosition.Info(0, 0, 40, 1000, 40,
                 800, 100, 400, 500);
 
-            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 84);
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 110);
             var compact = Assert.IsType<System.Windows.Controls.StackPanel>(
                 fixture.Widget.FindName("CompactContent"));
             Assert.Equal(Visibility.Visible, compact.Visibility);
@@ -193,7 +193,7 @@ public sealed class TaskbarWidgetTests
             Assert.True(compact.DesiredSize.Width <= fixture.Widget.Width,
                 $"Compact content needs {compact.DesiredSize.Width} DIP");
 
-            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 44);
+            ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 60);
             var vertical = Assert.IsType<System.Windows.Controls.StackPanel>(
                 fixture.Widget.FindName("VerticalContent"));
             Assert.Equal(Visibility.Visible, vertical.Visibility);
@@ -273,7 +273,7 @@ public sealed class TaskbarWidgetTests
     }
 
     [Fact]
-    public void RightPlacement_AlignsWideContentToWindowRightEdge()
+    public void RightPlacement_KeepsSmallBalancedPaddingAroundWideContent()
     {
         RunOnStaThread(() =>
         {
@@ -290,8 +290,8 @@ public sealed class TaskbarWidgetTests
                 fixture.Widget).X;
             var right = content.TranslatePoint(new Point(content.ActualWidth, 0),
                 fixture.Widget).X;
-            Assert.InRange(left, 0, 8);
-            Assert.InRange(fixture.Widget.Width - right, 0, 1);
+            Assert.InRange(left, 8, 12);
+            Assert.InRange(fixture.Widget.Width - right, 8, 12);
 
             fixture.ViewModel.ShowWeeklyInWidget = true;
             ApplyLayout(fixture.Widget, WidgetPlacement.Right, taskbar, 274);
@@ -300,8 +300,8 @@ public sealed class TaskbarWidgetTests
                 fixture.Widget).X;
             right = content.TranslatePoint(new Point(content.ActualWidth, 0),
                 fixture.Widget).X;
-            Assert.InRange(left, 0, 8);
-            Assert.InRange(fixture.Widget.Width - right, 0, 1);
+            Assert.InRange(left, 8, 12);
+            Assert.InRange(fixture.Widget.Width - right, 8, 12);
         });
     }
 

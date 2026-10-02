@@ -256,9 +256,7 @@ public partial class TaskbarWidget : Window
             content.HorizontalAlignment = right
                 ? System.Windows.HorizontalAlignment.Right
                 : System.Windows.HorizontalAlignment.Left;
-            content.Margin = right
-                ? new Thickness(6, 0, 0, 0)
-                : new Thickness(0, 0, 6, 0);
+            content.Margin = new Thickness(10, 0, 10, 0);
         }
     }
 

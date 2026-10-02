@@ -2,6 +2,12 @@
 
 Last verified: 2026-10-02
 
+## Balanced widget padding (2026-10-02)
+
+- The measured widget content now has 10 DIP of horizontal padding on both sides across all display modes. A WPF layout regression test checks the visible bounds for both the default and weekly layouts.
+- The README widget screenshot was regenerated from the current WPF view using synthetic utilization values. A live capture on the primary 150% DPI taskbar shows modest left and right spacing, with the widget still inside the taskbar.
+- Debug and Release each passed 294 tests; both solution builds passed with `-warnaserror`, zero warnings and errors. Live behavior on other DPI combinations remains unverified.
+
 ## Taskbar-only widget placement correction (2026-10-02)
 
 - The desktop retreat was an intentional fallback in `TaskbarWidget.ApplyLayout`, `RetreatOutsideTaskbar`, and `PositionAtScreenEdge`, triggered by insufficient measured width or unavailable taskbar geometry. It is now removed. The widget hides when no safe taskbar slot or notification-area bounds can be verified, and the one-second layout refresh restores it when space returns. Its actual HWND rectangle must fit inside the taskbar before it is shown.
