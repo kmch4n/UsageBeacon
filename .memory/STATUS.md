@@ -1,6 +1,14 @@
 # Current Repository Status
 
-Last verified: 2026-10-02
+Last verified: 2026-10-03
+
+## Official service images in popup and dashboard (2026-10-03)
+
+- The usage popup headers now show the bundled `claude.png` and `openai.png` instead of the `✦` and `▶` text stand-ins. No new image assets were added; provenance in `docs/NOTICE.md` now covers the widget, popup, and dashboard.
+- The dashboard defines `ClaudeIcon` and `CodexIcon` as window-level `BitmapImage` resources. They appear in the lifetime and period cost breakdowns (icon plus amount instead of "Claude $x · Codex $y"), beside the cost chart legend swatches, and in the model table service column. The legend swatches remain because the bar colors are the data encoding.
+- The cost breakdown icons are decorative; each amount's `AutomationProperties.Name` keeps the service name for assistive technology.
+- WPF renders on dark backgrounds were inspected from an offscreen capture with synthetic usage. README screenshots were not regenerated.
+- Debug and Release each passed 295 tests; both solution builds passed with `-warnaserror`, zero warnings and errors. The self-contained build was republished to `publish/latest/UsageBeacon.exe` (SHA-256 `fc87ea416b87c591baf2426df4021efc3a622cb10d6cbb6186767c1da08cd56e`, built from the uncommitted working tree immediately before this change's commit) and the running instance was restarted from it.
 
 ## Balanced widget padding (2026-10-02)
 

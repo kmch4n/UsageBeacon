@@ -4,6 +4,10 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- Replaced the usage popup's placeholder service symbols with the bundled official Claude and OpenAI images, and added them to the dashboard cost breakdowns, chart legend, and model table.
+
 ### Fixed
 
 - Keep the widget inside the taskbar: hide it when no safe slot exists, restore it when space returns, and correct DPI rounding from its actual window bounds.

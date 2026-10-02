@@ -204,8 +204,14 @@
             <StackPanel Margin="0,0,0,12">
                 <Grid Margin="0,0,0,8">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="✦ " Style="{StaticResource Title}" Foreground="#D07A42"/>
-                        <TextBlock Text="Claude Code" Style="{StaticResource Title}"/>
+                        <Image x:Name="ClaudeHeaderIcon"
+                               Source="/UsageBeacon;component/Resources/claude.png"
+                               Width="16" Height="16" Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               SnapsToDevicePixels="True"
+                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="Claude Code" Style="{StaticResource Title}"
+                                   VerticalAlignment="Center"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button x:Name="ClaudeIntegrationBtn"
@@ -266,8 +272,14 @@
             <StackPanel Margin="0,0,0,12">
                 <Grid Margin="0,0,0,8">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="▶ " Style="{StaticResource Title}" Foreground="#7A8EE0"/>
-                        <TextBlock Text="Codex" Style="{StaticResource Title}"/>
+                        <Image x:Name="CodexHeaderIcon"
+                               Source="/UsageBeacon;component/Resources/openai.png"
+                               Width="16" Height="16" Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               SnapsToDevicePixels="True"
+                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock Text="Codex" Style="{StaticResource Title}"
+                                   VerticalAlignment="Center"/>
                     </StackPanel>
                     <Button x:Name="CodexLoginBtn" HorizontalAlignment="Right"
                             Style="{StaticResource LinkBtn}" Click="CodexLogin_Click"/>

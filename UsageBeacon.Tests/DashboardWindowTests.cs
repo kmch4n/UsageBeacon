@@ -55,6 +55,14 @@ public sealed class DashboardWindowTests
                 Assert.Equal(Visibility.Collapsed, window.StatusText.Visibility);
                 Assert.Equal("$15.00", window.LifetimeTotal.Text);
                 Assert.Equal("$10.00", window.TodayCost.Text);
+                Assert.Equal("$10.00", window.LifetimeClaudeCost.Text);
+                Assert.Equal("$5.00", window.LifetimeCodexCost.Text);
+                Assert.Equal("$10.00", window.TodayClaudeCost.Text);
+                Assert.Equal("$0.00", window.TodayCodexCost.Text);
+                Assert.Equal("Codex $5.00",
+                    System.Windows.Automation.AutomationProperties.GetName(window.LifetimeCodexCost));
+                Assert.IsAssignableFrom<System.Windows.Media.ImageSource>(window.Resources["ClaudeIcon"]);
+                Assert.IsAssignableFrom<System.Windows.Media.ImageSource>(window.Resources["CodexIcon"]);
             }
             finally { window.Close(); }
         });

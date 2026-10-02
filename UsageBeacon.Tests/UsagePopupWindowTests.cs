@@ -40,6 +40,31 @@ public sealed class UsagePopupWindowTests
     }
 
     [Fact]
+    public void ServiceHeaders_ShowOfficialIcons()
+    {
+        RunSta(() =>
+        {
+            using var directory = new TempDirectory();
+            var vm = new UsageViewModel(new StubUsageProvider(),
+                new StubUsageProvider(), new FailingSettingsStore(),
+                new StubStartupManager(), directory.Path);
+            var popup = new UsagePopupWindow(vm);
+            try
+            {
+                var claude = Assert.IsType<Image>(popup.FindName("ClaudeHeaderIcon"));
+                var codex = Assert.IsType<Image>(popup.FindName("CodexHeaderIcon"));
+                Assert.EndsWith("Resources/claude.png", claude.Source.ToString());
+                Assert.EndsWith("Resources/openai.png", codex.Source.ToString());
+            }
+            finally
+            {
+                popup.Close();
+                DisposeViewModel(vm);
+            }
+        });
+    }
+
+    [Fact]
     public void WeeklyWidgetCheckbox_RestoresAcceptedValueAfterSaveFailure()
     {
         RunSta(() =>

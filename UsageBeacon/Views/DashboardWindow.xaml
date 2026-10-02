@@ -27,6 +27,17 @@
         <SolidColorBrush x:Key="CodexBrush" Color="#7A8EE0"/>
         <SolidColorBrush x:Key="InputBrush" Color="#6FB7A6"/>
         <SolidColorBrush x:Key="OutputBrush" Color="#C99B62"/>
+        <!-- Unmodified official service marks; attribution is in docs/NOTICE.md. -->
+        <BitmapImage x:Key="ClaudeIcon" UriSource="pack://application:,,,/UsageBeacon;component/Resources/claude.png"/>
+        <BitmapImage x:Key="CodexIcon" UriSource="pack://application:,,,/UsageBeacon;component/Resources/openai.png"/>
+        <Style x:Key="ServiceIcon" TargetType="Image">
+            <Setter Property="Width" Value="12"/>
+            <Setter Property="Height" Value="12"/>
+            <Setter Property="Stretch" Value="Uniform"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality"/>
+        </Style>
 
         <Style x:Key="H1" TargetType="TextBlock">
             <Setter Property="FontSize" Value="17"/>
@@ -206,7 +217,14 @@
                     <StackPanel>
                         <TextBlock x:Name="LifetimeTitle" Style="{StaticResource CardTitle}"/>
                         <TextBlock x:Name="LifetimeTotal" Style="{StaticResource Cost}"/>
-                        <TextBlock x:Name="LifetimeSplit" Style="{StaticResource Tiny}"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="{StaticResource ClaudeIcon}" Style="{StaticResource ServiceIcon}"/>
+                            <TextBlock x:Name="LifetimeClaudeCost" Style="{StaticResource Tiny}"
+                                       VerticalAlignment="Center" Margin="4,0,12,0"/>
+                            <Image Source="{StaticResource CodexIcon}" Style="{StaticResource ServiceIcon}"/>
+                            <TextBlock x:Name="LifetimeCodexCost" Style="{StaticResource Tiny}"
+                                       VerticalAlignment="Center" Margin="4,0,0,0"/>
+                        </StackPanel>
                         <TextBlock x:Name="LifetimeSince" Style="{StaticResource Tiny}"
                                    Margin="0,3,0,0" TextWrapping="Wrap"/>
                         <TextBlock x:Name="LifetimeCoverageText" Style="{StaticResource Tiny}"
@@ -221,7 +239,14 @@
                         <StackPanel>
                             <TextBlock x:Name="TodayTitle" Style="{StaticResource CardTitle}"/>
                             <TextBlock x:Name="TodayCost" Style="{StaticResource Cost}"/>
-                            <TextBlock x:Name="TodaySplit" Style="{StaticResource Tiny}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                <Image Source="{StaticResource ClaudeIcon}" Style="{StaticResource ServiceIcon}"/>
+                                <TextBlock x:Name="TodayClaudeCost" Style="{StaticResource Tiny}"
+                                               VerticalAlignment="Center" Margin="4,0,12,0"/>
+                                <Image Source="{StaticResource CodexIcon}" Style="{StaticResource ServiceIcon}"/>
+                                <TextBlock x:Name="TodayCodexCost" Style="{StaticResource Tiny}"
+                                               VerticalAlignment="Center" Margin="4,0,0,0"/>
+                            </StackPanel>
                             <TextBlock x:Name="TodayTokens" Style="{StaticResource Tiny}"/>
                         </StackPanel>
                     </Border>
@@ -229,7 +254,14 @@
                         <StackPanel>
                             <TextBlock x:Name="WeekTitle" Style="{StaticResource CardTitle}"/>
                             <TextBlock x:Name="WeekCost" Style="{StaticResource Cost}"/>
-                            <TextBlock x:Name="WeekSplit" Style="{StaticResource Tiny}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                <Image Source="{StaticResource ClaudeIcon}" Style="{StaticResource ServiceIcon}"/>
+                                <TextBlock x:Name="WeekClaudeCost" Style="{StaticResource Tiny}"
+                                               VerticalAlignment="Center" Margin="4,0,12,0"/>
+                                <Image Source="{StaticResource CodexIcon}" Style="{StaticResource ServiceIcon}"/>
+                                <TextBlock x:Name="WeekCodexCost" Style="{StaticResource Tiny}"
+                                               VerticalAlignment="Center" Margin="4,0,0,0"/>
+                            </StackPanel>
                             <TextBlock x:Name="WeekTokens" Style="{StaticResource Tiny}"/>
                         </StackPanel>
                     </Border>
@@ -237,7 +269,14 @@
                         <StackPanel>
                             <TextBlock x:Name="MonthTitle" Style="{StaticResource CardTitle}"/>
                             <TextBlock x:Name="MonthCost" Style="{StaticResource Cost}"/>
-                            <TextBlock x:Name="MonthSplit" Style="{StaticResource Tiny}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                                <Image Source="{StaticResource ClaudeIcon}" Style="{StaticResource ServiceIcon}"/>
+                                <TextBlock x:Name="MonthClaudeCost" Style="{StaticResource Tiny}"
+                                               VerticalAlignment="Center" Margin="4,0,12,0"/>
+                                <Image Source="{StaticResource CodexIcon}" Style="{StaticResource ServiceIcon}"/>
+                                <TextBlock x:Name="MonthCodexCost" Style="{StaticResource Tiny}"
+                                               VerticalAlignment="Center" Margin="4,0,0,0"/>
+                            </StackPanel>
                             <TextBlock x:Name="MonthTokens" Style="{StaticResource Tiny}"/>
                         </StackPanel>
                     </Border>
@@ -264,11 +303,16 @@
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                 <Rectangle Width="9" Height="9" Fill="{StaticResource ClaudeBrush}"
                                            VerticalAlignment="Center"/>
+                                <Image Source="{StaticResource ClaudeIcon}" Style="{StaticResource ServiceIcon}"
+                                       Margin="5,0,0,0"/>
                                 <TextBlock Text="Claude Code" Style="{StaticResource Tiny}"
-                                           Margin="4,0,10,0"/>
+                                           VerticalAlignment="Center" Margin="4,0,12,0"/>
                                 <Rectangle Width="9" Height="9" Fill="{StaticResource CodexBrush}"
                                            VerticalAlignment="Center"/>
-                                <TextBlock Text="Codex" Style="{StaticResource Tiny}" Margin="4,0,0,0"/>
+                                <Image Source="{StaticResource CodexIcon}" Style="{StaticResource ServiceIcon}"
+                                       Margin="5,0,0,0"/>
+                                <TextBlock Text="Codex" Style="{StaticResource Tiny}"
+                                           VerticalAlignment="Center" Margin="4,0,0,0"/>
                             </StackPanel>
                         </Grid>
                         <Grid Height="134">
@@ -455,7 +499,7 @@
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="116"/>
                                 <ColumnDefinition Width="95"/>
                                 <ColumnDefinition Width="95"/>
                                 <ColumnDefinition Width="95"/>
@@ -480,7 +524,7 @@
                                     <Grid Margin="0,2,0,2" ToolTip="{Binding Model}">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="116"/>
                                             <ColumnDefinition Width="95"/>
                                             <ColumnDefinition Width="95"/>
                                             <ColumnDefinition Width="95"/>
@@ -488,9 +532,14 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="{Binding Model}"
                                                    Style="{StaticResource Cell}" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Service}"
-                                                   Style="{StaticResource Cell}"
-                                                   Foreground="{Binding ServiceBrush}"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <Image Source="{Binding ServiceIcon}"
+                                                   Style="{StaticResource ServiceIcon}"/>
+                                            <TextBlock Text="{Binding Service}"
+                                                       Style="{StaticResource Cell}" Margin="5,3,0,3"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{Binding ServiceBrush}"/>
+                                        </StackPanel>
                                         <TextBlock Grid.Column="2" Text="{Binding Input}"
                                                    Style="{StaticResource Cell}" TextAlignment="Right"/>
                                         <TextBlock Grid.Column="3" Text="{Binding Cached}"

@@ -256,9 +256,9 @@ public partial class DashboardWindow : Window
         if (_data is not { } data) return;
 
         RenderLifetime(data.Lifetime);
-        RenderCard(data.Today, TodayCost, TodaySplit, TodayTokens);
-        RenderCard(data.Last7Days, WeekCost, WeekSplit, WeekTokens);
-        RenderCard(data.Last30Days, MonthCost, MonthSplit, MonthTokens);
+        RenderCard(data.Today, TodayCost, TodayClaudeCost, TodayCodexCost, TodayTokens);
+        RenderCard(data.Last7Days, WeekCost, WeekClaudeCost, WeekCodexCost, WeekTokens);
+        RenderCard(data.Last30Days, MonthCost, MonthClaudeCost, MonthCodexCost, MonthTokens);
         PeriodCoverageText.Visibility = data.Today.HasUnknownModels ||
             data.Last7Days.HasUnknownModels || data.Last30Days.HasUnknownModels
             ? Visibility.Visible : Visibility.Collapsed;
@@ -289,9 +289,8 @@ public partial class DashboardWindow : Window
     private void RenderLifetime(LifetimeCostSummary summary)
     {
         LifetimeTotal.Text = FormatCost(summary.CostUsd);
-        LifetimeSplit.Text =
-            $"Claude {FormatCost(summary.ClaudeCostUsd)} · " +
-            $"Codex {FormatCost(summary.CodexCostUsd)}";
+        SetServiceCost(LifetimeClaudeCost, "Claude Code", summary.ClaudeCostUsd);
+        SetServiceCost(LifetimeCodexCost, "Codex", summary.CodexCostUsd);
         LifetimeCoverageText.Visibility = summary.HasUnknownCost
             ? Visibility.Visible : Visibility.Collapsed;
         LifetimeSince.Visibility = summary.FirstUsageDay is null
@@ -307,11 +306,13 @@ public partial class DashboardWindow : Window
     private void RenderCard(
         UsagePeriodSummary summary,
         System.Windows.Controls.TextBlock costText,
-        System.Windows.Controls.TextBlock splitText,
+        System.Windows.Controls.TextBlock claudeCostText,
+        System.Windows.Controls.TextBlock codexCostText,
         System.Windows.Controls.TextBlock tokensText)
     {
         costText.Text = FormatCost(summary.CostUsd);
-        splitText.Text = $"Claude {FormatCost(summary.ClaudeCostUsd)} · Codex {FormatCost(summary.CodexCostUsd)}";
+        SetServiceCost(claudeCostText, "Claude Code", summary.ClaudeCostUsd);
+        SetServiceCost(codexCostText, "Codex", summary.CodexCostUsd);
         tokensText.Text = LocalizationService.Format(
             "DashboardTokens",
             FormatTokens(summary.TotalInputTokens),
@@ -469,9 +470,19 @@ public partial class DashboardWindow : Window
             model.Service == UsageService.Claude
                 ? (System.Windows.Media.Brush)Resources["ClaudeBrush"]
                 : (System.Windows.Media.Brush)Resources["CodexBrush"],
+            model.Service == UsageService.Claude
+                ? (ImageSource)Resources["ClaudeIcon"]
+                : (ImageSource)Resources["CodexIcon"],
             maxCost > 0 && model.CostUsd is { } costValue
                 ? (double)(costValue / maxCost) * 70.0
                 : 0.0)).ToList();
+    }
+
+    // The service icon is decorative, so the accessible name keeps the service visible to screen readers.
+    private void SetServiceCost(TextBlock target, string service, decimal costUsd)
+    {
+        target.Text = FormatCost(costUsd);
+        AutomationProperties.SetName(target, $"{service} {target.Text}");
     }
 
     private string FormatCost(decimal value)
@@ -493,5 +504,5 @@ public partial class DashboardWindow : Window
 
     public sealed record ModelRowView(
         string Model, string Service, string Input, string Cached, string Output, string Cost,
-        System.Windows.Media.Brush ServiceBrush, double CostBarWidth);
+        System.Windows.Media.Brush ServiceBrush, ImageSource ServiceIcon, double CostBarWidth);
 }
