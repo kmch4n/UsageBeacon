@@ -2,6 +2,13 @@
 
 Last verified: 2026-10-03
 
+## Antigravity Gemini quota (2026-10-03)
+
+- An earlier attempt on `feature/agy-usage` by another agent was partly discarded: its dashboard transcript pricing (`AgyTranscriptReader`, aggregator and dashboard changes), the Google "G" image that had also replaced the dashboard window and title-bar icon, and its views that referenced a nonexistent `AgyTodayCostUsd` and did not compile. The provider, parser, settings flag, and view model polling were kept and revised (D-018).
+- Live check against agy 1.2.16: the report returned in about 6 seconds with `num_turns: 0` and an empty `conversation_id`. The popup showed "Antigravity (Gemini)" with five-hour 100% and weekly 17%, and the widget showed the Gemini pair after Codex. README screenshots were not regenerated.
+- Debug and Release each passed 318 tests; both builds passed with `-warnaserror`. The self-contained build was republished to `publish/latest/UsageBeacon.exe` (SHA-256 `badedecfa8a988684667ed2ff803af583e7b056624548fe3ee4d1a40af7054be`, built from the uncommitted working tree immediately before this change's commit) and started. The publish recorded in the next section is superseded.
+- Pending: `publish/v1.2.0-local/` (created 2026-09-25) predates this work and was left in place for the maintainer to remove.
+
 ## Dashboard caption buttons (2026-10-03)
 
 - The dashboard's custom title bar keeps `WindowStyle="None"` with `WindowChrome`. Its minimize, maximize, and close buttons now use the standard Windows caption layout: 46 DIP wide, full title-bar height, square corners, Segoe Fluent Icons glyphs with Segoe MDL2 Assets as the Windows 10 fallback (`E921`, `E922`/`E923`, `E8BB`), a theme-gray hover, and a `#C42B1C` close hover with a white glyph.

@@ -29,6 +29,9 @@ public sealed class UsageSnapshot
     public UsageDataSource? ClaudeSource { get; init; }
     public ServiceUsage? CodexUsage  { get; init; }
     public DomainError?  CodexError  { get; init; }
+    /// <summary>Gemini model-group quota reported by Antigravity (agy).</summary>
+    public ServiceUsage? AgyUsage    { get; init; }
+    public DomainError?  AgyError    { get; init; }
     public DateTime      FetchedAt   { get; init; }
 
     public static readonly UsageSnapshot Empty = new() { FetchedAt = DateTime.MinValue };

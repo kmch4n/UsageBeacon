@@ -97,6 +97,8 @@
   <data name="TrayClaudeWeekly" xml:space="preserve"><value>Claude 7d: {0}%</value></data>
   <data name="TrayCodexFiveHour" xml:space="preserve"><value>Codex 5h: {0}%</value></data>
   <data name="TrayCodexWeekly" xml:space="preserve"><value>Codex 7d: {0}%</value></data>
+  <data name="TrayAgyFiveHour" xml:space="preserve"><value>Gemini 5h: {0}%</value></data>
+  <data name="TrayAgyWeekly" xml:space="preserve"><value>Gemini 7d: {0}%</value></data>
   <data name="DashboardTitle" xml:space="preserve"><value>Usage dashboard</value></data>
   <data name="DashboardOpen" xml:space="preserve"><value>Open</value></data>
   <data name="DashboardRefresh" xml:space="preserve"><value>Refresh</value></data>
@@ -139,4 +141,10 @@
   <data name="DashboardDisclaimer" xml:space="preserve"><value>Costs are API-price equivalents estimated from local session logs. Subscription plans do not bill per token.</value></data>
   <data name="DashboardPricesAsOf" xml:space="preserve"><value>Prices as of {0}</value></data>
   <data name="DashboardLastScan" xml:space="preserve"><value>Scanned {0}</value></data>
+  <data name="AgyTitle" xml:space="preserve"><value>Antigravity (Gemini)</value></data>
+  <data name="SettingsShowAgy" xml:space="preserve"><value>Show Antigravity (Gemini) usage</value></data>
+  <data name="ErrorAgyNotFound" xml:space="preserve"><value>Antigravity CLI (agy) was not found. Install it and sign in by running `agy`.</value></data>
+  <data name="ErrorAgyUnsupportedVersion" xml:space="preserve"><value>Antigravity CLI 1.1.11 or later is required to read usage without sending a prompt. Run `agy update`.</value></data>
+  <data name="ErrorAgyCommandFailed" xml:space="preserve"><value>The Antigravity usage report failed. Run `agy` to confirm that you are signed in.</value></data>
+  <data name="WidgetWeeklyDescriptionWithAgy" xml:space="preserve"><value>Open UsageBeacon usage details. Claude 5 hours: {0}; weekly: {1}. Codex 5 hours: {2}; weekly: {3}. Gemini 5 hours: {4}; weekly: {5}.</value></data>
 </root>

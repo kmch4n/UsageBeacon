@@ -305,15 +305,111 @@ public sealed class UsageViewModelTests
                 DateTime.UtcNow.AddMinutes(-10),
                 UsageDataSource.OAuthApi)));
 
+    [Fact]
+    public async Task RefreshAsync_DoesNotRunAgy_WhenAntigravityIsHidden()
+    {
+        using var directory = new TempDirectory();
+        var agy = new SequenceUsageProvider();
+        await using var vm = CreateViewModel(directory.Path, new StubUsageProvider(), agy: agy);
+
+        await vm.RefreshAsync(force: true);
+
+        Assert.Equal(0, agy.CallCount);
+        Assert.Null(vm.Snapshot.AgyUsage);
+        Assert.Null(vm.Snapshot.AgyError);
+    }
+
+    [Fact]
+    public async Task ShowAgyUsage_PublishesGeminiQuota_AndPersistsSetting()
+    {
+        using var directory = new TempDirectory();
+        var agy = new SequenceUsageProvider();
+        await using var vm = CreateViewModel(directory.Path, new StubUsageProvider(), agy: agy);
+
+        vm.ShowAgyUsage = true;
+
+        await WaitUntilAsync(() => vm.Snapshot.AgyUsage != null);
+        Assert.Equal(0.4, vm.Snapshot.AgyUsage?.FiveHour?.Utilization);
+        Assert.True(new AppSettingsStore(Path.Combine(directory.Path, "settings.json")).Load().ShowAgyUsage);
+
+        vm.ShowAgyUsage = false;
+
+        Assert.Null(vm.Snapshot.AgyUsage);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_KeepsLastAgyUsage_WhenReportTimesOut()
+    {
+        using var directory = new TempDirectory();
+        var agy = new SequenceUsageProvider(null, DomainError.Timeout());
+        await using var vm = CreateViewModel(directory.Path, new StubUsageProvider(), agy: agy);
+        vm.ShowAgyUsage = true;
+        await WaitUntilAsync(() => vm.Snapshot.AgyUsage != null && !vm.IsLoading);
+
+        await vm.RefreshAsync(force: true);
+
+        Assert.Equal(2, agy.CallCount);
+        Assert.Equal(0.4, vm.Snapshot.AgyUsage?.FiveHour?.Utilization);
+        Assert.Equal(DomainErrorKind.Timeout, vm.Snapshot.AgyError?.Kind);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_HidesLastAgyUsage_WhenCliIsUnsupported()
+    {
+        using var directory = new TempDirectory();
+        var agy = new SequenceUsageProvider(null, DomainError.AgyUnsupportedVersion("1.1.10"));
+        await using var vm = CreateViewModel(directory.Path, new StubUsageProvider(), agy: agy);
+        vm.ShowAgyUsage = true;
+        await WaitUntilAsync(() => vm.Snapshot.AgyUsage != null && !vm.IsLoading);
+
+        await vm.RefreshAsync(force: true);
+
+        Assert.Null(vm.Snapshot.AgyUsage);
+        Assert.Equal(DomainErrorKind.AgyUnsupportedVersion, vm.Snapshot.AgyError?.Kind);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_SkipsAgy_WithinMinimumIntervalUnlessForced()
+    {
+        using var directory = new TempDirectory();
+        var agy = new SequenceUsageProvider();
+        await using var vm = CreateViewModel(directory.Path, new StubUsageProvider(), agy: agy);
+        vm.ShowAgyUsage = true;
+        await WaitUntilAsync(() => vm.Snapshot.AgyUsage != null && !vm.IsLoading);
+
+        await vm.RefreshAsync();
+
+        Assert.Equal(1, agy.CallCount);
+        Assert.NotNull(vm.Snapshot.AgyUsage);
+    }
+
+    [Fact]
+    public async Task Constructor_RestoresCachedAgyUsage_WhenAntigravityIsShown()
+    {
+        using var directory = new TempDirectory();
+        var agy = new SequenceUsageProvider();
+        await using (var first = CreateViewModel(directory.Path, new StubUsageProvider(), agy: agy))
+        {
+            first.ShowAgyUsage = true;
+            await WaitUntilAsync(() => first.Snapshot.AgyUsage != null && !first.IsLoading);
+        }
+
+        await using var second = CreateViewModel(directory.Path, new StubUsageProvider(), agy: agy);
+
+        Assert.Equal(0.4, second.Snapshot.AgyUsage?.FiveHour?.Utilization);
+    }
+
     private static UsageViewModel CreateViewModel(
         string directory,
         IUsageProvider claude,
-        IUsageProvider? codex = null) => new(
+        IUsageProvider? codex = null,
+        IUsageProvider? agy = null) => new(
         claude: claude,
         codex: codex ?? new StubUsageProvider(),
         settingsStore: new AppSettingsStore(Path.Combine(directory, "settings.json")),
         startupManager: new FakeStartupManager(),
-        dataDirectory: directory);
+        dataDirectory: directory,
+        agy: agy ?? new SequenceUsageProvider());
 
     private static async Task WaitUntilAsync(Func<bool> condition)
     {
@@ -333,6 +429,24 @@ public sealed class UsageViewModelTests
             return Task.FromResult(new ServiceUsage(
                 FiveHour: new RateLimit(0.5, DateTime.Now.AddHours(2)),
                 Weekly: null,
+                WeeklySonnet: null));
+        }
+    }
+
+    // Returns a Gemini quota for null entries and throws the given errors in order;
+    // the last entry repeats once the sequence is exhausted.
+    private sealed class SequenceUsageProvider(params DomainError?[] results) : IUsageProvider
+    {
+        public int CallCount { get; private set; }
+
+        public Task<ServiceUsage> FetchAsync(CancellationToken ct = default)
+        {
+            var error = results.Length == 0 ? null : results[Math.Min(CallCount, results.Length - 1)];
+            CallCount++;
+            if (error != null) throw error;
+            return Task.FromResult(new ServiceUsage(
+                FiveHour: new RateLimit(0.4, DateTime.UtcNow.AddHours(2)),
+                Weekly: new RateLimit(0.1, DateTime.UtcNow.AddDays(3)),
                 WeeklySonnet: null));
         }
     }

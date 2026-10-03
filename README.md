@@ -26,13 +26,14 @@ what that usage would have cost at API prices.
 > [!IMPORTANT]
 > UsageBeacon is an independent, unofficial community fork of
 > [satonico/Token-Checker-win](https://github.com/satonico/Token-Checker-win). It is not affiliated
-> with or endorsed by the upstream maintainer, Anthropic, or OpenAI. The fork exists to continue
+> with or endorsed by the upstream maintainer, Anthropic, OpenAI, or Google. The fork exists to continue
 > Windows-focused maintenance while preserving clear credit for the original work.
 
 ## Features
 
 - **Taskbar widget** with Claude Code and Codex utilization at a glance, plus optional weekly percentages
 - **Detailed usage windows** — five-hour and weekly limits with reset countdowns
+- **Optional Antigravity (Gemini) quota** with five-hour and weekly limits, read from the Antigravity CLI
 - **Native Claude Code integration** that reads rate limits from the status line, with no extra usage API requests
 - **Usage dashboard** estimating API-price-equivalent costs from your local session logs
 - **English and Japanese** interface, switchable at runtime, following your Windows language by default
@@ -43,7 +44,8 @@ what that usage would have cost at API prices.
 - **Local caching** that keeps the last successful values visible during transient failures
 - **No telemetry** — nothing is sent anywhere except the provider requests required to read your usage
 
-Claude Code and Codex are both optional; either one can be used on its own.
+Claude Code and Codex are both optional; either one can be used on its own. Antigravity is off by
+default and can be turned on from the popup settings.
 
 ## Screenshots
 
@@ -74,6 +76,7 @@ Select a day to see its service split and exact input and output totals:
 - Windows 10 or Windows 11, 64-bit
 - [Claude Code CLI](https://claude.com/claude-code) signed in with `claude auth login`, for Claude usage
 - [Codex CLI](https://developers.openai.com/codex/cli) signed in with `codex login`, for Codex usage
+- Antigravity CLI (`agy`) 1.1.11 or later, signed in, for the optional Gemini quota
 
 The prebuilt executable is self-contained and does not need a separate .NET installation. Building
 from source requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
@@ -180,6 +183,10 @@ See [the dashboard documentation](docs/DASHBOARD.md) for data sources, retention
   observation time. Other status line session metadata is discarded.
 - Codex usage is read through the locally installed `codex app-server`. The Codex access token is
   never parsed or stored.
+- When enabled, Antigravity quota is read by running the local `agy -p /usage --output-format json`
+  report in an empty temporary directory, at most every two minutes unless you refresh manually.
+  The report does not send a prompt or create a conversation. Only the Gemini group's percentages
+  and reset times are kept; Antigravity credentials are never read by UsageBeacon.
 - Settings and usage caches live in `%APPDATA%\UsageBeacon`. The dashboard parse cache, the optional
   price override, and crash logs live in `%LOCALAPPDATA%\UsageBeacon`.
 - There is no telemetry and no analytics. Unhandled exceptions go only to

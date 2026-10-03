@@ -55,6 +55,8 @@ public sealed class UsagePopupWindowTests
                 var codex = Assert.IsType<Image>(popup.FindName("CodexHeaderIcon"));
                 Assert.EndsWith("Resources/claude.png", claude.Source.ToString());
                 Assert.EndsWith("Resources/openai.png", codex.Source.ToString());
+                var agy = Assert.IsType<Image>(popup.FindName("AgyHeaderIcon"));
+                Assert.EndsWith("Resources/antigravity.png", agy.Source.ToString());
             }
             finally
             {

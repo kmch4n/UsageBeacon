@@ -82,7 +82,8 @@ public partial class TaskbarWidget : Window
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(UsageViewModel.ShowWeeklyInWidget)) return;
+        if (e.PropertyName is not (nameof(UsageViewModel.ShowWeeklyInWidget) or
+            nameof(UsageViewModel.ShowAgyUsage))) return;
         if (Dispatcher.CheckAccess()) ApplyWeeklySetting();
         else Dispatcher.BeginInvoke(ApplyWeeklySetting);
     }
@@ -94,6 +95,12 @@ public partial class TaskbarWidget : Window
         ClaudeWeeklyLabel.Visibility = visibility;
         CodexWeeklySeparator.Visibility = visibility;
         CodexWeeklyLabel.Visibility = visibility;
+        AgyWeeklySeparator.Visibility = visibility;
+        AgyWeeklyLabel.Visibility = visibility;
+        // The vertical layout keeps two rows so it fits the taskbar height.
+        var agyVisibility = _vm.ShowAgyUsage ? Visibility.Visible : Visibility.Collapsed;
+        AgyWidePanel.Visibility = agyVisibility;
+        AgyCompactPanel.Visibility = agyVisibility;
         if (!IsLoaded)
             Width = _vm.ShowWeeklyInWidget ? ExtendedWidth : WideWidth;
         UpdateLabels();
@@ -292,8 +299,11 @@ public partial class TaskbarWidget : Window
             (_vm.ShowWeeklyInWidget ? null : snap.ClaudeUsage?.Weekly?.Utilization);
         var codexUtil = snap.CodexUsage?.FiveHour?.Utilization ??
             (_vm.ShowWeeklyInWidget ? null : snap.CodexUsage?.Weekly?.Utilization);
+        var agyUtil = snap.AgyUsage?.FiveHour?.Utilization ??
+            (_vm.ShowWeeklyInWidget ? null : snap.AgyUsage?.Weekly?.Utilization);
         var claudeWeekly = snap.ClaudeUsage?.Weekly?.Utilization;
         var codexWeekly = snap.CodexUsage?.Weekly?.Utilization;
+        var agyWeekly = snap.AgyUsage?.Weekly?.Utilization;
 
         ClaudeLabel.Text       = claudeUtil.HasValue ? $"{(int)(claudeUtil.Value * 100)}%" : "--%";
         ClaudeLabel.Foreground = UtilBrush(claudeUtil);
@@ -303,21 +313,28 @@ public partial class TaskbarWidget : Window
         ClaudeWeeklyLabel.Foreground = UtilBrush(claudeWeekly);
         CodexWeeklyLabel.Text = codexWeekly.HasValue ? $"{(int)(codexWeekly.Value * 100)}%" : "--%";
         CodexWeeklyLabel.Foreground = UtilBrush(codexWeekly);
+        AgyLabel.Text = agyUtil.HasValue ? $"{(int)(agyUtil.Value * 100)}%" : "--%";
+        AgyLabel.Foreground = UtilBrush(agyUtil);
+        AgyWeeklyLabel.Text = agyWeekly.HasValue ? $"{(int)(agyWeekly.Value * 100)}%" : "--%";
+        AgyWeeklyLabel.Foreground = UtilBrush(agyWeekly);
         CompactClaudeLabel.Text       = claudeUtil.HasValue ? $"{(int)(claudeUtil.Value * 100)}" : "--";
         CompactClaudeLabel.Foreground = UtilBrush(claudeUtil);
         CompactCodexLabel.Text        = codexUtil.HasValue ? $"{(int)(codexUtil.Value * 100)}" : "--";
         CompactCodexLabel.Foreground  = UtilBrush(codexUtil);
+        CompactAgyLabel.Text          = agyUtil.HasValue ? $"{(int)(agyUtil.Value * 100)}" : "--";
+        CompactAgyLabel.Foreground    = UtilBrush(agyUtil);
         VerticalClaudeLabel.Text       = claudeUtil.HasValue ? $"{(int)(claudeUtil.Value * 100)}" : "--";
         VerticalClaudeLabel.Foreground = UtilBrush(claudeUtil);
         VerticalCodexLabel.Text        = codexUtil.HasValue ? $"{(int)(codexUtil.Value * 100)}" : "--";
         VerticalCodexLabel.Foreground  = UtilBrush(codexUtil);
-        UpdateAccessibleDescription(claudeUtil, claudeWeekly, codexUtil, codexWeekly);
+        UpdateAccessibleDescription(claudeUtil, claudeWeekly, codexUtil, codexWeekly,
+            agyUtil, agyWeekly);
         if (IsLoaded)
             PositionOnSelectedTaskbar(_vm.WidgetPlacement);
     }
 
     private void UpdateAccessibleDescription(double? claudeFiveHour, double? claudeWeekly,
-        double? codexFiveHour, double? codexWeekly)
+        double? codexFiveHour, double? codexWeekly, double? agyFiveHour, double? agyWeekly)
     {
         if (!_vm.ShowWeeklyInWidget)
         {
@@ -330,9 +347,14 @@ public partial class TaskbarWidget : Window
         string Describe(double? value) => value.HasValue
             ? $"{(int)(value.Value * 100)}%"
             : LocalizationService.Get("WidgetUnavailable");
-        var description = LocalizationService.Format("WidgetWeeklyDescription",
-            Describe(claudeFiveHour), Describe(claudeWeekly),
-            Describe(codexFiveHour), Describe(codexWeekly));
+        var description = _vm.ShowAgyUsage
+            ? LocalizationService.Format("WidgetWeeklyDescriptionWithAgy",
+                Describe(claudeFiveHour), Describe(claudeWeekly),
+                Describe(codexFiveHour), Describe(codexWeekly),
+                Describe(agyFiveHour), Describe(agyWeekly))
+            : LocalizationService.Format("WidgetWeeklyDescription",
+                Describe(claudeFiveHour), Describe(claudeWeekly),
+                Describe(codexFiveHour), Describe(codexWeekly));
         AutomationProperties.SetName(Root, description);
         Root.ToolTip = description;
     }

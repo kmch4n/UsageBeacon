@@ -19,6 +19,7 @@ public partial class UsagePopupWindow : Window
     private bool _themePickerReady;
     private bool _syncingStartup;
     private bool _syncingWeeklyWidget;
+    private bool _syncingShowAgy;
     private int _monitorIndex;
     private int _monitorTotal = 1;
     private WidgetPlacement _placement;
@@ -59,12 +60,16 @@ public partial class UsagePopupWindow : Window
         CloseBtn.ToolTip = LocalizationService.Get("TooltipClose");
         ClaudeLoginBtn.Content = LocalizationService.Get("CommonLogin");
         CodexLoginBtn.Content = LocalizationService.Get("CommonLogin");
+        AgyTitle.Text = LocalizationService.Get("AgyTitle");
         ClaudeLoading.Text = LocalizationService.Get("StatusLoading");
         CodexLoading.Text = LocalizationService.Get("StatusLoading");
+        AgyLoading.Text = LocalizationService.Get("StatusLoading");
         ClaudeFiveHourLabel.Text = LocalizationService.Get("UsageFiveHour");
         CodexFiveHourLabel.Text = LocalizationService.Get("UsageFiveHour");
+        AgyFiveHourLabel.Text = LocalizationService.Get("UsageFiveHour");
         ClaudeWeeklyLabel.Text = LocalizationService.Get("UsageWeekly");
         CodexWeeklyLabel.Text = LocalizationService.Get("UsageWeekly");
+        AgyWeeklyLabel.Text = LocalizationService.Get("UsageWeekly");
         ClaudeSonnetLabel.Text = LocalizationService.Get("UsageWeeklySonnet");
         PollingIntervalLabel.Text = LocalizationService.Get("SettingsPollingInterval");
         PollingIntervalNote.Text = LocalizationService.Get("SettingsPollingNote");
@@ -73,6 +78,7 @@ public partial class UsagePopupWindow : Window
         MonitorLabel.Text = LocalizationService.Get("SettingsMonitor");
         PositionLabel.Text = LocalizationService.Get("SettingsPosition");
         WeeklyWidgetLabel.Text = LocalizationService.Get("SettingsShowWeeklyInWidget");
+        ShowAgyLabel.Text = LocalizationService.Get("SettingsShowAgy");
         LanguageLabel.Text = LocalizationService.Get("SettingsLanguage");
         ThemeLabel.Text = LocalizationService.Get("SettingsTheme");
         DashboardLabel.Text = LocalizationService.Get("DashboardTitle");
@@ -123,6 +129,7 @@ public partial class UsagePopupWindow : Window
         SyncSettingsState();
         RefreshClaude();
         RefreshCodex();
+        RefreshAgy();
         RefreshFooter();
     }
 
@@ -146,6 +153,16 @@ public partial class UsagePopupWindow : Window
         finally
         {
             _syncingWeeklyWidget = false;
+        }
+
+        _syncingShowAgy = true;
+        try
+        {
+            ShowAgyChk.IsChecked = _vm.ShowAgyUsage;
+        }
+        finally
+        {
+            _syncingShowAgy = false;
         }
 
         _pickerReady = false;
@@ -301,6 +318,62 @@ public partial class UsagePopupWindow : Window
             CodexWeeklyReset.Text     = LocalizedText.ResetTime(w.ResetsAt);
         }
         else { CodexWeeklyRow.Visibility = Visibility.Collapsed; }
+    }
+
+    private void RefreshAgy()
+    {
+        AgySection.Visibility = _vm.ShowAgyUsage ? Visibility.Visible : Visibility.Collapsed;
+        if (!_vm.ShowAgyUsage) return;
+
+        var snap = _vm.Snapshot;
+        if (snap.AgyUsage == null && snap.AgyError == null)
+        {
+            AgyLoading.Visibility = Visibility.Visible;
+            AgyContent.Visibility = Visibility.Collapsed;
+            AgyError.Visibility   = Visibility.Collapsed;
+            return;
+        }
+
+        AgyLoading.Visibility = Visibility.Collapsed;
+
+        if (snap.AgyError != null)
+        {
+            // Keep the last successful value visible while a retry is pending.
+            var showLastValue = snap.AgyUsage != null;
+            AgyContent.Visibility = showLastValue ? Visibility.Visible : Visibility.Collapsed;
+            AgyError.Visibility   = Visibility.Visible;
+            AgyErrorTitle.Text    = showLastValue
+                ? LocalizationService.Get("ErrorWaitingTitle")
+                : LocalizationService.Get("ErrorFailureTitle");
+            AgyErrorMsg.Text      = LocalizedText.DomainError(snap.AgyError);
+            if (!showLastValue) return;
+        }
+        else
+        {
+            AgyContent.Visibility = Visibility.Visible;
+            AgyError.Visibility   = Visibility.Collapsed;
+        }
+        var usage = snap.AgyUsage!;
+
+        if (usage.FiveHour is { } fh)
+        {
+            Agy5hPanel.Visibility = Visibility.Visible;
+            Agy5hBar.Value        = fh.Utilization;
+            Agy5hPct.Text         = $"{fh.Percent}%";
+            Agy5hPct.Foreground   = UtilBrush(fh.Utilization);
+            Agy5hReset.Text       = LocalizedText.ResetTime(fh.ResetsAt);
+        }
+        else { Agy5hPanel.Visibility = Visibility.Collapsed; }
+
+        if (usage.Weekly is { } w)
+        {
+            AgyWeeklyRow.Visibility = Visibility.Visible;
+            AgyWeeklyPct.Text       = $"{w.Percent}%";
+            AgyWeeklyPct.Foreground = UtilBrush(w.Utilization);
+            AgyWeeklyBar.Value      = w.Utilization;
+            AgyWeeklyReset.Text     = LocalizedText.ResetTime(w.ResetsAt);
+        }
+        else { AgyWeeklyRow.Visibility = Visibility.Collapsed; }
     }
 
     private void RefreshFooter()
@@ -495,6 +568,13 @@ public partial class UsagePopupWindow : Window
     {
         if (_syncingStartup) return;
         _vm.StartupEnabled = StartupChk.IsChecked == true;
+        SyncSettingsState();
+    }
+
+    private void ShowAgyChk_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncingShowAgy) return;
+        _vm.ShowAgyUsage = ShowAgyChk.IsChecked == true;
         SyncSettingsState();
     }
 

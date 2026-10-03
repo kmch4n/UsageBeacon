@@ -18,6 +18,7 @@
     <Resource Include="Resources\tray.ico" />
     <Resource Include="Resources\claude.png" />
     <Resource Include="Resources\openai.png" />
+    <Resource Include="Resources\antigravity.png" />
     <Resource Include="Resources\model-pricing.json" />
     <EmbeddedResource Include="Resources\ClaudeStatusLineBridge.ps1" />
   </ItemGroup>

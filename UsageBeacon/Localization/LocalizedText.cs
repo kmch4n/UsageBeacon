@@ -29,6 +29,9 @@ public static class LocalizedText
         DomainErrorKind.Decoding => LocalizationService.Get("ErrorDecoding"),
         DomainErrorKind.Timeout => LocalizationService.Get("ErrorTimeout"),
         DomainErrorKind.Network => LocalizationService.Get("ErrorNetwork"),
+        DomainErrorKind.AgyNotFound => LocalizationService.Get("ErrorAgyNotFound"),
+        DomainErrorKind.AgyUnsupportedVersion => LocalizationService.Get("ErrorAgyUnsupportedVersion"),
+        DomainErrorKind.AgyCommandFailed => LocalizationService.Get("ErrorAgyCommandFailed"),
         _ => LocalizationService.Get("AppUnexpectedError"),
     };
 

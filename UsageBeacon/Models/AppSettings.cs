@@ -30,4 +30,7 @@ public sealed class AppSettings
 
     [JsonPropertyName("dashboardCurrency")]
     public string DashboardCurrency { get; init; } = "USD";
+
+    [JsonPropertyName("showAgyUsage")]
+    public bool ShowAgyUsage { get; init; }
 }

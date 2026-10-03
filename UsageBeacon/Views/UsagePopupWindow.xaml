@@ -324,6 +324,60 @@
 
             <Separator Margin="0,0,0,12"/>
 
+            <!-- Antigravity (Gemini quota only) -->
+            <StackPanel x:Name="AgySection" Visibility="Collapsed">
+                <StackPanel Margin="0,0,0,12">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                        <Image x:Name="AgyHeaderIcon"
+                               Source="/UsageBeacon;component/Resources/antigravity.png"
+                               Width="16" Height="16" Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               SnapsToDevicePixels="True"
+                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock x:Name="AgyTitle" Style="{StaticResource Title}"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <TextBlock x:Name="AgyLoading" Style="{StaticResource Label}"/>
+
+                    <StackPanel x:Name="AgyContent" Visibility="Collapsed">
+                        <StackPanel x:Name="Agy5hPanel">
+                            <Grid Margin="0,0,0,3">
+                                <TextBlock x:Name="AgyFiveHourLabel" Style="{StaticResource Label}"/>
+                                <TextBlock x:Name="Agy5hPct" HorizontalAlignment="Right"
+                                           FontSize="13" FontWeight="Bold"/>
+                            </Grid>
+                            <ctrl:UsageBar x:Name="Agy5hBar"/>
+                            <TextBlock x:Name="Agy5hReset" Style="{StaticResource Tiny}" Margin="0,3,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel x:Name="AgyWeeklyRow" Margin="0,8,0,0">
+                            <Grid Margin="0,0,0,3">
+                                <TextBlock x:Name="AgyWeeklyLabel" Style="{StaticResource Label}"/>
+                                <TextBlock x:Name="AgyWeeklyPct" HorizontalAlignment="Right"
+                                           FontSize="13" FontWeight="Bold"/>
+                            </Grid>
+                            <ctrl:UsageBar x:Name="AgyWeeklyBar"/>
+                            <TextBlock x:Name="AgyWeeklyReset" Style="{StaticResource Tiny}" Margin="0,3,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Border x:Name="AgyError" Visibility="Collapsed"
+                            Background="{DynamicResource ErrorBg}"
+                            CornerRadius="6" Padding="8,6" Margin="0,6,0,0">
+                        <StackPanel>
+                            <TextBlock x:Name="AgyErrorTitle" Foreground="{DynamicResource ErrorText}"
+                                       FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                            <TextBlock x:Name="AgyErrorMsg"
+                                       Foreground="{DynamicResource SecondaryText}"
+                                       FontSize="10" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <Separator Margin="0,0,0,12"/>
+            </StackPanel>
+
             <!-- Settings -->
             <StackPanel Margin="0,0,0,12">
                 <Grid Margin="0,0,0,6">
@@ -360,6 +414,12 @@
                     <CheckBox x:Name="WeeklyWidgetChk" HorizontalAlignment="Right"
                               AutomationProperties.LabeledBy="{Binding ElementName=WeeklyWidgetLabel}"
                               Checked="WeeklyWidgetChk_Changed" Unchecked="WeeklyWidgetChk_Changed"/>
+                </Grid>
+                <Grid Margin="0,0,0,6">
+                    <TextBlock x:Name="ShowAgyLabel" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                    <CheckBox x:Name="ShowAgyChk" HorizontalAlignment="Right"
+                              AutomationProperties.LabeledBy="{Binding ElementName=ShowAgyLabel}"
+                              Checked="ShowAgyChk_Changed" Unchecked="ShowAgyChk_Changed"/>
                 </Grid>
                 <Grid Margin="0,0,0,6">
                     <TextBlock x:Name="LanguageLabel" Style="{StaticResource Label}" VerticalAlignment="Center"/>

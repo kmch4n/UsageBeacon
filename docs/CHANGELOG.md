@@ -4,6 +4,10 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+### Added
+
+- An optional setting shows the Antigravity (agy) Gemini model quota, with five-hour and weekly limits, in the popup, the taskbar widget, and the notification-area tooltip. It reads `agy -p /usage --output-format json`, which needs agy 1.1.11 or later and does not send a prompt; older agy releases are refused before the report runs. The separate quota for Claude and GPT models inside Antigravity is not shown.
+
 ### Changed
 
 - Replaced the usage popup's placeholder service symbols with the bundled official Claude and OpenAI images, and added them to the dashboard cost breakdowns, chart legend, and model table.

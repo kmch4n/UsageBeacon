@@ -13,6 +13,9 @@ public enum DomainErrorKind
     Decoding,
     Timeout,
     Network,
+    AgyNotFound,
+    AgyUnsupportedVersion,
+    AgyCommandFailed,
 }
 
 public sealed class DomainError : Exception
@@ -71,5 +74,16 @@ public sealed class DomainError : Exception
 
     public static DomainError Network(string detail) => new(DomainErrorKind.Network,
         $"Network error: {detail}",
+        detail: detail);
+
+    public static DomainError AgyNotFound() => new(DomainErrorKind.AgyNotFound,
+        "Antigravity CLI (agy) was not found.");
+
+    public static DomainError AgyUnsupportedVersion(string? version) => new(DomainErrorKind.AgyUnsupportedVersion,
+        $"Antigravity CLI {version ?? "(unknown version)"} cannot report usage without a model prompt.",
+        detail: version);
+
+    public static DomainError AgyCommandFailed(string detail) => new(DomainErrorKind.AgyCommandFailed,
+        $"Antigravity usage command failed: {detail}",
         detail: detail);
 }

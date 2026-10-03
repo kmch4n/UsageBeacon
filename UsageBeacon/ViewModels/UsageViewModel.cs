@@ -14,13 +14,16 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
 {
     private static readonly TimeSpan ClaudeMinimumInterval = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan ClaudeNativeUsageFreshness = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan AgyMinimumInterval = TimeSpan.FromMinutes(2);
 
     private readonly IUsageProvider _claude;
     private readonly IUsageProvider _codex;
+    private readonly IUsageProvider _agy;
     private readonly IAppSettingsStore _settingsStore;
     private readonly IStartupManager _startupManager;
     private readonly string _claudeUsageCachePath;
     private readonly string _codexUsageCachePath;
+    private readonly string _agyUsageCachePath;
     private readonly string _claudePollingStatePath;
     private readonly string _claudeNativeUsagePath;
 
@@ -29,6 +32,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
     private PollingInterval _pollingInterval;
     private WidgetPlacement _widgetPlacement;
     private bool _showWeeklyInWidget;
+    private bool _showAgyUsage;
     private PopupTransparency _popupTransparency;
     private string? _monitorDeviceName;
     private bool _startupEnabled;
@@ -42,6 +46,8 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
     private DateTime? _lastClaudeFetchedAtUtc;
     private UsageDataSource? _lastClaudeSource;
     private ServiceUsage? _lastCodexUsage;
+    private ServiceUsage? _lastAgyUsage;
+    private DateTime _lastAgyAttemptUtc = DateTime.MinValue;
     private bool _claudeWaitingAfterRateLimit;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
@@ -99,6 +105,32 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
             if (!TrySaveSettings()) _showWeeklyInWidget = previous;
             Notify();
         }
+    }
+
+    public bool ShowAgyUsage
+    {
+        get => _showAgyUsage;
+        set
+        {
+            if (_showAgyUsage == value) return;
+            var previous = _showAgyUsage;
+            _showAgyUsage = value;
+            if (!TrySaveSettings()) _showAgyUsage = previous;
+            Notify();
+            if (_showAgyUsage == previous) return;
+            Snapshot = WithAgy(Snapshot, _showAgyUsage ? _lastAgyUsage : null, null);
+            if (_showAgyUsage)
+            {
+                _lastAgyAttemptUtc = DateTime.MinValue;
+                _ = RefreshAfterAgyEnabledAsync();
+            }
+        }
+    }
+
+    private async Task RefreshAfterAgyEnabledAsync()
+    {
+        try { await RefreshAsync(); }
+        catch { }
     }
 
     public PopupTransparency PopupTransparency
@@ -232,11 +264,13 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         IUsageProvider? codex = null,
         IAppSettingsStore? settingsStore = null,
         IStartupManager? startupManager = null,
-        string? dataDirectory = null)
+        string? dataDirectory = null,
+        IUsageProvider? agy = null)
     {
         var directory = dataDirectory ?? AppDataPaths.DirectoryPath;
         _claudeUsageCachePath = Path.Combine(directory, "claude-usage-cache.json");
         _codexUsageCachePath = Path.Combine(directory, "codex-usage-cache.json");
+        _agyUsageCachePath = Path.Combine(directory, "agy-gemini-usage-cache.json");
         _claudePollingStatePath = Path.Combine(directory, "claude-polling-state.json");
         _claudeNativeUsagePath = Path.Combine(directory, "claude-native-usage.json");
         _settingsStore = settingsStore ?? new AppSettingsStore();
@@ -244,9 +278,11 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         var settings = _settingsStore.Load();
         _claude          = claude ?? new ClaudeUsageProvider();
         _codex           = codex  ?? new CodexUsageProvider();
+        _agy             = agy    ?? new AgyUsageProvider();
         _pollingInterval = ParsePollingInterval(settings.PollingInterval);
         _widgetPlacement = ParseWidgetPlacement(settings.WidgetPlacement);
         _showWeeklyInWidget = settings.ShowWeeklyInWidget;
+        _showAgyUsage = settings.ShowAgyUsage;
         _popupTransparency = ParsePopupTransparency(settings.PopupTransparency);
         _monitorDeviceName = settings.MonitorDeviceName;
         _loginPrompted = settings.LoginPrompted;
@@ -275,6 +311,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         _lastClaudeFetchedAtUtc = latestClaudeUsage?.FetchedAtUtc;
         _lastClaudeSource = latestClaudeUsage?.Source;
         _lastCodexUsage  = LoadCodexUsageCache();
+        _lastAgyUsage    = LoadAgyUsageCache();
         var claudePollingState = LoadClaudePollingState();
         _claudeCooldownUntilUtc = claudePollingState?.NextRequestUtc ?? DateTime.MinValue;
         _claudeWaitingAfterRateLimit = claudePollingState?.WasRateLimited == true;
@@ -287,7 +324,9 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         var waitingForClaudeRetry = !hasFreshNativeUsage &&
                                     _claudeWaitingAfterRateLimit &&
                                     _claudeCooldownUntilUtc > DateTime.UtcNow;
-        if (_lastClaudeUsage != null || _lastCodexUsage != null || waitingForClaudeRetry)
+        var startupAgyUsage = _showAgyUsage ? _lastAgyUsage : null;
+        if (_lastClaudeUsage != null || _lastCodexUsage != null ||
+            startupAgyUsage != null || waitingForClaudeRetry)
         {
             _snapshot = new UsageSnapshot
             {
@@ -296,6 +335,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
                 ClaudeFetchedAtUtc = _lastClaudeFetchedAtUtc,
                 ClaudeSource = _lastClaudeSource,
                 CodexUsage  = _lastCodexUsage,
+                AgyUsage    = startupAgyUsage,
                 FetchedAt = DateTime.MinValue,
             };
         }
@@ -374,6 +414,15 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
                     _lastClaudeUsage,
                     hasFreshNativeUsage ? null : Snapshot.ClaudeError));
             var codexTask  = FetchSafe(_codex,  ct);
+            // agy spawns a CLI process per report, so honor a minimum interval
+            // between automatic attempts and skip it entirely when hidden.
+            var showAgy = _showAgyUsage;
+            var fetchAgy = showAgy &&
+                (force || nowUtc - _lastAgyAttemptUtc >= AgyMinimumInterval);
+            if (fetchAgy) _lastAgyAttemptUtc = nowUtc;
+            var agyTask = fetchAgy
+                ? FetchSafe(_agy, ct)
+                : Task.FromResult<(ServiceUsage?, DomainError?)>((null, null));
             await Task.WhenAll(claudeTask, codexTask);
 
             var (cu, ce) = await claudeTask;
@@ -428,14 +477,32 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
                 xu = _lastCodexUsage;
             }
 
+            // Publish Claude and Codex first so a slow agy report never delays them.
+            var previous = Snapshot;
             Snapshot = new UsageSnapshot
             {
                 ClaudeUsage = cu, ClaudeError = ce,
                 ClaudeFetchedAtUtc = _lastClaudeFetchedAtUtc,
                 ClaudeSource = _lastClaudeSource,
                 CodexUsage  = xu, CodexError  = xe,
+                AgyUsage    = showAgy ? previous.AgyUsage ?? _lastAgyUsage : null,
+                AgyError    = showAgy ? previous.AgyError : null,
                 FetchedAt   = DateTime.Now,
             };
+
+            if (!fetchAgy) return;
+            var (au, ae) = await agyTask;
+            if (au != null)
+            {
+                _lastAgyUsage = au;
+                SaveAgyUsageCache(au);
+            }
+            else if (ae != null && _lastAgyUsage != null && IsTransient(ae.Kind))
+            {
+                au = _lastAgyUsage;
+            }
+            if (!_showAgyUsage) au = null;
+            Snapshot = WithAgy(Snapshot, au, _showAgyUsage ? ae : null);
         }
         finally { IsLoading = false; }
     }
@@ -451,12 +518,28 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         catch (Exception   e)  { return (null, DomainError.Network(e.Message)); }
     }
 
-    // Missing credentials and a missing CLI must not show potentially misleading stale data.
+    private static UsageSnapshot WithAgy(UsageSnapshot source, ServiceUsage? usage, DomainError? error)
+        => new()
+        {
+            ClaudeUsage = source.ClaudeUsage,
+            ClaudeError = source.ClaudeError,
+            ClaudeFetchedAtUtc = source.ClaudeFetchedAtUtc,
+            ClaudeSource = source.ClaudeSource,
+            CodexUsage = source.CodexUsage,
+            CodexError = source.CodexError,
+            AgyUsage = usage,
+            AgyError = error,
+            FetchedAt = source.FetchedAt,
+        };
+
+    // Missing credentials and a missing or unsupported CLI must not show potentially misleading stale data.
     // An expired Codex sign-in remains transient so the last value stays visible while signing in.
     private static bool IsTransient(DomainErrorKind kind) => kind is not (
         DomainErrorKind.TokenMissing or
         DomainErrorKind.AnthropicUnauthorized or
-        DomainErrorKind.CodexNotFound);
+        DomainErrorKind.CodexNotFound or
+        DomainErrorKind.AgyNotFound or
+        DomainErrorKind.AgyUnsupportedVersion);
 
     private void Notify([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
@@ -495,6 +578,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
                 PollingInterval = (int)_pollingInterval,
                 WidgetPlacement = _widgetPlacement.ToString(),
                 ShowWeeklyInWidget = _showWeeklyInWidget,
+                ShowAgyUsage = _showAgyUsage,
                 PopupTransparency = _popupTransparency.ToString(),
                 MonitorDeviceName = _monitorDeviceName,
                 LoginPrompted = _loginPrompted,
@@ -577,6 +661,27 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_codexUsageCachePath)!);
             AtomicWrite(_codexUsageCachePath, JsonSerializer.Serialize(usage));
+        }
+        catch { }
+    }
+
+    private ServiceUsage? LoadAgyUsageCache()
+    {
+        try
+        {
+            return File.Exists(_agyUsageCachePath)
+                ? JsonSerializer.Deserialize<ServiceUsage>(File.ReadAllText(_agyUsageCachePath))
+                : null;
+        }
+        catch { return null; }
+    }
+
+    private void SaveAgyUsageCache(ServiceUsage usage)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_agyUsageCachePath)!);
+            AtomicWrite(_agyUsageCachePath, JsonSerializer.Serialize(usage));
         }
         catch { }
     }

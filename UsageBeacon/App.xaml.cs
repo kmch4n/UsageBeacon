@@ -359,6 +359,11 @@ public partial class App : System.Windows.Application
             sb.Append($"\n{LocalizationService.Format("TrayCodexFiveHour", xf.Percent)}");
         else if (xu?.Weekly is { } xw)
             sb.Append($"\n{LocalizationService.Format("TrayCodexWeekly", xw.Percent)}");
+        var au = snap.AgyUsage;
+        if (au?.FiveHour is { } af)
+            sb.Append($"\n{LocalizationService.Format("TrayAgyFiveHour", af.Percent)}");
+        else if (au?.Weekly is { } aw)
+            sb.Append($"\n{LocalizationService.Format("TrayAgyWeekly", aw.Percent)}");
         if (snap.FetchedAt > DateTime.MinValue)
         {
             sb.Append('\n');

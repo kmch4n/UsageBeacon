@@ -97,6 +97,8 @@
   <data name="TrayClaudeWeekly" xml:space="preserve"><value>Claude 7d: {0}%</value></data>
   <data name="TrayCodexFiveHour" xml:space="preserve"><value>Codex 5h: {0}%</value></data>
   <data name="TrayCodexWeekly" xml:space="preserve"><value>Codex 7d: {0}%</value></data>
+  <data name="TrayAgyFiveHour" xml:space="preserve"><value>Gemini 5h: {0}%</value></data>
+  <data name="TrayAgyWeekly" xml:space="preserve"><value>Gemini 7d: {0}%</value></data>
   <data name="DashboardTitle" xml:space="preserve"><value>使用状況ダッシュボード</value></data>
   <data name="DashboardOpen" xml:space="preserve"><value>開く</value></data>
   <data name="DashboardRefresh" xml:space="preserve"><value>更新</value></data>
@@ -139,4 +141,10 @@
   <data name="DashboardDisclaimer" xml:space="preserve"><value>コストはローカルのセッションログから推定したAPI料金換算値です。サブスクリプションプランではトークン単位の課金は行われません。</value></data>
   <data name="DashboardPricesAsOf" xml:space="preserve"><value>料金は {0} 時点</value></data>
   <data name="DashboardLastScan" xml:space="preserve"><value>走査: {0}</value></data>
+  <data name="AgyTitle" xml:space="preserve"><value>Antigravity (Gemini)</value></data>
+  <data name="SettingsShowAgy" xml:space="preserve"><value>Antigravity (Gemini)の使用量を表示</value></data>
+  <data name="ErrorAgyNotFound" xml:space="preserve"><value>Antigravity CLI (agy)が見つかりません。インストール後、`agy`を実行してサインインしてください。</value></data>
+  <data name="ErrorAgyUnsupportedVersion" xml:space="preserve"><value>プロンプトを送信せずに使用量を取得するにはAntigravity CLI 1.1.11以降が必要です。`agy update`を実行してください。</value></data>
+  <data name="ErrorAgyCommandFailed" xml:space="preserve"><value>Antigravityの使用量レポートを取得できませんでした。`agy`を実行してサインイン状態を確認してください。</value></data>
+  <data name="WidgetWeeklyDescriptionWithAgy" xml:space="preserve"><value>UsageBeaconの使用量詳細を開く。Claudeの5時間: {0}、週間: {1}。Codexの5時間: {2}、週間: {3}。Geminiの5時間: {4}、週間: {5}。</value></data>
 </root>
