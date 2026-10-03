@@ -4,7 +4,7 @@
 
 # UsageBeacon
 
-*Keep Claude Code and Codex usage on your Windows taskbar*
+*Keep Claude Code, Codex, and Antigravity usage on your Windows taskbar*
 
 [![CI](https://img.shields.io/github/actions/workflow/status/kmch4n/UsageBeacon/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/kmch4n/UsageBeacon/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/kmch4n/UsageBeacon?style=flat-square)](https://github.com/kmch4n/UsageBeacon/releases/latest)
@@ -14,12 +14,12 @@
 
 [Features](#features) • [Install](#install) • [Usage](#usage) • [Dashboard](#usage-dashboard) • [Privacy](#data-and-privacy)
 
-<img src="docs/images/popup.png" alt="UsageBeacon popup showing Claude Code and Codex usage windows" width="340">
+<img src="docs/images/popup.png" alt="UsageBeacon popup showing Claude Code, Codex, and Antigravity (Gemini) usage windows" width="340">
 
 </div>
 
-UsageBeacon is a lightweight Windows app that keeps your Claude Code and Codex usage where you can
-actually see it. A small widget sits on the taskbar; clicking it opens a popup with the five-hour and
+UsageBeacon is a lightweight Windows app that keeps your Claude Code and Codex usage, and optionally
+your Antigravity Gemini quota, where you can actually see it. A small widget sits on the taskbar; clicking it opens a popup with the five-hour and
 weekly windows, reset countdowns, manual refresh, and local settings. A separate dashboard estimates
 what that usage would have cost at API prices.
 
@@ -49,13 +49,14 @@ default and can be turned on from the popup settings.
 
 ## Screenshots
 
-The widget updates on your chosen interval. This example has the optional weekly display enabled;
-each service shows its five-hour percentage on the left and its weekly percentage on the right:
+The widget updates on your chosen interval. This example has the optional weekly display and
+Antigravity enabled; each service shows its five-hour percentage on the left and its weekly
+percentage on the right:
+
+<img src="docs/images/widget.png" alt="UsageBeacon widget showing five-hour and weekly percentages for Claude, Codex, and Antigravity" width="461">
 
 If the selected taskbar has no safe space, the widget hides until a space becomes available;
 the notification-area icon remains available.
-
-<img src="docs/images/widget.png" alt="UsageBeacon widget showing five-hour and weekly percentages for Claude and Codex" width="321">
 
 The dashboard puts locally retained lifetime, today, 7-day, and 30-day estimates above aligned
 cost and token charts:
@@ -68,8 +69,7 @@ Select a day to see its service split and exact input and output totals:
 <img src="docs/images/dashboard-daily.png" alt="Daily cost and token figures with selected-day details in the UsageBeacon dashboard" width="820">
 
 > [!NOTE]
-> These screenshots were captured from the app with illustrative usage data. They do not show the
-> author's usage history.
+> These screenshots were captured from the running app with the maintainer's actual usage.
 
 ## Requirements
 
