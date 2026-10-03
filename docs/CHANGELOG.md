@@ -4,6 +4,8 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+## 1.5.0 - 2026-10-03
+
 ### Added
 
 - The usage dashboard includes Antigravity CLI usage from `~/.gemini/antigravity-cli/brain` transcripts in its cost cards, daily chart, selected-day details, and model table. The model is inferred from Antigravity's model-selection notices, so the split is an estimate.
@@ -12,6 +14,7 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 ### Fixed
 
 - Claude Opus 5.5 usage was priced at the Claude Opus 5 rate through the prefix fallback; it now uses its own lower rate.
+- Aligned `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna` with OpenAI's published rates ($4/$20, $2/$12, and $0.20/$1.20 per million input/output tokens). Retained usage is repriced, so Codex estimates are lower than before.
 
 ## 1.4.0 - 2026-10-03
 
