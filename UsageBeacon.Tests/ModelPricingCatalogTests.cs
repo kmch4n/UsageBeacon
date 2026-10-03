@@ -163,6 +163,16 @@ public sealed class ModelPricingCatalogTests
     }
 
     [Fact]
+    public void EmbeddedPricing_MatchesOpenAiGpt56StandardRates()
+    {
+        var catalog = EmbeddedCatalog();
+
+        Assert.Equal(new ModelPricing(4m, 0.4m, 0m, 0m, 20m), catalog.Resolve("gpt-5.6-sol"));
+        Assert.Equal(new ModelPricing(2m, 0.2m, 0m, 0m, 12m), catalog.Resolve("gpt-5.6-terra"));
+        Assert.Equal(new ModelPricing(0.2m, 0.02m, 0m, 0m, 1.2m), catalog.Resolve("gpt-5.6-luna"));
+    }
+
+    [Fact]
     public void EmbeddedPricing_PricesClaude55ModelsSeparatelyFromClaude5()
     {
         var catalog = EmbeddedCatalog();

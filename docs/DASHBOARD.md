@@ -48,6 +48,8 @@ The built-in price table is an embedded resource (`Resources/model-pricing.json`
 
 `gpt-6-astra` and `gpt-6-sol` use OpenAI's Standard short-context API rates as of 2026-09-25. Astra is $10 input, $1 cached input, and $50 output per million tokens; Sol is $2 input, $0.20 cached input, and $10 output. Codex logs do not reveal whether a request entered the long-context tier, so the estimator applies the short-context rate. See [OpenAI API pricing](https://developers.openai.com/api/docs/pricing), [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra), and [GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol).
 
+The `gpt-5.6` family uses OpenAI's Standard short-context rates as of 2026-10-03: `gpt-5.6-sol` is $4 input, $0.40 cached input, and $20 output; `gpt-5.6-terra` is $2, $0.20, and $12; `gpt-5.6-luna` is $0.20, $0.02, and $1.20. Earlier table values were higher, and the date OpenAI changed them is not recorded, so retained usage is repriced at the current rates.
+
 `gpt-6-luna` uses OpenAI's Standard short-context rates as of 2026-10-03: $0.10 input, $0.01 cached input, and $0.50 output per million tokens. See [OpenAI API pricing](https://developers.openai.com/api/docs/pricing).
 
 `claude-opus-5-5` ($4 input, $0.20 cache hits, $20 output) and `claude-sonnet-5-5` ($2, $0.20, $10) have their own entries; without them the prefix rule priced Opus 5.5 at the Opus 5 rate. Their cache-write rates use Anthropic's standard 1.25x (5-minute) and 2x (1-hour) input multipliers.
