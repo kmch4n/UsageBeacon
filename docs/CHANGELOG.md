@@ -10,6 +10,7 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ### Fixed
 
+- Restyled the dashboard's minimize, maximize, and close buttons as standard Windows caption buttons, including a red close hover and a restore glyph while maximized, and kept them on screen when the dashboard is maximized.
 - Keep the widget inside the taskbar: hide it when no safe slot exists, restore it when space returns, and correct DPI rounding from its actual window bounds.
 - Size the widget window to its measured content with small, balanced padding on both sides.
 

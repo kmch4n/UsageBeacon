@@ -105,6 +105,55 @@
             <Setter Property="Margin" Value="2,0"/>
             <Setter Property="Padding" Value="9,5"/>
         </Style>
+        <!-- Square, full-height caption buttons with Windows icon-font glyphs. -->
+        <Style x:Key="CaptionBtn" TargetType="Button">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource HoverBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background"
+                                        Value="{DynamicResource PressedBg}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="CloseCaptionBtn" TargetType="Button" BasedOn="{StaticResource CaptionBtn}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#C42B1C"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#C83C31"/>
+                                <Setter Property="Foreground" Value="#E6FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="DashboardScrollThumb" TargetType="Thumb">
             <Setter Property="Background" Value="{DynamicResource TertiaryText}"/>
             <Setter Property="Template">
@@ -148,7 +197,7 @@
         </Style>
     </Window.Resources>
 
-    <Grid>
+    <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -192,12 +241,12 @@
                             Margin="0,0,8,0" Click="Refresh_Click"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <Button x:Name="MinimizeBtn" Content="—" Style="{StaticResource LinkBtn}"
-                            Width="42" Click="Minimize_Click"/>
-                    <Button x:Name="MaximizeBtn" Content="□" Style="{StaticResource LinkBtn}"
-                            Width="42" Click="Maximize_Click"/>
-                    <Button x:Name="CloseBtn" Content="×" Style="{StaticResource LinkBtn}"
-                            Width="46" Click="Close_Click"/>
+                    <Button x:Name="MinimizeBtn" Content="&#xE921;" Style="{StaticResource CaptionBtn}"
+                            Click="Minimize_Click"/>
+                    <Button x:Name="MaximizeBtn" Content="&#xE922;" Style="{StaticResource CaptionBtn}"
+                            Click="Maximize_Click"/>
+                    <Button x:Name="CloseBtn" Content="&#xE8BB;" Style="{StaticResource CloseCaptionBtn}"
+                            Click="Close_Click"/>
                 </StackPanel>
             </Grid>
         </Border>

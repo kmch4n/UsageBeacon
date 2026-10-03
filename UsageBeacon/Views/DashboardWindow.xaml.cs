@@ -14,6 +14,7 @@ using UsageBeacon.Localization;
 using UsageBeacon.Models.Insights;
 using UsageBeacon.Services;
 using UsageBeacon.Services.Insights;
+using UsageBeacon.Utilities;
 using UsageBeacon.ViewModels;
 
 namespace UsageBeacon.Views;
@@ -54,6 +55,8 @@ public partial class DashboardWindow : Window
             _cts.Cancel();
             _cts.Dispose();
         };
+        StateChanged += (_, _) => UpdateWindowStateChrome();
+        SizeChanged += (_, _) => UpdateWindowStateChrome();
         Loaded += async (_, _) => await RefreshDataAsync();
     }
 
@@ -127,6 +130,17 @@ public partial class DashboardWindow : Window
     private void Close_Click(object sender, RoutedEventArgs e)
         => SystemCommands.CloseWindow(this);
 
+    private const string MaximizeGlyph = "\uE922";
+    private const string RestoreGlyph = "\uE923";
+
+    // A maximized borderless window extends past the work area by its resize frame,
+    // which would clip the caption buttons.
+    private void UpdateWindowStateChrome()
+    {
+        MaximizeBtn.Content = WindowState == WindowState.Maximized ? RestoreGlyph : MaximizeGlyph;
+        RootGrid.Margin = MaximizedWindowInsets.Get(this);
+    }
+
     private void ToggleMaximize()
     {
         if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this);
@@ -199,6 +213,9 @@ public partial class DashboardWindow : Window
         AutomationProperties.SetName(MinimizeBtn, LocalizationService.Get("DashboardMinimize"));
         AutomationProperties.SetName(MaximizeBtn, LocalizationService.Get("DashboardMaximize"));
         AutomationProperties.SetName(CloseBtn, LocalizationService.Get("DashboardClose"));
+        MinimizeBtn.ToolTip = LocalizationService.Get("DashboardMinimize");
+        MaximizeBtn.ToolTip = LocalizationService.Get("DashboardMaximize");
+        CloseBtn.ToolTip = LocalizationService.Get("DashboardClose");
         LifetimeTitle.Text = LocalizationService.Get("DashboardLifetime");
         AutomationProperties.SetName(LifetimeCard, LifetimeTitle.Text);
         TodayTitle.Text = LocalizationService.Get("DashboardToday");

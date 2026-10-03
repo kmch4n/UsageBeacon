@@ -2,6 +2,13 @@
 
 Last verified: 2026-10-03
 
+## Dashboard caption buttons (2026-10-03)
+
+- The dashboard's custom title bar keeps `WindowStyle="None"` with `WindowChrome`. Its minimize, maximize, and close buttons now use the standard Windows caption layout: 46 DIP wide, full title-bar height, square corners, Segoe Fluent Icons glyphs with Segoe MDL2 Assets as the Windows 10 fallback (`E921`, `E922`/`E923`, `E8BB`), a theme-gray hover, and a `#C42B1C` close hover with a white glyph.
+- A maximized borderless window extends past the monitor work area by its resize frame. On the primary 150% monitor this was 10 physical pixels and clipped the close button. `Utilities/MaximizedWindowInsets` measures the actual HWND and monitor work area, and the dashboard applies that overhang as `RootGrid.Margin` while maximized; it also keeps the window off a top-docked taskbar. A live probe showed the close button ending exactly at the monitor's right edge after the fix.
+- Debug and Release each passed 297 tests; both builds passed with `-warnaserror`. Keyboard focus uses WPF's default focus visual, as other dashboard buttons do.
+- The self-contained build was republished to `publish/latest/UsageBeacon.exe` (SHA-256 `c9d583bcf45f9f9211fea7213b2ff950142937df48af54e9f23f72b6c78d6cce`, built from the working tree immediately before this change's commit) and the running instance was restarted from it. The publish recorded in the next section is superseded.
+
 ## Official service images in popup and dashboard (2026-10-03)
 
 - The usage popup headers now show the bundled `claude.png` and `openai.png` instead of the `✦` and `▶` text stand-ins. No new image assets were added; provenance in `docs/NOTICE.md` now covers the widget, popup, and dashboard.

@@ -69,6 +69,42 @@ public sealed class DashboardWindowTests
     }
 
     [Fact]
+    public void CaptionButtons_UseWindowsGlyphs_AndSwapMaximizeForRestore()
+    {
+        using var directory = new TempDirectory();
+        RunOnStaThread(async () =>
+        {
+            await using var settings = CreateSettings(directory.Path);
+            var window = new DashboardWindow(settings, CreateViewModel(directory.Path,
+                Path.Combine(directory.Path, "cache.json")));
+            try
+            {
+                Assert.Equal("\uE921", window.MinimizeBtn.Content);
+                Assert.Equal("\uE922", window.MaximizeBtn.Content);
+                Assert.Equal("\uE8BB", window.CloseBtn.Content);
+                Assert.Equal(LocalizationService.Get("DashboardClose"), window.CloseBtn.ToolTip);
+
+                window.Show();
+                window.WindowState = WindowState.Maximized;
+                Assert.Equal("\uE923", window.MaximizeBtn.Content);
+                window.WindowState = WindowState.Normal;
+                Assert.Equal("\uE922", window.MaximizeBtn.Content);
+                Assert.Equal(new Thickness(0), window.RootGrid.Margin);
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Fact]
+    public void MaximizedWindowInsets_ConvertsOverhangToDips()
+    {
+        var insets = UsageBeacon.Utilities.MaximizedWindowInsets.Compute(
+            new Int32Rect(-10, 50, 3860, 2110), new Int32Rect(0, 60, 3840, 2100), 1.5, 1.5);
+
+        Assert.Equal(new Thickness(10 / 1.5, 10 / 1.5, 10 / 1.5, 0), insets);
+    }
+
+    [Fact]
     public void Refresh_ShowsEmptyState_WhenNoLogsOrCacheExist()
     {
         using var directory = new TempDirectory();
