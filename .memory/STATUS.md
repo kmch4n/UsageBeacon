@@ -2,10 +2,15 @@
 
 Last verified: 2026-10-03
 
+## Release v1.4.0 preparation (2026-10-03)
+
+- `feature/agy-usage` was fast-forwarded into `main`. The version is 1.4.0, `docs/CHANGELOG.md` has the dated heading, and `docs/releases/v1.4.0.md` holds the curated notes.
+- Pending: the CI and tag-triggered release results are recorded below once the workflow finishes.
+
 ## Antigravity Gemini quota (2026-10-03)
 
 - An earlier attempt on `feature/agy-usage` by another agent was partly discarded: its dashboard transcript pricing (`AgyTranscriptReader`, aggregator and dashboard changes), the Google "G" image that had also replaced the dashboard window and title-bar icon, and its views that referenced a nonexistent `AgyTodayCostUsd` and did not compile. The provider, parser, settings flag, and view model polling were kept and revised (D-018).
-- Live check against agy 1.2.16: the report returned in about 6 seconds with `num_turns: 0` and an empty `conversation_id`. The popup showed "Antigravity (Gemini)" with five-hour 100% and weekly 17%, and the widget showed the Gemini pair after Codex. README screenshots were not regenerated.
+- Live check against agy 1.2.16: the report returned in about 6 seconds with `num_turns: 0` and an empty `conversation_id`. The popup showed "Antigravity (Gemini)" with five-hour 100% and weekly 17%, and the widget showed the Gemini pair after Codex. README screenshots were regenerated for v1.4.0 (see "README screenshots").
 - Debug and Release each passed 318 tests; both builds passed with `-warnaserror`. The self-contained build was republished to `publish/latest/UsageBeacon.exe` (SHA-256 `badedecfa8a988684667ed2ff803af583e7b056624548fe3ee4d1a40af7054be`, built from the uncommitted working tree immediately before this change's commit) and started. The publish recorded in the next section is superseded.
 - Pending: `publish/v1.2.0-local/` (created 2026-09-25) predates this work and was left in place for the maintainer to remove.
 
@@ -134,7 +139,16 @@ Pending: `publish/latest/UsageBeacon.exe` is still 1.0.0. The application was ru
 
 ## README screenshots
 
-`README.md` embeds PNGs under `docs/images/`. On 2026-10-01, the widget, popup, and both dashboard
+`README.md` embeds PNGs under `docs/images/`.
+
+Superseded 2026-10-03: at the maintainer's request, the widget, popup, and both dashboard images
+were recaptured from the running `publish/latest` app with the maintainer's real usage and no
+masking. The capture used a temporary English UI, 0% popup transparency, and USD currency, and the
+user's settings were restored afterward. The popup's 7 px outer margin was cropped and its rounded
+corners made transparent; the widget shows the real taskbar background behind it. The privacy
+rule below no longer applies to these images; the other capture notes still do.
+
+Original 2026-10-01 record: On 2026-10-01, the widget, popup, and both dashboard
 images were recaptured from the current WPF views with illustrative data in separate screenshot
 processes:
 

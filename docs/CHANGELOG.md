@@ -4,6 +4,8 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+## 1.4.0 - 2026-10-03
+
 ### Added
 
 - An optional setting shows the Antigravity (agy) Gemini model quota, with five-hour and weekly limits, in the popup, the taskbar widget, and the notification-area tooltip. It reads `agy -p /usage --output-format json`, which needs agy 1.1.11 or later and does not send a prompt; older agy releases are refused before the report runs. The separate quota for Claude and GPT models inside Antigravity is not shown.
@@ -17,6 +19,10 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 - Restyled the dashboard's minimize, maximize, and close buttons as standard Windows caption buttons, including a red close hover and a restore glyph while maximized, and kept them on screen when the dashboard is maximized.
 - Keep the widget inside the taskbar: hide it when no safe slot exists, restore it when space returns, and correct DPI rounding from its actual window bounds.
 - Size the widget window to its measured content with small, balanced padding on both sides.
+
+### Documentation
+
+- Recaptured the README widget, popup, and dashboard screenshots from the running app with real usage.
 
 ## 1.3.0 - 2026-10-01
 
