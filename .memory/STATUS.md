@@ -2,6 +2,13 @@
 
 Last verified: 2026-10-03
 
+## Release v1.5.0 validation (2026-10-03)
+
+- Locally, Debug and Release each passed 336 tests and both builds passed with `-warnaserror` before tagging.
+- CI run 37109521327 on `main` succeeded before the tag was pushed. Release run 37109640713 for `v1.5.0` succeeded and published https://github.com/kmch4n/UsageBeacon/releases/tag/v1.5.0 (not a draft or prerelease) with the curated notes.
+- Both assets were attached: `UsageBeacon.exe` (162,352,322 bytes) and `UsageBeacon.exe.sha256`. The published checksum file's content equals GitHub's asset digest, `b9f23f2ece292d5bd3081d93e849a13f50b86a092c08c30d36f8775e7122ac95`.
+- `publish/latest/UsageBeacon.exe` was republished locally from the release commit (`1.5.0+bdca14f`, SHA-256 `539161ceec46bf24867721de126b3f5ad4bd49aa223406b7b5e31f1a8b27b6af`; local builds are not byte-identical to CI) and restarted.
+
 ## Antigravity dashboard estimates (2026-10-03, released in v1.5.0)
 
 - The dashboard now prices Antigravity CLI transcripts (D-019), and the table adds `gpt-6-luna`, Gemini 3.1 Pro and 3.6-3.8 Flash, and Claude Opus/Sonnet 5.5 (`asOf` 2026-10-03).
