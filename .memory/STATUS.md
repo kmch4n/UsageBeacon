@@ -2,10 +2,14 @@
 
 Last verified: 2026-10-03
 
-## Release v1.4.0 preparation (2026-10-03)
+## Release v1.4.0 validation (2026-10-03)
 
 - `feature/agy-usage` was fast-forwarded into `main`. The version is 1.4.0, `docs/CHANGELOG.md` has the dated heading, and `docs/releases/v1.4.0.md` holds the curated notes.
-- Pending: the CI and tag-triggered release results are recorded below once the workflow finishes.
+- Locally, Debug and Release each passed 318 tests and both builds passed with `-warnaserror` before tagging.
+- CI run 37105203159 on `main` succeeded before the tag was pushed. Release run 37105301842 for `v1.4.0` succeeded on every step and published https://github.com/kmch4n/UsageBeacon/releases/tag/v1.4.0 (not a draft or prerelease) with the curated notes.
+- Both assets were attached: `UsageBeacon.exe` (162,335,938 bytes) and `UsageBeacon.exe.sha256`. The published checksum file's content equals GitHub's asset digest, `afd46879b8a1dd8b1acf121ac223e04db8b08068777f7924af2290feeba22591`.
+- `publish/latest/UsageBeacon.exe` was republished locally as 1.4.0 from the release commit's tree and restarted.
+- The CI annotation that `actions/checkout@v4` and `actions/setup-dotnet@v4` target the deprecated Node.js 20 runtime remains unaddressed; the runs still succeed.
 
 ## Antigravity Gemini quota (2026-10-03)
 
