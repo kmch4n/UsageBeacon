@@ -1,17 +1,18 @@
 # Usage Dashboard
 
-The dashboard window (popup settings → "Usage dashboard", or the tray menu) shows the estimated lifetime cost retained on this computer and estimates for today, the last 7 days, and the last 30 days above its daily charts. The lifetime card splits the estimate into Claude and Codex. A per-model breakdown is available below the daily charts.
+The dashboard window (popup settings → "Usage dashboard", or the tray menu) shows the estimated lifetime cost retained on this computer and estimates for today, the last 7 days, and the last 30 days above its daily charts. The lifetime card splits the estimate into Claude, Codex, and, when its logs contain usage, Antigravity. A per-model breakdown is available below the daily charts.
 
-The dashboard uses an integrated, theme-aware title bar with the usual drag, resize, minimize, maximize, and close controls. Its upper toolbar switches estimated costs among USD, JPY, and EUR; the preference is saved with the other application settings. All calculations and cached costs remain in USD. JPY and EUR are display-only approximations using fixed rates of 1 USD = 150 JPY = 0.90 EUR, shown in the dashboard. Two aligned daily charts show known-price API-equivalent cost (Claude/Codex split) and total tokens (input/output split) for 7 or 30 days. Their tick intervals and upper bounds are rounded from the maximum in the displayed range. A numeric day grid under the plots makes every day's cost and token count visible without hover. Selecting a bar or numeric day shows its exact values in one detail area. Peak-day shortcuts identify the highest known cost and highest token volume. The model breakdown is collapsed initially.
+The dashboard uses an integrated, theme-aware title bar with the usual drag, resize, minimize, maximize, and close controls. Its upper toolbar switches estimated costs among USD, JPY, and EUR; the preference is saved with the other application settings. All calculations and cached costs remain in USD. JPY and EUR are display-only approximations using fixed rates of 1 USD = 150 JPY = 0.90 EUR, shown in the dashboard. Two aligned daily charts show known-price API-equivalent cost (Claude/Codex/Antigravity split) and total tokens (input/output split) for 7 or 30 days. Their tick intervals and upper bounds are rounded from the maximum in the displayed range. A numeric day grid under the plots makes every day's cost and token count visible without hover. Selecting a bar or numeric day shows its exact values in one detail area. Peak-day shortcuts identify the highest known cost and highest token volume. The model breakdown is collapsed initially.
 
 Unknown-priced models still contribute to token totals, but cannot contribute to cost estimates. The dashboard uses an explicit coverage note wherever cost totals may be partial; it does not use an unexplained `+` suffix.
 
 ## Data sources
 
-Costs cannot be derived from the utilization percentages the providers expose, so the dashboard reads the session logs both CLIs already write locally:
+Costs cannot be derived from the utilization percentages the providers expose, so the dashboard reads the session logs the CLIs already write locally:
 
 - Claude Code: `%USERPROFILE%\.claude\projects\**\*.jsonl` — assistant records carry `message.usage` token counts and the model name. Repeated emissions of the same message are deduplicated by message id and request id.
 - Codex: `%USERPROFILE%\.codex\sessions\**\*.jsonl` — usage is derived from the deltas of consecutive cumulative `total_token_usage` values (summing `last_token_usage` over-counts), with the model tracked from the preceding `turn_context` record.
+- Antigravity CLI: `%USERPROFILE%\.gemini\antigravity-cli\brain\<conversation>\.system_generated\logs\transcript.jsonl` — each `PLANNER_RESPONSE` line carries `input_tokens`, `cache_read_tokens`, and `output_tokens`. `transcript_full.jsonl` repeats the same steps and is not read. Lines do not name a model, so the model comes from the "changed setting `Model Selection` from X to Y" notice in `USER_INPUT` content; steps before the first notice use its "from" model. Conversations without a notice use the `model` currently set in `%USERPROFILE%\.gemini\antigravity-cli\settings.json`. Display names are mapped to price keys (`Gemini 3.1 Pro (High)` → `gemini-3.1-pro`, `Claude Opus 5.5 (High)` → `claude-opus-5-5`). This attribution is an estimate. The Antigravity IDE does not write these transcripts.
 
 Only numeric usage values, timestamps, model names, and identifiers are extracted. Message content is never read into the application state and never persisted.
 
@@ -37,6 +38,7 @@ Vendor semantics differ and are normalized during parsing:
 
 - Anthropic: `input_tokens`, cache writes (5m/1h), and cache reads are disjoint buckets, each billed at its own rate.
 - OpenAI: `input_tokens` includes `cached_input_tokens` (billed as `(input - cached) + cached x cached rate`) and `output_tokens` already includes reasoning tokens.
+- Antigravity: `input_tokens` excludes `cache_read_tokens` (cache reads are usually larger than the uncached input), so both map directly to the input and cached-input buckets. No cache writes are recorded.
 
 The built-in price table is an embedded resource (`Resources/model-pricing.json`) with an "as of" date shown in the dashboard. Some values, notably for the newest models, are sourced from third-party price trackers rather than official price pages and may lag price changes. Rates can be a single timeless object or an effective-dated schedule. `claude-sonnet-5` therefore uses its introductory $2/$10 rate through 2026-08-31 and automatically uses the standard $3/$15 rate from 2026-09-01 UTC without repricing older usage. Models without a table entry are excluded from cost totals and listed in a notice. Adding a price later automatically reprices retained detailed and archived events.
 
@@ -45,6 +47,12 @@ The built-in price table is an embedded resource (`Resources/model-pricing.json`
 `gpt-5.2-codex` uses OpenAI's published API rates of $1.75 input, $0.175 cached input, and $14 output per million tokens. See [GPT-5.2-Codex model](https://developers.openai.com/api/docs/models/gpt-5.2-codex).
 
 `gpt-6-astra` and `gpt-6-sol` use OpenAI's Standard short-context API rates as of 2026-09-25. Astra is $10 input, $1 cached input, and $50 output per million tokens; Sol is $2 input, $0.20 cached input, and $10 output. Codex logs do not reveal whether a request entered the long-context tier, so the estimator applies the short-context rate. See [OpenAI API pricing](https://developers.openai.com/api/docs/pricing), [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra), and [GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol).
+
+`gpt-6-luna` uses OpenAI's Standard short-context rates as of 2026-10-03: $0.10 input, $0.01 cached input, and $0.50 output per million tokens. See [OpenAI API pricing](https://developers.openai.com/api/docs/pricing).
+
+`claude-opus-5-5` ($4 input, $0.20 cache hits, $20 output) and `claude-sonnet-5-5` ($2, $0.20, $10) have their own entries; without them the prefix rule priced Opus 5.5 at the Opus 5 rate. Their cache-write rates use Anthropic's standard 1.25x (5-minute) and 2x (1-hour) input multipliers.
+
+Antigravity models use Google's paid-tier Gemini API rates for prompts up to 200k tokens, as of 2026-10-03: `gemini-3.1-pro` is $2 input, $0.20 cached input, and $12 output. `gemini-3.8-flash`, `gemini-3.7-flash`, and `gemini-3.6-flash` are $0.75, $0.075, and $3.75 through 2026-12-31 and $1.50, $0.15, and $7.50 from 2027-01-01. Claude models used through Antigravity use the Anthropic rates. `gpt-oss-120b` has no entry. Antigravity bills these through plan quotas, not per token, so the figures are API-price equivalents only. See [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing).
 
 Known estimation gaps (both cause **under**-estimation and cannot be derived from the logs):
 

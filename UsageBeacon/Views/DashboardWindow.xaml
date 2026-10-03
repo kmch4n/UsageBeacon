@@ -25,11 +25,13 @@
         <!-- Theme-invariant service colors (D-009). -->
         <SolidColorBrush x:Key="ClaudeBrush" Color="#D07A42"/>
         <SolidColorBrush x:Key="CodexBrush" Color="#7A8EE0"/>
+        <SolidColorBrush x:Key="AgyBrush" Color="#B87FD9"/>
         <SolidColorBrush x:Key="InputBrush" Color="#6FB7A6"/>
         <SolidColorBrush x:Key="OutputBrush" Color="#C99B62"/>
         <!-- Unmodified official service marks; attribution is in docs/NOTICE.md. -->
         <BitmapImage x:Key="ClaudeIcon" UriSource="pack://application:,,,/UsageBeacon;component/Resources/claude.png"/>
         <BitmapImage x:Key="CodexIcon" UriSource="pack://application:,,,/UsageBeacon;component/Resources/openai.png"/>
+        <BitmapImage x:Key="AgyIcon" UriSource="pack://application:,,,/UsageBeacon;component/Resources/antigravity.png"/>
         <Style x:Key="ServiceIcon" TargetType="Image">
             <Setter Property="Width" Value="12"/>
             <Setter Property="Height" Value="12"/>
@@ -273,6 +275,12 @@
                             <Image Source="{StaticResource CodexIcon}" Style="{StaticResource ServiceIcon}"/>
                             <TextBlock x:Name="LifetimeCodexCost" Style="{StaticResource Tiny}"
                                        VerticalAlignment="Center" Margin="4,0,0,0"/>
+                            <StackPanel x:Name="LifetimeAgyPanel" Orientation="Horizontal"
+                                        Margin="12,0,0,0" Visibility="Collapsed">
+                                <Image Source="{StaticResource AgyIcon}" Style="{StaticResource ServiceIcon}"/>
+                                <TextBlock x:Name="LifetimeAgyCost" Style="{StaticResource Tiny}"
+                                           VerticalAlignment="Center" Margin="4,0,0,0"/>
+                            </StackPanel>
                         </StackPanel>
                         <TextBlock x:Name="LifetimeSince" Style="{StaticResource Tiny}"
                                    Margin="0,3,0,0" TextWrapping="Wrap"/>
@@ -295,6 +303,12 @@
                                 <Image Source="{StaticResource CodexIcon}" Style="{StaticResource ServiceIcon}"/>
                                 <TextBlock x:Name="TodayCodexCost" Style="{StaticResource Tiny}"
                                                VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                <StackPanel x:Name="TodayAgyPanel" Orientation="Horizontal"
+                                            Margin="12,0,0,0" Visibility="Collapsed">
+                                    <Image Source="{StaticResource AgyIcon}" Style="{StaticResource ServiceIcon}"/>
+                                    <TextBlock x:Name="TodayAgyCost" Style="{StaticResource Tiny}"
+                                               VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                </StackPanel>
                             </StackPanel>
                             <TextBlock x:Name="TodayTokens" Style="{StaticResource Tiny}"/>
                         </StackPanel>
@@ -310,6 +324,12 @@
                                 <Image Source="{StaticResource CodexIcon}" Style="{StaticResource ServiceIcon}"/>
                                 <TextBlock x:Name="WeekCodexCost" Style="{StaticResource Tiny}"
                                                VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                <StackPanel x:Name="WeekAgyPanel" Orientation="Horizontal"
+                                            Margin="12,0,0,0" Visibility="Collapsed">
+                                    <Image Source="{StaticResource AgyIcon}" Style="{StaticResource ServiceIcon}"/>
+                                    <TextBlock x:Name="WeekAgyCost" Style="{StaticResource Tiny}"
+                                               VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                </StackPanel>
                             </StackPanel>
                             <TextBlock x:Name="WeekTokens" Style="{StaticResource Tiny}"/>
                         </StackPanel>
@@ -325,6 +345,12 @@
                                 <Image Source="{StaticResource CodexIcon}" Style="{StaticResource ServiceIcon}"/>
                                 <TextBlock x:Name="MonthCodexCost" Style="{StaticResource Tiny}"
                                                VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                <StackPanel x:Name="MonthAgyPanel" Orientation="Horizontal"
+                                            Margin="12,0,0,0" Visibility="Collapsed">
+                                    <Image Source="{StaticResource AgyIcon}" Style="{StaticResource ServiceIcon}"/>
+                                    <TextBlock x:Name="MonthAgyCost" Style="{StaticResource Tiny}"
+                                               VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                </StackPanel>
                             </StackPanel>
                             <TextBlock x:Name="MonthTokens" Style="{StaticResource Tiny}"/>
                         </StackPanel>
@@ -362,6 +388,15 @@
                                        Margin="5,0,0,0"/>
                                 <TextBlock Text="Codex" Style="{StaticResource Tiny}"
                                            VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                <StackPanel x:Name="ChartAgyLegend" Orientation="Horizontal"
+                                            Margin="12,0,0,0" Visibility="Collapsed">
+                                    <Rectangle Width="9" Height="9" Fill="{StaticResource AgyBrush}"
+                                               VerticalAlignment="Center"/>
+                                    <Image Source="{StaticResource AgyIcon}" Style="{StaticResource ServiceIcon}"
+                                           Margin="5,0,0,0"/>
+                                    <TextBlock Text="Antigravity" Style="{StaticResource Tiny}"
+                                               VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <Grid Height="134">
@@ -397,6 +432,9 @@
                                                 </Grid.RowDefinitions>
                                                 <StackPanel Grid.Row="0" VerticalAlignment="Bottom"
                                                             HorizontalAlignment="Center">
+                                                    <Rectangle Height="{Binding AgyHeight}"
+                                                               Width="{Binding BodyWidth}"
+                                                               Fill="{StaticResource AgyBrush}"/>
                                                     <Rectangle Height="{Binding CodexHeight}"
                                                                Width="{Binding BodyWidth}"
                                                                Fill="{StaticResource CodexBrush}"/>

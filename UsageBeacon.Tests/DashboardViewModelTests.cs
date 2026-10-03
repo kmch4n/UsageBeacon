@@ -11,7 +11,44 @@ public sealed class DashboardViewModelTests
         {
             ["claude-fable-5"] = new(10m, 1m, 12.5m, 20m, 50m),
             ["gpt-5.6-sol"] = new(5m, 0.5m, 0m, 0m, 30m),
+            ["gemini-3.1-pro"] = new(2m, 0.2m, 0m, 0m, 12m),
         });
+
+    [Fact]
+    public async Task LoadAsync_AddsAntigravityTranscripts_WithoutCountingFullCopiesTwice()
+    {
+        using var directory = new TempDirectory();
+        var brain = Path.Combine(directory.Path, "brain");
+        var logs = Directory.CreateDirectory(
+            Path.Combine(brain, "conv-a", ".system_generated", "logs")).FullName;
+        var now = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
+        var response = $$"""{"step_index":1,"source":"MODEL","type":"PLANNER_RESPONSE","created_at":"{{now}}","input_tokens":1000000,"cache_read_tokens":1000000,"output_tokens":1000000}""";
+        File.WriteAllText(Path.Combine(logs, "transcript.jsonl"), response + Environment.NewLine);
+        File.WriteAllText(Path.Combine(logs, "transcript_full.jsonl"), response + Environment.NewLine);
+        var settings = Path.Combine(directory.Path, "agy-settings.json");
+        File.WriteAllText(settings, """{"model":"Gemini 3.1 Pro (High)"}""");
+
+        var vm = new DashboardViewModel(
+            Pricing,
+            claudeProjectsDirectory: Path.Combine(directory.Path, "no-claude"),
+            codexSessionsDirectory: Path.Combine(directory.Path, "no-codex"),
+            cachePath: Path.Combine(directory.Path, "cache.json"),
+            timeZone: TimeZoneInfo.Utc,
+            agyBrainDirectory: brain,
+            agySettingsPath: settings);
+
+        var data = await vm.LoadAsync(CancellationToken.None);
+
+        Assert.True(vm.HasAnyLogDirectory);
+        Assert.Equal(14.2m, data.Today.AgyCostUsd);
+        Assert.Equal(14.2m, data.Today.CostUsd);
+        Assert.Equal(0m, data.Today.ClaudeCostUsd + data.Today.CodexCostUsd);
+        Assert.Equal(14.2m, data.Lifetime.AgyCostUsd);
+        Assert.Equal(14.2m, data.Days[^1].AgyCostUsd);
+        var model = Assert.Single(data.Models);
+        Assert.Equal(UsageService.Agy, model.Service);
+        Assert.Equal("gemini-3.1-pro", model.Model);
+    }
 
     [Fact]
     public async Task LoadAsync_AggregatesBothLogDirectories()
@@ -40,7 +77,8 @@ public sealed class DashboardViewModelTests
             claudeProjectsDirectory: claudeDir,
             codexSessionsDirectory: codexDir,
             cachePath: Path.Combine(directory.Path, "cache.json"),
-            timeZone: TimeZoneInfo.Utc);
+            timeZone: TimeZoneInfo.Utc,
+            agyBrainDirectory: Path.Combine(directory.Path, "no-agy"));
 
         var data = await vm.LoadAsync(CancellationToken.None);
 
@@ -71,7 +109,8 @@ public sealed class DashboardViewModelTests
             claudeProjectsDirectory: claudeDir.FullName,
             codexSessionsDirectory: Path.Combine(directory.Path, "missing"),
             cachePath: cachePath,
-            timeZone: TimeZoneInfo.Utc);
+            timeZone: TimeZoneInfo.Utc,
+            agyBrainDirectory: Path.Combine(directory.Path, "no-agy"));
 
         var data = await vm.LoadAsync(CancellationToken.None);
 
@@ -121,7 +160,8 @@ public sealed class DashboardViewModelTests
             claudeProjectsDirectory: Path.Combine(directory.Path, "no-claude"),
             codexSessionsDirectory: codexDir,
             cachePath: cachePath,
-            timeZone: TimeZoneInfo.Utc);
+            timeZone: TimeZoneInfo.Utc,
+            agyBrainDirectory: Path.Combine(directory.Path, "no-agy"));
 
         var data = await vm.LoadAsync(CancellationToken.None);
 
@@ -158,7 +198,8 @@ public sealed class DashboardViewModelTests
             claudeProjectsDirectory: claudeDir,
             codexSessionsDirectory: Path.Combine(directory.Path, "no-codex"),
             cachePath: cachePath,
-            timeZone: TimeZoneInfo.Utc);
+            timeZone: TimeZoneInfo.Utc,
+            agyBrainDirectory: Path.Combine(directory.Path, "no-agy"));
 
         var first = await vm.LoadAsync(CancellationToken.None);
         var reloaded = UsageLogCache.Load(cachePath);
@@ -194,7 +235,8 @@ public sealed class DashboardViewModelTests
             claudeProjectsDirectory: claudeDir,
             codexSessionsDirectory: Path.Combine(directory.Path, "no-codex"),
             cachePath: cachePath,
-            timeZone: TimeZoneInfo.Utc);
+            timeZone: TimeZoneInfo.Utc,
+            agyBrainDirectory: Path.Combine(directory.Path, "no-agy"));
 
         using (new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
         {
@@ -244,7 +286,8 @@ public sealed class DashboardViewModelTests
             claudeProjectsDirectory: claudeDir,
             codexSessionsDirectory: Path.Combine(directory.Path, "no-codex"),
             cachePath: cachePath,
-            timeZone: TimeZoneInfo.Utc);
+            timeZone: TimeZoneInfo.Utc,
+            agyBrainDirectory: Path.Combine(directory.Path, "no-agy"));
 
         DashboardData whileLocked;
         using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
@@ -267,7 +310,8 @@ public sealed class DashboardViewModelTests
             claudeProjectsDirectory: Path.Combine(directory.Path, "no-claude"),
             codexSessionsDirectory: Path.Combine(directory.Path, "no-codex"),
             cachePath: Path.Combine(directory.Path, "cache.json"),
-            timeZone: TimeZoneInfo.Utc);
+            timeZone: TimeZoneInfo.Utc,
+            agyBrainDirectory: Path.Combine(directory.Path, "no-agy"));
 
         var data = await vm.LoadAsync(CancellationToken.None);
 
@@ -299,7 +343,8 @@ public sealed class DashboardViewModelTests
             claudeProjectsDirectory: claudeDir,
             codexSessionsDirectory: codexDir,
             cachePath: cachePath,
-            timeZone: TimeZoneInfo.Utc);
+            timeZone: TimeZoneInfo.Utc,
+            agyBrainDirectory: Path.Combine(directory.Path, "no-agy"));
 
         var data = await vm.LoadAsync(CancellationToken.None);
 
@@ -334,7 +379,8 @@ public sealed class DashboardViewModelTests
             claudeProjectsDirectory: claudeDir,
             codexSessionsDirectory: Path.Combine(directory.Path, "no-codex"),
             cachePath: cachePath,
-            timeZone: TimeZoneInfo.Utc);
+            timeZone: TimeZoneInfo.Utc,
+            agyBrainDirectory: Path.Combine(directory.Path, "no-agy"));
 
         var data = await vm.LoadAsync(CancellationToken.None);
 

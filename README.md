@@ -158,10 +158,11 @@ back to English. The theme setting offers **System**, **Light**, and **Dark**.
 
 ## Usage dashboard
 
-Open the dashboard from the popup or the tray menu. It parses the session logs that Claude Code and
-Codex already write locally (`~/.claude/projects` and `~/.codex/sessions`), prices them against an
-embedded per-model table, and reports estimated costs for today, the last 7 days, and the last 30
-days, plus a lifetime total split between Claude and Codex.
+Open the dashboard from the popup or the tray menu. It parses the session logs that Claude Code,
+Codex, and the Antigravity CLI already write locally (`~/.claude/projects`, `~/.codex/sessions`, and
+`~/.gemini/antigravity-cli/brain`), prices them against an embedded per-model table, and reports
+estimated costs for today, the last 7 days, and the last 30 days, plus a lifetime total split by
+service. Antigravity appears only after its logs contribute usage.
 
 Choose USD, JPY, or EUR at the top of the dashboard. JPY and EUR use fixed approximate display
 rates; the underlying estimates stay in USD. Switch between 7-day and 30-day views to compare

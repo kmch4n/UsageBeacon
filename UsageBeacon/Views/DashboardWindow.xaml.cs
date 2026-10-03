@@ -272,10 +272,15 @@ public partial class DashboardWindow : Window
     {
         if (_data is not { } data) return;
 
+        // Antigravity is optional; its breakdown appears only once its logs contribute usage.
+        var agyVisibility = HasAgyUsage(data) ? Visibility.Visible : Visibility.Collapsed;
+        foreach (var panel in new[] { LifetimeAgyPanel, TodayAgyPanel, WeekAgyPanel, MonthAgyPanel, ChartAgyLegend })
+            panel.Visibility = agyVisibility;
+
         RenderLifetime(data.Lifetime);
-        RenderCard(data.Today, TodayCost, TodayClaudeCost, TodayCodexCost, TodayTokens);
-        RenderCard(data.Last7Days, WeekCost, WeekClaudeCost, WeekCodexCost, WeekTokens);
-        RenderCard(data.Last30Days, MonthCost, MonthClaudeCost, MonthCodexCost, MonthTokens);
+        RenderCard(data.Today, TodayCost, TodayClaudeCost, TodayCodexCost, TodayAgyCost, TodayTokens);
+        RenderCard(data.Last7Days, WeekCost, WeekClaudeCost, WeekCodexCost, WeekAgyCost, WeekTokens);
+        RenderCard(data.Last30Days, MonthCost, MonthClaudeCost, MonthCodexCost, MonthAgyCost, MonthTokens);
         PeriodCoverageText.Visibility = data.Today.HasUnknownModels ||
             data.Last7Days.HasUnknownModels || data.Last30Days.HasUnknownModels
             ? Visibility.Visible : Visibility.Collapsed;
@@ -308,6 +313,7 @@ public partial class DashboardWindow : Window
         LifetimeTotal.Text = FormatCost(summary.CostUsd);
         SetServiceCost(LifetimeClaudeCost, "Claude Code", summary.ClaudeCostUsd);
         SetServiceCost(LifetimeCodexCost, "Codex", summary.CodexCostUsd);
+        SetServiceCost(LifetimeAgyCost, "Antigravity", summary.AgyCostUsd);
         LifetimeCoverageText.Visibility = summary.HasUnknownCost
             ? Visibility.Visible : Visibility.Collapsed;
         LifetimeSince.Visibility = summary.FirstUsageDay is null
@@ -325,11 +331,13 @@ public partial class DashboardWindow : Window
         System.Windows.Controls.TextBlock costText,
         System.Windows.Controls.TextBlock claudeCostText,
         System.Windows.Controls.TextBlock codexCostText,
+        System.Windows.Controls.TextBlock agyCostText,
         System.Windows.Controls.TextBlock tokensText)
     {
         costText.Text = FormatCost(summary.CostUsd);
         SetServiceCost(claudeCostText, "Claude Code", summary.ClaudeCostUsd);
         SetServiceCost(codexCostText, "Codex", summary.CodexCostUsd);
+        SetServiceCost(agyCostText, "Antigravity", summary.AgyCostUsd);
         tokensText.Text = LocalizationService.Format(
             "DashboardTokens",
             FormatTokens(summary.TotalInputTokens),
@@ -354,12 +362,14 @@ public partial class DashboardWindow : Window
             var codexHeight = costScale.Ceiling > 0
                 ? (double)(day.CodexCostUsd / costScale.Ceiling) * ChartMaxBarHeight
                 : 0.0;
+            var agyHeight = costScale.Ceiling > 0
+                ? (double)(day.AgyCostUsd / costScale.Ceiling) * ChartMaxBarHeight
+                : 0.0;
             var tooltip = $"{day.Day.ToString("d", LocalizationService.Culture)}  " +
-                          $"{FormatCost(day.TotalCostUsd)}  " +
-                          $"(Claude {FormatCost(day.ClaudeCostUsd)} · Codex {FormatCost(day.CodexCostUsd)})";
+                          $"{FormatCost(day.TotalCostUsd)}  ({ServiceSplit(day, " · ")})";
             if (day.HasUnknownModels)
                 tooltip += "  " + LocalizationService.Get("DashboardIncompleteDayCost");
-            return new ChartBarView(day.Day, claudeHeight, codexHeight,
+            return new ChartBarView(day.Day, claudeHeight, codexHeight, agyHeight,
                 slotWidth, bodyWidth, tooltip,
                 day.Day == _selectedDay
                     ? (System.Windows.Media.Brush)Resources["PrimaryText"]
@@ -466,8 +476,7 @@ public partial class DashboardWindow : Window
         var day = _data?.Days.FirstOrDefault(point => point.Day == _selectedDay);
         if (day is null) return;
         SelectedDayTitle.Text = day.Day.ToString("D", LocalizationService.Culture);
-        SelectedDayDetails.Text = $"{FormatCost(day.TotalCostUsd)}  ·  " +
-            $"Claude {FormatCost(day.ClaudeCostUsd)}  ·  Codex {FormatCost(day.CodexCostUsd)}";
+        SelectedDayDetails.Text = $"{FormatCost(day.TotalCostUsd)}  ·  {ServiceSplit(day, "  ·  ")}";
         SelectedDayTokens.Text = LocalizationService.Format("DashboardTokens",
             FormatTokens(day.InputTokens), FormatTokens(day.OutputTokens));
         SelectedDayCoverageText.Visibility = day.HasUnknownModels
@@ -479,21 +488,47 @@ public partial class DashboardWindow : Window
         var maxCost = models.Count > 0 ? models.Max(model => model.CostUsd ?? 0m) : 0m;
         ModelRows.ItemsSource = models.Select(model => new ModelRowView(
             model.Model,
-            model.Service == UsageService.Claude ? "Claude Code" : "Codex",
+            ServiceName(model.Service),
             FormatTokens(model.InputTokens),
             FormatTokens(model.CachedInputTokens),
             FormatTokens(model.OutputTokens),
             model.CostUsd is { } cost ? FormatCost(cost) : "—",
-            model.Service == UsageService.Claude
-                ? (System.Windows.Media.Brush)Resources["ClaudeBrush"]
-                : (System.Windows.Media.Brush)Resources["CodexBrush"],
-            model.Service == UsageService.Claude
-                ? (ImageSource)Resources["ClaudeIcon"]
-                : (ImageSource)Resources["CodexIcon"],
+            (System.Windows.Media.Brush)Resources[ServiceResource(model.Service) + "Brush"],
+            (ImageSource)Resources[ServiceResource(model.Service) + "Icon"],
             maxCost > 0 && model.CostUsd is { } costValue
                 ? (double)(costValue / maxCost) * 70.0
                 : 0.0)).ToList();
     }
+
+    private static bool HasAgyUsage(DashboardData data)
+        => data.Lifetime.AgyCostUsd > 0 || data.Lifetime.AgyHasUnknownCost ||
+           data.Models.Any(model => model.Service == UsageService.Agy);
+
+    private string ServiceSplit(DailyUsagePoint day, string separator)
+    {
+        var parts = new List<string>
+        {
+            $"Claude {FormatCost(day.ClaudeCostUsd)}",
+            $"Codex {FormatCost(day.CodexCostUsd)}",
+        };
+        if (_data is { } data && HasAgyUsage(data))
+            parts.Add($"Antigravity {FormatCost(day.AgyCostUsd)}");
+        return string.Join(separator, parts);
+    }
+
+    private static string ServiceName(UsageService service) => service switch
+    {
+        UsageService.Claude => "Claude Code",
+        UsageService.Agy => "Antigravity",
+        _ => "Codex",
+    };
+
+    private static string ServiceResource(UsageService service) => service switch
+    {
+        UsageService.Claude => "Claude",
+        UsageService.Agy => "Agy",
+        _ => "Codex",
+    };
 
     // The service icon is decorative, so the accessible name keeps the service visible to screen readers.
     private void SetServiceCost(TextBlock target, string service, decimal costUsd)
@@ -508,7 +543,7 @@ public partial class DashboardWindow : Window
     private static string FormatTokens(decimal value)
         => value.ToString("N0", LocalizationService.Culture);
 
-    public sealed record ChartBarView(DateOnly Day, double ClaudeHeight, double CodexHeight,
+    public sealed record ChartBarView(DateOnly Day, double ClaudeHeight, double CodexHeight, double AgyHeight,
         double SlotWidth, double BodyWidth, string Tooltip,
         System.Windows.Media.Brush SelectionBrush);
 

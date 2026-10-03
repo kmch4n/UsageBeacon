@@ -4,6 +4,15 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+### Added
+
+- The usage dashboard includes Antigravity CLI usage from `~/.gemini/antigravity-cli/brain` transcripts in its cost cards, daily chart, selected-day details, and model table. The model is inferred from Antigravity's model-selection notices, so the split is an estimate.
+- Added prices for `gpt-6-luna`, `gemini-3.1-pro`, Gemini 3.6/3.7/3.8 Flash (with the 2027-01-01 increase), `claude-opus-5-5`, and `claude-sonnet-5-5`.
+
+### Fixed
+
+- Claude Opus 5.5 usage was priced at the Claude Opus 5 rate through the prefix fallback; it now uses its own lower rate.
+
 ## 1.4.0 - 2026-10-03
 
 ### Added

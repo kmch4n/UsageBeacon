@@ -7,6 +7,7 @@ public enum UsageService
 {
     Claude,
     Codex,
+    Agy,
 }
 
 /// <summary>

@@ -23,10 +23,7 @@ public static class UsageAggregator
         var last30Start = today.AddDays(-29);
         var last7Start = today.AddDays(-6);
 
-        var lifetimeClaudeCost = 0m;
-        var lifetimeCodexCost = 0m;
-        var lifetimeClaudeHasUnknown = false;
-        var lifetimeCodexHasUnknown = false;
+        var lifetime = new LifetimeAccumulator();
         var hasUnpricedLegacyUsage = archivedUsage?.HasUnpricedLegacyUsage ?? false;
         var firstUsageUtc = ValidFirstUsageUtc(
             archivedUsage?.UnpricedLegacyFirstUsageUtc,
@@ -56,15 +53,7 @@ public static class UsageAggregator
                 entry.CacheWrite5mTokens,
                 entry.CacheWrite1hTokens,
                 entry.OutputTokens);
-            AddLifetimeCost(
-                entry.Service,
-                entry.Model,
-                cost,
-                ref lifetimeClaudeCost,
-                ref lifetimeCodexCost,
-                ref lifetimeClaudeHasUnknown,
-                ref lifetimeCodexHasUnknown,
-                unknownModels);
+            lifetime.Add(entry.Service, entry.Model, cost, unknownModels);
             if (firstUsageUtc is null || entry.TimestampUtc < firstUsageUtc)
                 firstUsageUtc = entry.TimestampUtc;
         }
@@ -79,15 +68,7 @@ public static class UsageAggregator
                 if (day > today) continue;
 
                 var cost = pricing.TryGetCost(entry);
-                AddLifetimeCost(
-                    entry.Service,
-                    entry.Model,
-                    cost,
-                    ref lifetimeClaudeCost,
-                    ref lifetimeCodexCost,
-                    ref lifetimeClaudeHasUnknown,
-                    ref lifetimeCodexHasUnknown,
-                    unknownModels);
+                lifetime.Add(entry.Service, entry.Model, cost, unknownModels);
                 if (firstUsageUtc is null || entry.TimestampUtc < firstUsageUtc)
                     firstUsageUtc = entry.TimestampUtc;
 
@@ -115,7 +96,8 @@ public static class UsageAggregator
                 ? found.ToSummary()
                 : new UsagePeriodSummary(0, 0, 0, 0, 0, false);
             days.Add(new DailyUsagePoint(day, daily.ClaudeCostUsd, daily.CodexCostUsd,
-                daily.TotalInputTokens, daily.TotalOutputTokens, daily.HasUnknownModels));
+                daily.TotalInputTokens, daily.TotalOutputTokens, daily.HasUnknownModels,
+                daily.AgyCostUsd));
         }
 
         var breakdown = models
@@ -132,14 +114,16 @@ public static class UsageAggregator
 
         return new DashboardData(
             new LifetimeCostSummary(
-                lifetimeClaudeCost,
-                lifetimeCodexCost,
-                lifetimeClaudeHasUnknown,
-                lifetimeCodexHasUnknown,
+                lifetime.ClaudeCost,
+                lifetime.CodexCost,
+                lifetime.ClaudeHasUnknown,
+                lifetime.CodexHasUnknown,
                 hasUnpricedLegacyUsage,
                 firstUsageUtc is { } first
                     ? LocalDay(first, timeZone)
-                    : null),
+                    : null,
+                lifetime.AgyCost,
+                lifetime.AgyHasUnknown),
             todayTotals.ToSummary(),
             weekTotals.ToSummary(),
             monthTotals.ToSummary(),
@@ -159,31 +143,35 @@ public static class UsageAggregator
             ? timestamp
             : null;
 
-    private static void AddLifetimeCost(
-        UsageService service,
-        string model,
-        decimal? cost,
-        ref decimal claudeCost,
-        ref decimal codexCost,
-        ref bool claudeHasUnknown,
-        ref bool codexHasUnknown,
-        ISet<string> unknownModels)
+    private sealed class LifetimeAccumulator
     {
-        if (cost is null)
+        public decimal ClaudeCost { get; private set; }
+        public decimal CodexCost { get; private set; }
+        public decimal AgyCost { get; private set; }
+        public bool ClaudeHasUnknown { get; private set; }
+        public bool CodexHasUnknown { get; private set; }
+        public bool AgyHasUnknown { get; private set; }
+
+        public void Add(UsageService service, string model, decimal? cost, ISet<string> unknownModels)
         {
-            if (service == UsageService.Claude)
-                claudeHasUnknown = true;
-            else
-                codexHasUnknown = true;
-            unknownModels.Add(model);
-        }
-        else if (service == UsageService.Claude)
-        {
-            claudeCost += cost.Value;
-        }
-        else
-        {
-            codexCost += cost.Value;
+            if (cost is null)
+            {
+                switch (service)
+                {
+                    case UsageService.Claude: ClaudeHasUnknown = true; break;
+                    case UsageService.Agy: AgyHasUnknown = true; break;
+                    default: CodexHasUnknown = true; break;
+                }
+                unknownModels.Add(model);
+                return;
+            }
+
+            switch (service)
+            {
+                case UsageService.Claude: ClaudeCost += cost.Value; break;
+                case UsageService.Agy: AgyCost += cost.Value; break;
+                default: CodexCost += cost.Value; break;
+            }
         }
     }
 
@@ -193,6 +181,7 @@ public static class UsageAggregator
         private long _output;
         private decimal _claudeCost;
         private decimal _codexCost;
+        private decimal _agyCost;
         private bool _hasUnknown;
 
         public void Add(TokenUsageEntry entry, decimal? cost)
@@ -202,11 +191,13 @@ public static class UsageAggregator
             _output += entry.OutputTokens;
             if (cost is null) _hasUnknown = true;
             else if (entry.Service == UsageService.Claude) _claudeCost += cost.Value;
+            else if (entry.Service == UsageService.Agy) _agyCost += cost.Value;
             else _codexCost += cost.Value;
         }
 
         public UsagePeriodSummary ToSummary() => new(
-            _input, _output, _claudeCost + _codexCost, _claudeCost, _codexCost, _hasUnknown);
+            _input, _output, _claudeCost + _codexCost + _agyCost, _claudeCost, _codexCost,
+            _hasUnknown, _agyCost);
     }
 
     private sealed class ModelAccumulator

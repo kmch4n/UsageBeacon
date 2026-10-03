@@ -7,7 +7,8 @@ public sealed record UsagePeriodSummary(
     decimal CostUsd,
     decimal ClaudeCostUsd,
     decimal CodexCostUsd,
-    bool HasUnknownModels);
+    bool HasUnknownModels,
+    decimal AgyCostUsd = 0m);
 
 /// <summary>Estimated cost across all locally retained usage history.</summary>
 public sealed record LifetimeCostSummary(
@@ -16,10 +17,12 @@ public sealed record LifetimeCostSummary(
     bool ClaudeHasUnknownCost,
     bool CodexHasUnknownCost,
     bool HasUnpricedLegacyUsage,
-    DateOnly? FirstUsageDay)
+    DateOnly? FirstUsageDay,
+    decimal AgyCostUsd = 0m,
+    bool AgyHasUnknownCost = false)
 {
-    public decimal CostUsd => ClaudeCostUsd + CodexCostUsd;
-    public bool HasUnknownModels => ClaudeHasUnknownCost || CodexHasUnknownCost;
+    public decimal CostUsd => ClaudeCostUsd + CodexCostUsd + AgyCostUsd;
+    public bool HasUnknownModels => ClaudeHasUnknownCost || CodexHasUnknownCost || AgyHasUnknownCost;
     public bool HasUnknownCost => HasUnknownModels || HasUnpricedLegacyUsage;
 }
 
@@ -30,9 +33,10 @@ public sealed record DailyUsagePoint(
     decimal CodexCostUsd,
     long InputTokens = 0,
     long OutputTokens = 0,
-    bool HasUnknownModels = false)
+    bool HasUnknownModels = false,
+    decimal AgyCostUsd = 0m)
 {
-    public decimal TotalCostUsd => ClaudeCostUsd + CodexCostUsd;
+    public decimal TotalCostUsd => ClaudeCostUsd + CodexCostUsd + AgyCostUsd;
 }
 
 /// <summary>Token and cost totals for one model over the report window.</summary>

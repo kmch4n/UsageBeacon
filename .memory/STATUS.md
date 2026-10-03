@@ -2,6 +2,13 @@
 
 Last verified: 2026-10-03
 
+## Antigravity dashboard estimates (2026-10-03, unreleased)
+
+- The dashboard now prices Antigravity CLI transcripts (D-019), and the table adds `gpt-6-luna`, Gemini 3.1 Pro and 3.6-3.8 Flash, and Claude Opus/Sonnet 5.5 (`asOf` 2026-10-03).
+- Live check with the maintainer's logs: today's Antigravity estimate appeared in every card, the chart legend and bars, and the selected day; Gemini, Opus 5.5, and `gpt-6-luna` left the unpriced-model notice. `qwen3.5-uncensored-4b` remains unpriced.
+- Open question for the maintainer: the embedded `gpt-5.6-sol`/`terra`/`luna` rates ($5/$30, $2.50/$15, $1/$6) differ from OpenAI's pricing page on 2026-10-03 ($4/$20, $2/$12, $0.20/$1.20). They were left unchanged because the date of the change is unknown.
+- Debug and Release each passed 335 tests and both builds passed with `-warnaserror`. `publish/latest/UsageBeacon.exe` was republished from the working tree before commit (SHA-256 `cd1e606cf86bdb4ec9b632740897d2edf0074c3b720fe7979f46bbb8f691a19e`) and restarted. Not yet released.
+
 ## Release v1.4.0 validation (2026-10-03)
 
 - `feature/agy-usage` was fast-forwarded into `main`. The version is 1.4.0, `docs/CHANGELOG.md` has the dated heading, and `docs/releases/v1.4.0.md` holds the curated notes.

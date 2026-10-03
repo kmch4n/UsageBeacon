@@ -130,7 +130,8 @@ public sealed class DashboardWindowTests
         claudeProjectsDirectory: Path.Combine(root, "missing-claude"),
         codexSessionsDirectory: Path.Combine(root, "missing-codex"),
         cachePath: cachePath,
-        timeZone: TimeZoneInfo.Utc);
+        timeZone: TimeZoneInfo.Utc,
+        agyBrainDirectory: Path.Combine(root, "missing-agy"));
 
     private static UsageViewModel CreateSettings(string root) => new(
         new StubUsageProvider(), new StubUsageProvider(),

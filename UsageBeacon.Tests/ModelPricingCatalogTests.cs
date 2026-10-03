@@ -111,7 +111,7 @@ public sealed class ModelPricingCatalogTests
         var catalog = ModelPricingCatalog.ParseDocument(File.ReadAllText(path));
 
         Assert.NotNull(catalog);
-        Assert.Equal("2026-09-25", catalog!.AsOf);
+        Assert.Equal("2026-10-03", catalog!.AsOf);
         Assert.Equal(
             new ModelPricing(5m, 0.5m, 6.25m, 10m, 25m),
             catalog.Resolve("claude-opus-5"));
@@ -150,6 +150,47 @@ public sealed class ModelPricingCatalogTests
             2, DateTime.UtcNow, UsageService.Codex, "gpt-6-sol",
             1_000_000, 1_000_000, 0, 0, 1_000_000)));
     }
+
+    [Fact]
+    public void EmbeddedPricing_PricesGpt6LunaUsage()
+    {
+        var catalog = EmbeddedCatalog();
+
+        Assert.Equal(new ModelPricing(0.1m, 0.01m, 0m, 0m, 0.5m), catalog.Resolve("gpt-6-luna"));
+        Assert.Equal(0.61m, catalog.TryGetCost(new TokenUsageEntry(
+            1, DateTime.UtcNow, UsageService.Codex, "gpt-6-luna",
+            1_000_000, 1_000_000, 0, 0, 1_000_000)));
+    }
+
+    [Fact]
+    public void EmbeddedPricing_PricesClaude55ModelsSeparatelyFromClaude5()
+    {
+        var catalog = EmbeddedCatalog();
+
+        Assert.Equal(new ModelPricing(4m, 0.2m, 5m, 8m, 20m), catalog.Resolve("claude-opus-5-5"));
+        Assert.Equal(new ModelPricing(2m, 0.2m, 2.5m, 4m, 10m), catalog.Resolve("claude-sonnet-5-5"));
+        Assert.Equal(new ModelPricing(5m, 0.5m, 6.25m, 10m, 25m), catalog.Resolve("claude-opus-5"));
+    }
+
+    [Fact]
+    public void EmbeddedPricing_PricesAntigravityGeminiModels()
+    {
+        var catalog = EmbeddedCatalog();
+        var december = new DateTime(2026, 12, 31, 23, 59, 59, DateTimeKind.Utc);
+        var january = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        Assert.Equal(new ModelPricing(2m, 0.2m, 0m, 0m, 12m), catalog.Resolve("gemini-3.1-pro"));
+        foreach (var flash in new[] { "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash" })
+        {
+            Assert.Equal(new ModelPricing(0.75m, 0.075m, 0m, 0m, 3.75m), catalog.Resolve(flash, december));
+            Assert.Equal(new ModelPricing(1.5m, 0.15m, 0m, 0m, 7.5m), catalog.Resolve(flash, january));
+        }
+    }
+
+    private static ModelPricingCatalog EmbeddedCatalog()
+        => ModelPricingCatalog.ParseDocument(File.ReadAllText(Path.Combine(
+               RepositoryRoot(), "UsageBeacon", "Resources", "model-pricing.json")))
+           ?? throw new InvalidOperationException("The embedded pricing table did not parse.");
 
     [Fact]
     public void EmbeddedPricing_AppliesTheClaudeSonnet5ScheduledIncrease()
