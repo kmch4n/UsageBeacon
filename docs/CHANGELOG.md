@@ -4,6 +4,8 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+## 1.6.0 - 2026-10-04
+
 ### Added
 
 - Usage alerts: a notification appears the first time a five-hour or weekly limit reaches 80% and again at 95% in each limit window, for Claude, Codex, and (when shown) Gemini. They are on by default and can be turned off in the popup. Alerts are not repeated after a restart inside the same window.
