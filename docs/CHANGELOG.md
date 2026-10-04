@@ -4,6 +4,17 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+### Added
+
+- Usage alerts: a notification appears the first time a five-hour or weekly limit reaches 80% and again at 95% in each limit window, for Claude, Codex, and (when shown) Gemini. They are on by default and can be turned off in the popup. Alerts are not repeated after a restart inside the same window.
+- The taskbar widget tooltip lists each service's five-hour and weekly percentages with the time left until each resets, whether or not the weekly widget layout is enabled.
+- The tray menu can hide the widget for one hour or until restart, for screen sharing. Usage keeps updating while it is hidden.
+
+### Changed
+
+- Popup accessibility: settings pickers and checkboxes are announced with their row labels, the refresh and close glyph buttons and the value buttons have spoken names, keyboard focus shows a themed ring, Tab cycles within the popup, and Escape closes it.
+- CI builds now treat compiler warnings as errors.
+
 ## 1.5.0 - 2026-10-03
 
 ### Added

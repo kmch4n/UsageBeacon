@@ -108,6 +108,12 @@ Last verified: 2026-10-03
 - GitHub Issues #17 and #18 were closed as completed after their v1.2.0 release inclusion and 46 focused regression tests passed. Issue #13 remains open because its CI and release workflow exists but its warnings-as-errors acceptance criterion is not configured.
 - Fixes for #20 (`13354c5`), #21 (`38623e8`), #22 (`a0fd03e`), and #19 (`711f334`) cover wrong-typed cache JSON, retained dashboard history without source directories, incomplete pricing overrides, and rejected popup picker selections. They shipped in v1.3.0, and the four Issues were closed as completed on 2026-10-04.
 
+## Top-priority Issue fixes (2026-10-04, unreleased)
+
+- Priority order chosen: #13 CI warnings, #12 popup accessibility, #9 widget tooltip countdown, #7 usage alerts (D-020), #11 hide widget. #8, #14, and #15 were deferred: #8 is partly covered by the rate-limit retry time, #14 adds a security-sensitive network client, and #15 needs external winget/Scoop submissions.
+- The widget tooltip is rebuilt on `ToolTipOpening` so the countdown is current; the accessible name keeps the D-017 wording. Hiding the widget is not persisted, and the topmost timer keeps the window hidden while `IsSuppressed` is set.
+- Validation: Debug and Release builds with `-warnaserror` had 0 warnings; 349 tests passed in each configuration. In a temporary local build with the threshold lowered to 20%, a real toast appeared with the expected Japanese text, and the widget tooltip showed each period with its countdown. The tray-menu hide/restore and the popup focus ring were not exercised interactively, because automated clicks could not reach the tray overflow icon.
+
 ## Issue triage (2026-10-04)
 
 - Closed as completed after checking the source: #19-#22 (fixed in v1.3.0), #16 (crash-only logging under D-012; no opt-in diagnostics mode is planned), and #10 (superseded by the `ShowWeeklyInWidget` setting).

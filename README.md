@@ -32,7 +32,8 @@ what that usage would have cost at API prices.
 ## Features
 
 - **Taskbar widget** with Claude Code and Codex utilization at a glance, plus optional weekly percentages
-- **Detailed usage windows** — five-hour and weekly limits with reset countdowns
+- **Detailed usage windows** — five-hour and weekly limits with reset countdowns, also in the widget tooltip
+- **Usage alerts** at 80% and 95% of each limit, once per limit window
 - **Optional Antigravity (Gemini) quota** with five-hour and weekly limits, read from the Antigravity CLI
 - **Native Claude Code integration** that reads rate limits from the status line, with no extra usage API requests
 - **Usage dashboard** estimating API-price-equivalent costs from your local session logs
@@ -130,8 +131,8 @@ codex login
 ```
 
 - Click the taskbar widget to open the usage popup
-- Use the tray menu for refresh, monitor switching, and exit
-- Adjust refresh interval, transparency, monitor, position, weekly widget display, language, and theme from the popup
+- Use the tray menu for refresh, monitor switching, hiding the widget for screen sharing, and exit
+- Adjust refresh interval, transparency, monitor, position, weekly widget display, usage alerts, language, and theme from the popup
 
 ### Claude Code integration
 
