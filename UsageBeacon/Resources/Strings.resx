@@ -147,4 +147,21 @@
   <data name="ErrorAgyUnsupportedVersion" xml:space="preserve"><value>Antigravity CLI 1.1.11 or later is required to read usage without sending a prompt. Run `agy update`.</value></data>
   <data name="ErrorAgyCommandFailed" xml:space="preserve"><value>The Antigravity usage report failed. Run `agy` to confirm that you are signed in.</value></data>
   <data name="WidgetWeeklyDescriptionWithAgy" xml:space="preserve"><value>Open UsageBeacon usage details. Claude 5 hours: {0}; weekly: {1}. Codex 5 hours: {2}; weekly: {3}. Gemini 5 hours: {4}; weekly: {5}.</value></data>
+  <data name="AccessibleLabelValue" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="PeriodFiveHourShort" xml:space="preserve"><value>5h</value></data>
+  <data name="PeriodWeeklyShort" xml:space="preserve"><value>7d</value></data>
+  <data name="CountdownDaysHours" xml:space="preserve"><value>{0}d {1}h</value></data>
+  <data name="CountdownHoursMinutes" xml:space="preserve"><value>{0}h {1}m</value></data>
+  <data name="CountdownMinutes" xml:space="preserve"><value>{0}m</value></data>
+  <data name="WidgetTooltipService" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="WidgetTooltipPeriod" xml:space="preserve"><value>{0} {1} (resets in {2})</value></data>
+  <data name="WidgetTooltipPeriodNoReset" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="WidgetTooltipHint" xml:space="preserve"><value>Select to open details</value></data>
+  <data name="TrayHideWidgetHour" xml:space="preserve"><value>Hide widget for 1 hour</value></data>
+  <data name="TrayHideWidgetRestart" xml:space="preserve"><value>Hide widget until restart</value></data>
+  <data name="TrayShowWidget" xml:space="preserve"><value>Show widget</value></data>
+  <data name="SettingsUsageAlerts" xml:space="preserve"><value>Notify at 80% and 95% usage</value></data>
+  <data name="AlertTitle" xml:space="preserve"><value>UsageBeacon usage alert</value></data>
+  <data name="AlertLine" xml:space="preserve"><value>{0} {1}: {2}% used, resets in {3}</value></data>
+  <data name="AlertLineShort" xml:space="preserve"><value>{0} {1}: {2}%</value></data>
 </root>

@@ -338,6 +338,21 @@ public sealed class UsageViewModelTests
     }
 
     [Fact]
+    public async Task UsageAlertsEnabled_DefaultsOn_AndPersistsWhenTurnedOff()
+    {
+        using var directory = new TempDirectory();
+        await using var vm = CreateViewModel(directory.Path, new StubUsageProvider());
+        var store = new AppSettingsStore(Path.Combine(directory.Path, "settings.json"));
+
+        Assert.True(vm.UsageAlertsEnabled);
+        Assert.True(store.Load().UsageAlertsEnabled);
+
+        vm.UsageAlertsEnabled = false;
+
+        Assert.False(store.Load().UsageAlertsEnabled);
+    }
+
+    [Fact]
     public async Task RefreshAsync_KeepsLastAgyUsage_WhenReportTimesOut()
     {
         using var directory = new TempDirectory();

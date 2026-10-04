@@ -103,6 +103,100 @@ public sealed class UsagePopupWindowTests
         });
     }
 
+    [Fact]
+    public void SettingsControls_ExposeAccessibleNamesAndThemedFocusVisuals()
+    {
+        RunSta(() =>
+        {
+            using var directory = new TempDirectory();
+            var vm = new UsageViewModel(new StubUsageProvider(),
+                new StubUsageProvider(), new FailingSettingsStore(),
+                new StubStartupManager(), directory.Path);
+            var popup = new UsagePopupWindow(vm);
+            try
+            {
+                foreach (var (control, label) in new[]
+                {
+                    ("IntervalPicker", "PollingIntervalLabel"),
+                    ("TransparencyPicker", "TransparencyLabel"),
+                    ("LanguagePicker", "LanguageLabel"),
+                    ("ThemePicker", "ThemeLabel"),
+                    ("StartupChk", "StartupLabel"),
+                    ("UsageAlertsChk", "UsageAlertsLabel"),
+                })
+                {
+                    var element = Assert.IsAssignableFrom<Control>(popup.FindName(control));
+                    var labelBlock = Assert.IsType<TextBlock>(popup.FindName(label));
+                    Assert.Same(labelBlock,
+                        System.Windows.Automation.AutomationProperties.GetLabeledBy(element));
+                    Assert.False(string.IsNullOrWhiteSpace(labelBlock.Text), label);
+                    Assert.Same(popup.FindResource("FocusRing"), element.FocusVisualStyle);
+                }
+
+                foreach (var name in new[] { "RefreshBtn", "CloseBtn" })
+                {
+                    var button = Assert.IsType<Button>(popup.FindName(name));
+                    Assert.False(string.IsNullOrWhiteSpace(
+                        System.Windows.Automation.AutomationProperties.GetName(button)), name);
+                }
+
+                foreach (var (name, label) in new[]
+                {
+                    ("MonitorBtn", "MonitorLabel"),
+                    ("PlacementBtn", "PositionLabel"),
+                    ("DashboardBtn", "DashboardLabel"),
+                })
+                {
+                    var button = Assert.IsType<Button>(popup.FindName(name));
+                    var accessibleName = System.Windows.Automation.AutomationProperties.GetName(button);
+                    Assert.Contains(Assert.IsType<TextBlock>(popup.FindName(label)).Text, accessibleName);
+                    Assert.Contains(button.Content.ToString()!, accessibleName);
+                }
+                Assert.Equal(System.Windows.Input.KeyboardNavigationMode.Cycle,
+                    System.Windows.Input.KeyboardNavigation.GetTabNavigation(popup));
+            }
+            finally
+            {
+                popup.Close();
+                DisposeViewModel(vm);
+            }
+        });
+    }
+
+    [Fact]
+    public void UsageAlertsCheckbox_RestoresAcceptedValueAfterSaveFailure()
+    {
+        RunSta(() =>
+        {
+            using var directory = new TempDirectory();
+            var store = new FailingSettingsStore();
+            var vm = new UsageViewModel(
+                new StubUsageProvider(), new StubUsageProvider(), store,
+                new StubStartupManager(), directory.Path);
+            var popup = new UsagePopupWindow(vm);
+            try
+            {
+                var checkbox = Assert.IsType<CheckBox>(popup.FindName("UsageAlertsChk"));
+                Assert.True(checkbox.IsChecked);
+
+                store.ThrowOnSave = true;
+                checkbox.IsChecked = false;
+                Assert.True(checkbox.IsChecked);
+                Assert.True(vm.UsageAlertsEnabled);
+
+                store.ThrowOnSave = false;
+                checkbox.IsChecked = false;
+                Assert.False(checkbox.IsChecked);
+                Assert.False(vm.UsageAlertsEnabled);
+            }
+            finally
+            {
+                popup.Close();
+                DisposeViewModel(vm);
+            }
+        });
+    }
+
     [Theory]
     [InlineData("IntervalPicker")]
     [InlineData("TransparencyPicker")]

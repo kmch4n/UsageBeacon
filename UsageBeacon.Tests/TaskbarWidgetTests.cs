@@ -111,6 +111,52 @@ public sealed class TaskbarWidgetTests
     }
 
     [Fact]
+    public void UsageTooltip_ShowsEachPeriodWithResetCountdown_RegardlessOfWeeklyOption()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+            var now = DateTime.UtcNow;
+            typeof(UsageViewModel).GetProperty(nameof(UsageViewModel.Snapshot))!
+                .SetValue(fixture.ViewModel, new UsageSnapshot
+                {
+                    ClaudeUsage = new ServiceUsage(
+                        new RateLimit(0.72, now.AddMinutes(83).AddSeconds(30)),
+                        new RateLimit(0.41, now.AddDays(3).AddHours(4).AddSeconds(30)), null),
+                });
+
+            var tooltip = fixture.Widget.BuildUsageTooltip(now);
+            var lines = tooltip.Split(Environment.NewLine);
+
+            Assert.Equal(3, lines.Length);
+            Assert.StartsWith("Claude", lines[0]);
+            Assert.Contains("72%", lines[0]);
+            Assert.Contains(UsageBeacon.Localization.LocalizedText.Countdown(
+                now.AddMinutes(83).AddSeconds(30), now)!, lines[0]);
+            Assert.Contains("41%", lines[0]);
+            Assert.Contains(UsageBeacon.Localization.LocalizedText.Countdown(
+                now.AddDays(3).AddHours(4).AddSeconds(30), now)!, lines[0]);
+            Assert.StartsWith("Codex", lines[1]);
+            Assert.Equal(tooltip, fixture.Widget.ToggleButton.ToolTip);
+        });
+    }
+
+    [Fact]
+    public void Suppress_HidesUntilRestored()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture();
+
+            fixture.Widget.Suppress();
+            Assert.True(fixture.Widget.IsSuppressed);
+
+            fixture.Widget.Restore();
+            Assert.False(fixture.Widget.IsSuppressed);
+        });
+    }
+
+    [Fact]
     public void WeeklyOption_DoesNotMoveIntoDesktopWhenTaskbarSlotIsTooNarrow()
     {
         RunOnStaThread(() =>

@@ -147,4 +147,21 @@
   <data name="ErrorAgyUnsupportedVersion" xml:space="preserve"><value>プロンプトを送信せずに使用量を取得するにはAntigravity CLI 1.1.11以降が必要です。`agy update`を実行してください。</value></data>
   <data name="ErrorAgyCommandFailed" xml:space="preserve"><value>Antigravityの使用量レポートを取得できませんでした。`agy`を実行してサインイン状態を確認してください。</value></data>
   <data name="WidgetWeeklyDescriptionWithAgy" xml:space="preserve"><value>UsageBeaconの使用量詳細を開く。Claudeの5時間: {0}、週間: {1}。Codexの5時間: {2}、週間: {3}。Geminiの5時間: {4}、週間: {5}。</value></data>
+  <data name="AccessibleLabelValue" xml:space="preserve"><value>{0}：{1}</value></data>
+  <data name="PeriodFiveHourShort" xml:space="preserve"><value>5時間</value></data>
+  <data name="PeriodWeeklyShort" xml:space="preserve"><value>7日</value></data>
+  <data name="CountdownDaysHours" xml:space="preserve"><value>{0}日{1}時間</value></data>
+  <data name="CountdownHoursMinutes" xml:space="preserve"><value>{0}時間{1}分</value></data>
+  <data name="CountdownMinutes" xml:space="preserve"><value>{0}分</value></data>
+  <data name="WidgetTooltipService" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="WidgetTooltipPeriod" xml:space="preserve"><value>{0} {1}（あと{2}でリセット）</value></data>
+  <data name="WidgetTooltipPeriodNoReset" xml:space="preserve"><value>{0} {1}</value></data>
+  <data name="WidgetTooltipHint" xml:space="preserve"><value>選択すると詳細を表示します</value></data>
+  <data name="TrayHideWidgetHour" xml:space="preserve"><value>ウィジェットを1時間隠す</value></data>
+  <data name="TrayHideWidgetRestart" xml:space="preserve"><value>再起動までウィジェットを隠す</value></data>
+  <data name="TrayShowWidget" xml:space="preserve"><value>ウィジェットを表示</value></data>
+  <data name="SettingsUsageAlerts" xml:space="preserve"><value>使用率80%と95%で通知</value></data>
+  <data name="AlertTitle" xml:space="preserve"><value>UsageBeacon 使用量の通知</value></data>
+  <data name="AlertLine" xml:space="preserve"><value>{0} {1}: {2}%（あと{3}でリセット）</value></data>
+  <data name="AlertLineShort" xml:space="preserve"><value>{0} {1}: {2}%</value></data>
 </root>

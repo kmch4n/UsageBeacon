@@ -54,6 +54,9 @@ public partial class TaskbarWidget : Window
         LocalizationService.LanguageChanged += OnLanguageChanged;
         vm.SnapshotChanged += OnSnapshotChanged;
         vm.PropertyChanged += OnViewModelPropertyChanged;
+        // Rebuild on open so the reset countdown is current, not as old as the last poll.
+        Root.ToolTipOpening += (_, _) => Root.ToolTip = BuildUsageTooltip(DateTime.UtcNow);
+        System.Windows.Controls.ToolTipService.SetShowDuration(Root, 20000);
         ApplyLocalization();
         ApplyWeeklySetting();
         UpdateLabels();
@@ -110,7 +113,7 @@ public partial class TaskbarWidget : Window
     {
         var accessibleName = LocalizationService.Get("WidgetOpenUsage");
         AutomationProperties.SetName(Root, accessibleName);
-        Root.ToolTip = accessibleName;
+        Root.ToolTip = BuildUsageTooltip(DateTime.UtcNow);
     }
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e)
@@ -141,6 +144,11 @@ public partial class TaskbarWidget : Window
         _topmostTimer.Tick += (_, _) =>
         {
             var hwnd = new WindowInteropHelper(this).Handle;
+            if (IsSuppressed)
+            {
+                ShowWindow(hwnd, SW_HIDE);
+                return;
+            }
             if (!VirtualDesktopHelper.IsOnCurrentDesktop(hwnd))
             {
                 // Move to the active desktop and show again after a desktop change.
@@ -336,11 +344,10 @@ public partial class TaskbarWidget : Window
     private void UpdateAccessibleDescription(double? claudeFiveHour, double? claudeWeekly,
         double? codexFiveHour, double? codexWeekly, double? agyFiveHour, double? agyWeekly)
     {
+        Root.ToolTip = BuildUsageTooltip(DateTime.UtcNow);
         if (!_vm.ShowWeeklyInWidget)
         {
-            var action = LocalizationService.Get("WidgetOpenUsage");
-            AutomationProperties.SetName(Root, action);
-            Root.ToolTip = action;
+            AutomationProperties.SetName(Root, LocalizationService.Get("WidgetOpenUsage"));
             return;
         }
 
@@ -356,7 +363,71 @@ public partial class TaskbarWidget : Window
                 Describe(claudeFiveHour), Describe(claudeWeekly),
                 Describe(codexFiveHour), Describe(codexWeekly));
         AutomationProperties.SetName(Root, description);
-        Root.ToolTip = description;
+    }
+
+    /// <summary>
+    /// One line per service with each period's percentage and time to reset,
+    /// for example "Claude: 5h 72% (resets in 1h 23m) · 7d 41% (resets in 3d 4h)".
+    /// </summary>
+    internal string BuildUsageTooltip(DateTime nowUtc)
+    {
+        var snap = _vm.Snapshot;
+        var lines = new List<string>
+        {
+            ServiceLine("Claude", snap.ClaudeUsage),
+            ServiceLine("Codex", snap.CodexUsage),
+        };
+        if (_vm.ShowAgyUsage) lines.Add(ServiceLine("Gemini", snap.AgyUsage));
+        lines.Add(LocalizationService.Get("WidgetTooltipHint"));
+        return string.Join(Environment.NewLine, lines);
+
+        string ServiceLine(string service, Models.ServiceUsage? usage)
+        {
+            var periods = new List<string>();
+            if (usage?.FiveHour is { } fiveHour)
+                periods.Add(Period("PeriodFiveHourShort", fiveHour));
+            if (usage?.Weekly is { } weekly)
+                periods.Add(Period("PeriodWeeklyShort", weekly));
+            return LocalizationService.Format("WidgetTooltipService", service,
+                periods.Count > 0
+                    ? string.Join(" · ", periods)
+                    : LocalizationService.Get("WidgetUnavailable"));
+        }
+
+        string Period(string labelKey, Models.RateLimit limit)
+        {
+            var label = LocalizationService.Get(labelKey);
+            var percent = $"{limit.Percent}%";
+            return LocalizedText.Countdown(limit.ResetsAt, nowUtc) is { } countdown
+                ? LocalizationService.Format("WidgetTooltipPeriod", label, percent, countdown)
+                : LocalizationService.Format("WidgetTooltipPeriodNoReset", label, percent);
+        }
+    }
+
+    // Hiding for screen sharing. The topmost timer keeps running so a restore
+    // re-validates placement exactly as a normal tick would.
+
+    public bool IsSuppressed { get; private set; }
+
+    public void Suppress()
+    {
+        IsSuppressed = true;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd != IntPtr.Zero) ShowWindow(hwnd, SW_HIDE);
+    }
+
+    public void Restore()
+    {
+        if (!IsSuppressed) return;
+        IsSuppressed = false;
+        // The taskbar may have changed while hidden, so drop the cached geometry.
+        TaskbarPosition.Invalidate();
+        PositionOnSelectedTaskbar(_vm.WidgetPlacement);
+        if (!IsLoaded) return;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (!EnsureNotificationClearance()) return;
+        ShowWindow(hwnd, SW_SHOWNA);
+        ReassertTopmost();
     }
 
     private DisplayMode ApplyDisplayMode(double availableWidth)

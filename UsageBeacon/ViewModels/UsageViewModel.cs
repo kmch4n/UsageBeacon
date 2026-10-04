@@ -33,6 +33,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
     private WidgetPlacement _widgetPlacement;
     private bool _showWeeklyInWidget;
     private bool _showAgyUsage;
+    private bool _usageAlertsEnabled;
     private PopupTransparency _popupTransparency;
     private string? _monitorDeviceName;
     private bool _startupEnabled;
@@ -124,6 +125,19 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
                 _lastAgyAttemptUtc = DateTime.MinValue;
                 _ = RefreshAfterAgyEnabledAsync();
             }
+        }
+    }
+
+    public bool UsageAlertsEnabled
+    {
+        get => _usageAlertsEnabled;
+        set
+        {
+            if (_usageAlertsEnabled == value) return;
+            var previous = _usageAlertsEnabled;
+            _usageAlertsEnabled = value;
+            if (!TrySaveSettings()) _usageAlertsEnabled = previous;
+            Notify();
         }
     }
 
@@ -283,6 +297,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
         _widgetPlacement = ParseWidgetPlacement(settings.WidgetPlacement);
         _showWeeklyInWidget = settings.ShowWeeklyInWidget;
         _showAgyUsage = settings.ShowAgyUsage;
+        _usageAlertsEnabled = settings.UsageAlertsEnabled;
         _popupTransparency = ParsePopupTransparency(settings.PopupTransparency);
         _monitorDeviceName = settings.MonitorDeviceName;
         _loginPrompted = settings.LoginPrompted;
@@ -579,6 +594,7 @@ public sealed class UsageViewModel : INotifyPropertyChanged, IAsyncDisposable
                 WidgetPlacement = _widgetPlacement.ToString(),
                 ShowWeeklyInWidget = _showWeeklyInWidget,
                 ShowAgyUsage = _showAgyUsage,
+                UsageAlertsEnabled = _usageAlertsEnabled,
                 PopupTransparency = _popupTransparency.ToString(),
                 MonitorDeviceName = _monitorDeviceName,
                 LoginPrompted = _loginPrompted,

@@ -60,6 +60,30 @@ public static class LocalizedText
         _ => LocalizationService.Get("ThemeSystem"),
     };
 
+    /// <summary>
+    /// Short time remaining until <paramref name="resetsAt"/>, such as "1h 23m",
+    /// or null when no reset time is known or the reset has already passed.
+    /// </summary>
+    public static string? Countdown(DateTime resetsAt, DateTime nowUtc)
+    {
+        if (resetsAt == DateTime.MinValue) return null;
+        var remaining = ToUtc(resetsAt) - nowUtc;
+        if (remaining <= TimeSpan.Zero) return null;
+
+        if (remaining.TotalDays >= 1)
+            return LocalizationService.Format("CountdownDaysHours",
+                (int)remaining.TotalDays, remaining.Hours);
+        return remaining.TotalHours >= 1
+            ? LocalizationService.Format("CountdownHoursMinutes",
+                (int)remaining.TotalHours, remaining.Minutes)
+            : LocalizationService.Format("CountdownMinutes",
+                Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes)));
+    }
+
+    // Matches ResetTime: anything not marked UTC is treated as local time.
+    public static DateTime ToUtc(DateTime value)
+        => value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime();
+
     public static string ResetTime(DateTime resetsAt)
     {
         if (resetsAt == DateTime.MinValue) return LocalizationService.Get("ResetNoRecentUsage");

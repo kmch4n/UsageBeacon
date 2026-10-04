@@ -64,6 +64,31 @@ public sealed class LocalizationTests
         }
     }
 
+    [Fact]
+    public void Countdown_FormatsRemainingTime_AndOmitsUnknownOrPastResets()
+    {
+        var original = LocalizationService.LanguagePreference;
+        var now = new DateTime(2026, 10, 4, 3, 0, 0, DateTimeKind.Utc);
+        try
+        {
+            LocalizationService.SetLanguage("en");
+
+            Assert.Equal("3d 4h", LocalizedText.Countdown(now.AddDays(3).AddHours(4), now));
+            Assert.Equal("1h 23m", LocalizedText.Countdown(now.AddMinutes(83), now));
+            Assert.Equal("1m", LocalizedText.Countdown(now.AddSeconds(20), now));
+            Assert.Equal("1h 0m", LocalizedText.Countdown(now.AddHours(1).ToLocalTime(), now));
+            Assert.Null(LocalizedText.Countdown(DateTime.MinValue, now));
+            Assert.Null(LocalizedText.Countdown(now.AddSeconds(-1), now));
+
+            LocalizationService.SetLanguage("ja");
+            Assert.Equal("1時間23分", LocalizedText.Countdown(now.AddMinutes(83), now));
+        }
+        finally
+        {
+            LocalizationService.SetLanguage(original);
+        }
+    }
+
     [Theory]
     [InlineData("AppUnexpectedError")]
     [InlineData("IntegrationFailed")]

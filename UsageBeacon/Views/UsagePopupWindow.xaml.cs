@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Input;
 using System.Windows.Media;
 using UsageBeacon.Localization;
 using UsageBeacon.Models;
@@ -20,6 +22,7 @@ public partial class UsagePopupWindow : Window
     private bool _syncingStartup;
     private bool _syncingWeeklyWidget;
     private bool _syncingShowAgy;
+    private bool _syncingUsageAlerts;
     private int _monitorIndex;
     private int _monitorTotal = 1;
     private WidgetPlacement _placement;
@@ -58,6 +61,9 @@ public partial class UsagePopupWindow : Window
     {
         RefreshBtn.ToolTip = LocalizationService.Get("TooltipRefreshNow");
         CloseBtn.ToolTip = LocalizationService.Get("TooltipClose");
+        // The glyph content ("↻", "✕") is not a usable screen reader name.
+        AutomationProperties.SetName(RefreshBtn, LocalizationService.Get("TooltipRefreshNow"));
+        AutomationProperties.SetName(CloseBtn, LocalizationService.Get("TooltipClose"));
         ClaudeLoginBtn.Content = LocalizationService.Get("CommonLogin");
         CodexLoginBtn.Content = LocalizationService.Get("CommonLogin");
         AgyTitle.Text = LocalizationService.Get("AgyTitle");
@@ -79,10 +85,12 @@ public partial class UsagePopupWindow : Window
         PositionLabel.Text = LocalizationService.Get("SettingsPosition");
         WeeklyWidgetLabel.Text = LocalizationService.Get("SettingsShowWeeklyInWidget");
         ShowAgyLabel.Text = LocalizationService.Get("SettingsShowAgy");
+        UsageAlertsLabel.Text = LocalizationService.Get("SettingsUsageAlerts");
         LanguageLabel.Text = LocalizationService.Get("SettingsLanguage");
         ThemeLabel.Text = LocalizationService.Get("SettingsTheme");
         DashboardLabel.Text = LocalizationService.Get("DashboardTitle");
         DashboardBtn.Content = LocalizationService.Get("DashboardOpen");
+        SetLabeledName(DashboardBtn, DashboardLabel.Text);
         QuitBtn.Content = LocalizationService.Get("CommonExit");
 
         SetupIntervalPicker();
@@ -163,6 +171,16 @@ public partial class UsagePopupWindow : Window
         finally
         {
             _syncingShowAgy = false;
+        }
+
+        _syncingUsageAlerts = true;
+        try
+        {
+            UsageAlertsChk.IsChecked = _vm.UsageAlertsEnabled;
+        }
+        finally
+        {
+            _syncingUsageAlerts = false;
         }
 
         _pickerReady = false;
@@ -578,6 +596,24 @@ public partial class UsagePopupWindow : Window
         SyncSettingsState();
     }
 
+    private void UsageAlertsChk_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncingUsageAlerts) return;
+        _vm.UsageAlertsEnabled = UsageAlertsChk.IsChecked == true;
+        SyncSettingsState();
+    }
+
+    private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        // An open dropdown consumes Escape itself to close.
+        if (e.Key != Key.Escape ||
+            new[] { IntervalPicker, TransparencyPicker, LanguagePicker, ThemePicker }
+                .Any(picker => picker.IsDropDownOpen))
+            return;
+        Hide();
+        e.Handled = true;
+    }
+
     private void WeeklyWidgetChk_Changed(object sender, RoutedEventArgs e)
     {
         if (_syncingWeeklyWidget) return;
@@ -622,6 +658,7 @@ public partial class UsagePopupWindow : Window
         MonitorBtn.Content = total > 1
             ? LocalizationService.Format("MonitorIndex", index + 1, total)
             : LocalizationService.Get("MonitorSwitch");
+        SetLabeledName(MonitorBtn, MonitorLabel.Text);
     }
 
     public void UpdatePlacementLabel(WidgetPlacement placement)
@@ -630,6 +667,12 @@ public partial class UsagePopupWindow : Window
         PlacementBtn.Content = placement == WidgetPlacement.Right
             ? LocalizationService.Get("PlacementRight")
             : LocalizationService.Get("PlacementLeft");
+        SetLabeledName(PlacementBtn, PositionLabel.Text);
     }
+
+    // A value button such as "Right" is announced with its row label.
+    private static void SetLabeledName(System.Windows.Controls.Button button, string label)
+        => AutomationProperties.SetName(button,
+            LocalizationService.Format("AccessibleLabelValue", label, button.Content));
 
 }

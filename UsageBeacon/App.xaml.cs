@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Threading;
 using UsageBeacon.Localization;
 using UsageBeacon.Models;
 using UsageBeacon.Services;
@@ -22,6 +23,8 @@ public partial class App : System.Windows.Application
     private Mutex?                   _singleInstanceMutex;
     private Mutex?                   _legacyInstanceMutex;
     private CrashLogWriter?          _crashLog;
+    private UsageAlertTracker?       _alertTracker;
+    private DispatcherTimer?         _widgetRestoreTimer;
     private DateTime                 _popupHiddenAt;
     private int                      _targetScreenIndex;
 
@@ -130,6 +133,9 @@ public partial class App : System.Windows.Application
                 tipIcon: ToolTipIcon.Info);
 
             _vm.SnapshotChanged += UpdateTrayTooltip;
+            _alertTracker = new UsageAlertTracker(
+                System.IO.Path.Combine(AppDataPaths.DirectoryPath, "usage-alert-state.json"));
+            _vm.SnapshotChanged += ShowUsageAlerts;
             LocalizationService.LanguageChanged += OnLanguageChanged;
             Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
 
@@ -292,10 +298,63 @@ public partial class App : System.Windows.Application
         menu.Items.Add(LocalizationService.Get("TrayShowHide"), null, (_, _) => Dispatcher.Invoke(TogglePopup));
         menu.Items.Add(LocalizationService.Get("TrayRefreshNow"), null, (_, _) => _ = _vm!.RefreshAsync(force: true));
         menu.Items.Add(LocalizationService.Get("TraySwitchMonitor"), null, (_, _) => Dispatcher.Invoke(CycleMonitor));
+        if (_widget?.IsSuppressed == true)
+        {
+            menu.Items.Add(LocalizationService.Get("TrayShowWidget"), null, (_, _) => Dispatcher.Invoke(ShowWidget));
+        }
+        else
+        {
+            menu.Items.Add(LocalizationService.Get("TrayHideWidgetHour"), null,
+                (_, _) => Dispatcher.Invoke(() => HideWidget(TimeSpan.FromHours(1))));
+            menu.Items.Add(LocalizationService.Get("TrayHideWidgetRestart"), null,
+                (_, _) => Dispatcher.Invoke(() => HideWidget(null)));
+        }
         menu.Items.Add(LocalizationService.Get("DashboardTitle"), null, (_, _) => Dispatcher.Invoke(OpenDashboard));
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(LocalizationService.Get("CommonExit"), null, (_, _) => Dispatcher.Invoke(() => Shutdown()));
         return menu;
+    }
+
+    // Hiding the widget for screen sharing. Polling continues; a timed hide
+    // restores itself, and "until restart" is not persisted.
+
+    private void HideWidget(TimeSpan? duration)
+    {
+        if (_widget is null) return;
+        StopWidgetRestoreTimer();
+        _widget.Suppress();
+        if (duration is { } delay)
+        {
+            _widgetRestoreTimer = new DispatcherTimer { Interval = delay };
+            _widgetRestoreTimer.Tick += (_, _) => ShowWidget();
+            _widgetRestoreTimer.Start();
+        }
+        RebuildContextMenuLater();
+    }
+
+    private void ShowWidget()
+    {
+        StopWidgetRestoreTimer();
+        _widget?.Restore();
+        RebuildContextMenuLater();
+    }
+
+    private void StopWidgetRestoreTimer()
+    {
+        _widgetRestoreTimer?.Stop();
+        _widgetRestoreTimer = null;
+    }
+
+    // The menu that raised the click is still closing, so replace it afterwards.
+    private void RebuildContextMenuLater()
+        => Dispatcher.BeginInvoke(RebuildContextMenu);
+
+    private void RebuildContextMenu()
+    {
+        if (_tray == null) return;
+        var previousMenu = _tray.ContextMenuStrip;
+        _tray.ContextMenuStrip = BuildContextMenu();
+        previousMenu?.Dispose();
     }
 
     private void OnLanguageChanged()
@@ -303,9 +362,7 @@ public partial class App : System.Windows.Application
         Dispatcher.Invoke(() =>
         {
             if (_tray == null) return;
-            var previousMenu = _tray.ContextMenuStrip;
-            _tray.ContextMenuStrip = BuildContextMenu();
-            previousMenu?.Dispose();
+            RebuildContextMenu();
             _tray.Text = BuildTooltip();
         });
     }
@@ -344,6 +401,47 @@ public partial class App : System.Windows.Application
         });
     }
 
+    // Threshold alerts reuse the tray balloon, which Windows shows as a toast,
+    // so no notification dependency is needed.
+    private void ShowUsageAlerts()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            var snap = _vm?.Snapshot;
+            // The startup snapshot comes from caches that may describe an old window.
+            if (snap is null || _alertTracker is null || snap.FetchedAt == DateTime.MinValue) return;
+            // Keep tracking while alerts are off so enabling them later does not
+            // report thresholds that were crossed in the meantime.
+            var alerts = _alertTracker.Evaluate(snap, DateTime.UtcNow);
+            if (alerts.Count == 0 || _vm?.UsageAlertsEnabled != true || _tray is null) return;
+
+            // A toast shows about four body lines, so several alerts drop the countdown.
+            var lineKey = alerts.Count == 1 ? "AlertLine" : "AlertLineShort";
+            var lines = alerts.Select(alert => LocalizationService.Format(
+                lineKey,
+                alert.Service switch
+                {
+                    UsageAlertService.Claude => "Claude",
+                    UsageAlertService.Codex => "Codex",
+                    _ => "Gemini",
+                },
+                LocalizationService.Get(alert.Period == UsageAlertPeriod.FiveHour
+                    ? "PeriodFiveHourShort"
+                    : "PeriodWeeklyShort"),
+                alert.Limit.Percent,
+                // The tracker only reports limits whose reset is still ahead.
+                LocalizedText.Countdown(alert.Limit.ResetsAt, DateTime.UtcNow) ?? "--"));
+            // The shell limits balloon text to 255 characters.
+            var text = string.Join("\n", lines);
+            if (text.Length > 255) text = text[..255];
+            _tray.ShowBalloonTip(
+                timeout: 10000,
+                tipTitle: LocalizationService.Get("AlertTitle"),
+                tipText: text,
+                tipIcon: ToolTipIcon.Warning);
+        });
+    }
+
     private string BuildTooltip()
     {
         var snap = _vm?.Snapshot;
@@ -377,6 +475,7 @@ public partial class App : System.Windows.Application
     protected override async void OnExit(ExitEventArgs e)
     {
         _pollCts?.Cancel();
+        StopWidgetRestoreTimer();
         LocalizationService.LanguageChanged -= OnLanguageChanged;
         Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
         _tray?.Dispose();

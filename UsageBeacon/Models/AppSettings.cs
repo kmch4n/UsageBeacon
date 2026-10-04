@@ -33,4 +33,7 @@ public sealed class AppSettings
 
     [JsonPropertyName("showAgyUsage")]
     public bool ShowAgyUsage { get; init; }
+
+    [JsonPropertyName("usageAlertsEnabled")]
+    public bool UsageAlertsEnabled { get; init; } = true;
 }

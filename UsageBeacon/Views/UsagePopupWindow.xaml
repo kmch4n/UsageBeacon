@@ -11,6 +11,8 @@
         Topmost="True"
         AllowsTransparency="True"
         Background="Transparent"
+        KeyboardNavigation.TabNavigation="Cycle"
+        PreviewKeyDown="Window_PreviewKeyDown"
         WindowStartupLocation="Manual">
 
     <Window.Resources>
@@ -28,6 +30,21 @@
         <SolidColorBrush x:Key="ComboBg"          Color="#14000000"/>
         <SolidColorBrush x:Key="MenuBg"           Color="#FFFFFFFF"/>
         <SolidColorBrush x:Key="UsageTrackBrush"  Color="#404040"/>
+
+        <!-- The system focus rectangle is black and square, which disappears on
+             the dark surface; this ring follows the theme accent and the corners.
+             Focus visuals appear only for keyboard focus, not for mouse clicks. -->
+        <Style x:Key="FocusRing">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Border Margin="-2" CornerRadius="5"
+                                BorderBrush="{DynamicResource AccentBrush}"
+                                BorderThickness="2"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <Style x:Key="Title" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource PrimaryText}"/>
@@ -50,6 +67,7 @@
             <Setter Property="Cursor"          Value="Hand"/>
             <Setter Property="Padding"         Value="4,2"/>
             <Setter Property="FontSize"        Value="11"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -77,6 +95,7 @@
             <Setter Property="Foreground"      Value="{DynamicResource SecondaryText}"/>
             <Setter Property="FontSize"        Value="11"/>
             <Setter Property="Padding"         Value="6,3"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
@@ -166,6 +185,7 @@
 
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{DynamicResource SecondaryText}"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
         </Style>
 
         <Style TargetType="Separator">
@@ -383,6 +403,7 @@
                 <Grid Margin="0,0,0,6">
                     <TextBlock x:Name="PollingIntervalLabel" Style="{StaticResource Label}" VerticalAlignment="Center"/>
                     <ComboBox x:Name="IntervalPicker" HorizontalAlignment="Right" Width="80"
+                              AutomationProperties.LabeledBy="{Binding ElementName=PollingIntervalLabel}"
                               SelectionChanged="IntervalPicker_SelectionChanged"/>
                 </Grid>
                 <TextBlock x:Name="PollingIntervalNote" Style="{StaticResource Tiny}"
@@ -392,11 +413,13 @@
                     <TextBlock x:Name="StartupLabel" Style="{StaticResource Label}"
                                VerticalAlignment="Center"/>
                     <CheckBox x:Name="StartupChk" HorizontalAlignment="Right"
+                              AutomationProperties.LabeledBy="{Binding ElementName=StartupLabel}"
                               Checked="StartupChk_Changed" Unchecked="StartupChk_Changed"/>
                 </Grid>
                 <Grid Margin="0,0,0,6">
                     <TextBlock x:Name="TransparencyLabel" Style="{StaticResource Label}" VerticalAlignment="Center"/>
                     <ComboBox x:Name="TransparencyPicker" HorizontalAlignment="Right" Width="92"
+                              AutomationProperties.LabeledBy="{Binding ElementName=TransparencyLabel}"
                               SelectionChanged="TransparencyPicker_SelectionChanged"/>
                 </Grid>
                 <Grid Margin="0,0,0,6">
@@ -422,13 +445,21 @@
                               Checked="ShowAgyChk_Changed" Unchecked="ShowAgyChk_Changed"/>
                 </Grid>
                 <Grid Margin="0,0,0,6">
+                    <TextBlock x:Name="UsageAlertsLabel" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                    <CheckBox x:Name="UsageAlertsChk" HorizontalAlignment="Right"
+                              AutomationProperties.LabeledBy="{Binding ElementName=UsageAlertsLabel}"
+                              Checked="UsageAlertsChk_Changed" Unchecked="UsageAlertsChk_Changed"/>
+                </Grid>
+                <Grid Margin="0,0,0,6">
                     <TextBlock x:Name="LanguageLabel" Style="{StaticResource Label}" VerticalAlignment="Center"/>
                     <ComboBox x:Name="LanguagePicker" HorizontalAlignment="Right" Width="130"
+                              AutomationProperties.LabeledBy="{Binding ElementName=LanguageLabel}"
                               SelectionChanged="LanguagePicker_SelectionChanged"/>
                 </Grid>
                 <Grid Margin="0,0,0,6">
                     <TextBlock x:Name="ThemeLabel" Style="{StaticResource Label}" VerticalAlignment="Center"/>
                     <ComboBox x:Name="ThemePicker" HorizontalAlignment="Right" Width="130"
+                              AutomationProperties.LabeledBy="{Binding ElementName=ThemeLabel}"
                               SelectionChanged="ThemePicker_SelectionChanged"/>
                 </Grid>
                 <Grid>
