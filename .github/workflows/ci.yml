@@ -20,10 +20,10 @@ jobs:
               run: dotnet restore UsageBeacon.sln
 
             - name: Build (Debug)
-              run: dotnet build UsageBeacon.sln -c Debug --no-restore
+              run: dotnet build UsageBeacon.sln -c Debug --no-restore -warnaserror
 
             - name: Build (Release)
-              run: dotnet build UsageBeacon.sln -c Release --no-restore
+              run: dotnet build UsageBeacon.sln -c Release --no-restore -warnaserror
 
             - name: Test
               run: dotnet test UsageBeacon.sln -c Debug --no-build
