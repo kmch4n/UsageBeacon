@@ -56,8 +56,14 @@ percentage on the right:
 
 <img src="docs/images/widget.png" alt="UsageBeacon widget showing five-hour and weekly percentages for Claude, Codex, and Antigravity" width="461">
 
+Hovering the widget shows each service's five-hour and weekly percentages with the time left until
+each resets:
+
+<img src="docs/images/widget-tooltip.png" alt="Widget tooltip listing Claude, Codex, and Gemini percentages with reset countdowns" width="346">
+
 If the selected taskbar has no safe space, the widget hides until a space becomes available;
-the notification-area icon remains available.
+the notification-area icon remains available. The tray menu can also hide the widget for an hour
+or until restart while you share your screen.
 
 The dashboard puts locally retained lifetime, today, 7-day, and 30-day estimates above aligned
 cost and token charts:
