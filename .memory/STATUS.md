@@ -1,6 +1,12 @@
 # Current Repository Status
 
-Last verified: 2026-10-03
+Last verified: 2026-10-06
+
+## agy console flash fix (2026-10-06, unreleased)
+
+- Symptom: with `showAgyUsage` on, a console window flashed periodically. Process tracing against agy 1.3.0 showed `agy -p /usage` spawning `agy --bg-updater`, which ran `agy --version` with its own conhost and opened Windows Terminal; agy logs showed the updater every 15 minutes (every third 5-minute poll). UsageBeacon's own `--version` check runs only once per agy executable write time.
+- Fix: `AgyUsageProvider.CreateStartInfo` sets `AGY_CLI_DISABLE_AUTO_UPDATE=true`. A traced run with that value logged "Auto-update disabled via environment variable" and spawned no updater or console; with `1` the updater still ran.
+- The maintainer turned `showAgyUsage` off as a workaround until a build with this fix is running.
 
 ## Release v1.5.0 validation (2026-10-03)
 

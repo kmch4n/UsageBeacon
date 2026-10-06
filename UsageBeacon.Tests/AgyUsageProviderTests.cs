@@ -162,6 +162,18 @@ public sealed class AgyUsageProviderTests
         Assert.Equal(DomainErrorKind.AgyCommandFailed, error.Kind);
     }
 
+    [Fact]
+    public void CreateStartInfo_HidesWindow_AndDisablesAutoUpdate()
+    {
+        var startInfo = AgyUsageProvider.CreateStartInfo("agy.exe", ["-p", "/usage"], "work");
+
+        Assert.True(startInfo.CreateNoWindow);
+        Assert.False(startInfo.UseShellExecute);
+        Assert.Equal("work", startInfo.WorkingDirectory);
+        Assert.Equal(["-p", "/usage"], startInfo.ArgumentList);
+        Assert.Equal("true", startInfo.Environment[AgyUsageProvider.DisableAutoUpdateVariable]);
+    }
+
     private sealed class FakeRunner(string version, string usage, int usageExitCode = 0)
     {
         public List<IReadOnlyList<string>> Calls { get; } = [];

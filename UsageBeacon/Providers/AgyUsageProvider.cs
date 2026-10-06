@@ -28,6 +28,7 @@ public sealed class AgyUsageProvider : IUsageProvider
     private static readonly string[] VersionArguments = ["--version"];
     private static readonly string[] UsageArguments = ["-p", "/usage", "--output-format", "json"];
     private const int MaxOutputChars = 1024 * 1024;
+    internal const string DisableAutoUpdateVariable = "AGY_CLI_DISABLE_AUTO_UPDATE";
 
     private readonly Func<string?> _resolveExecutable;
     private readonly Func<string, IReadOnlyList<string>, TimeSpan, CancellationToken, Task<AgyCommandResult>> _run;
@@ -101,16 +102,11 @@ public sealed class AgyUsageProvider : IUsageProvider
         catch { return DateTime.MinValue; }
     }
 
-    private static async Task<AgyCommandResult> RunAsync(
+    internal static ProcessStartInfo CreateStartInfo(
         string executable,
         IReadOnlyList<string> arguments,
-        TimeSpan timeoutAfter,
-        CancellationToken ct)
+        string workDirectory)
     {
-        // Run in a private empty directory so agy never treats a user project as its workspace.
-        var workDirectory = Path.Combine(Path.GetTempPath(), "UsageBeacon", "agy-usage");
-        Directory.CreateDirectory(workDirectory);
-
         var startInfo = new ProcessStartInfo(executable)
         {
             WorkingDirectory = workDirectory,
@@ -125,6 +121,24 @@ public sealed class AgyUsageProvider : IUsageProvider
         foreach (var argument in arguments)
             startInfo.ArgumentList.Add(argument);
 
+        // Every 15 minutes agy spawns a detached `agy --bg-updater`, which runs
+        // `agy --version` in a new, visible console. agy accepts only "true" here
+        // ("1" is ignored). Interactive agy sessions still update themselves.
+        startInfo.Environment[DisableAutoUpdateVariable] = "true";
+        return startInfo;
+    }
+
+    private static async Task<AgyCommandResult> RunAsync(
+        string executable,
+        IReadOnlyList<string> arguments,
+        TimeSpan timeoutAfter,
+        CancellationToken ct)
+    {
+        // Run in a private empty directory so agy never treats a user project as its workspace.
+        var workDirectory = Path.Combine(Path.GetTempPath(), "UsageBeacon", "agy-usage");
+        Directory.CreateDirectory(workDirectory);
+
+        var startInfo = CreateStartInfo(executable, arguments, workDirectory);
         Process process;
         try
         {
