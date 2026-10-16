@@ -4,6 +4,8 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+## 1.6.1 - 2026-10-16
+
 ### Fixed
 
 - With Antigravity usage shown, a console window no longer flashes about every 15 minutes. UsageBeacon now starts agy with its auto-update check disabled; agy still updates itself when you use it directly.

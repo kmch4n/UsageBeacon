@@ -1,8 +1,14 @@
 # Current Repository Status
 
-Last verified: 2026-10-06
+Last verified: 2026-10-16
 
-## agy console flash fix (2026-10-06, unreleased)
+## Release v1.6.1 preparation (2026-10-16)
+
+- v1.6.1 contains only the agy console flash fix below. Pre-release audit of `v1.6.0..HEAD`: the only product change is `AgyUsageProvider.CreateStartInfo`; the variable is a constant set on both the `--version` check and the usage report, `CreateNoWindow` and the empty working directory are unchanged, and no other process launch reads agy. CI passed on `d83b248`.
+- Local Debug and Release builds with `-warnaserror` had 0 warnings. 349 of 350 tests passed; `UsagePopupWindowTests.SettingsControls_ExposeAccessibleNamesAndThemedFocusVisuals` failed at `StartupChk` and also fails at the `v1.6.0` tag on the same machine, so it is not a regression.
+- Cause of that failure: the test host there reported `IsThemeActive=False`, so WPF loaded `PresentationFramework.Classic`, whose CheckBox template sets `FocusVisualStyle` through a template trigger that outranks the popup's style setter. ComboBoxes are unaffected. Consequence: with Windows visual styles off, popup checkboxes show the Classic focus visual instead of `FocusRing`. Not fixed; a fix would need a local value or a custom CheckBox template.
+
+## agy console flash fix (2026-10-06, released in v1.6.1)
 
 - Symptom: with `showAgyUsage` on, a console window flashed periodically. Process tracing against agy 1.3.0 showed `agy -p /usage` spawning `agy --bg-updater`, which ran `agy --version` with its own conhost and opened Windows Terminal; agy logs showed the updater every 15 minutes (every third 5-minute poll). UsageBeacon's own `--version` check runs only once per agy executable write time.
 - Fix: `AgyUsageProvider.CreateStartInfo` sets `AGY_CLI_DISABLE_AUTO_UPDATE=true`. A traced run with that value logged "Auto-update disabled via environment variable" and spawned no updater or console; with `1` the updater still ran.
