@@ -2,6 +2,12 @@
 
 Last verified: 2026-10-16
 
+## Release v1.6.1 (2026-10-16)
+
+- Tag `v1.6.1` at `829184f`: CI run 38852921158 and release run 38853123100 succeeded. The release attaches `UsageBeacon.exe` and `UsageBeacon.exe.sha256`; the downloaded executable (product version `1.6.1+829184f`) hashes to `28b2b4c3...3942`, matching both the checksum file and GitHub's asset digest.
+- `publish/latest` was rebuilt as 1.6.1 from the tagged commit. It is a local build, so its hash differs from the release asset; its local checksum file was regenerated to match.
+- The maintainer's `showAgyUsage` workaround (turned off on 2026-10-06) can be reverted on this build.
+
 ## Release v1.6.1 preparation (2026-10-16)
 
 - v1.6.1 contains only the agy console flash fix below. Pre-release audit of `v1.6.0..HEAD`: the only product change is `AgyUsageProvider.CreateStartInfo`; the variable is a constant set on both the `--version` check and the usage report, `CreateNoWindow` and the empty working directory are unchanged, and no other process launch reads agy. CI passed on `d83b248`.
