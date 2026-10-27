@@ -425,9 +425,12 @@ public partial class App : System.Windows.Application
                     UsageAlertService.Codex => "Codex",
                     _ => "Gemini",
                 },
-                LocalizationService.Get(alert.Period == UsageAlertPeriod.FiveHour
-                    ? "PeriodFiveHourShort"
-                    : "PeriodWeeklyShort"),
+                LocalizationService.Get(alert.Period switch
+                {
+                    UsageAlertPeriod.FiveHour => "PeriodFiveHourShort",
+                    UsageAlertPeriod.ArgonWeekly => "PeriodArgonWeeklyShort",
+                    _ => "PeriodWeeklyShort",
+                }),
                 alert.Limit.Percent,
                 // The tracker only reports limits whose reset is still ahead.
                 LocalizedText.Countdown(alert.Limit.ResetsAt, DateTime.UtcNow) ?? "--"));

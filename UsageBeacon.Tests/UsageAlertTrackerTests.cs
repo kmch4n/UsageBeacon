@@ -78,6 +78,25 @@ public sealed class UsageAlertTrackerTests
     }
 
     [Fact]
+    public void Evaluate_AlertsOnArgonWeeklyQuota_IndependentlyOfSharedGeminiWeekly()
+    {
+        var tracker = new UsageAlertTracker(statePath: null);
+        var snapshot = new UsageSnapshot
+        {
+            AgyUsage = new ServiceUsage(null, new RateLimit(0.1, Now.AddDays(6)), null)
+            {
+                WeeklyArgon = new RateLimit(0.82, Now.AddDays(5)),
+            },
+        };
+
+        var alert = Assert.Single(tracker.Evaluate(snapshot, Now));
+
+        Assert.Equal((UsageAlertService.Agy, UsageAlertPeriod.ArgonWeekly, 80),
+            (alert.Service, alert.Period, alert.Threshold));
+        Assert.Empty(tracker.Evaluate(snapshot, Now));
+    }
+
+    [Fact]
     public void Evaluate_DoesNotRepeatAlertsAfterRestart()
     {
         var directory = Directory.CreateTempSubdirectory("UsageBeaconAlertTests-");

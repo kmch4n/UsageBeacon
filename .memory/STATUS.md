@@ -1,6 +1,11 @@
 # Current Repository Status
 
-Last verified: 2026-10-16
+Last verified: 2026-10-27
+
+## Gemini 4 Argon quota (2026-10-27, unreleased)
+
+- Symptom: Gemini showed 0%/0% although Antigravity was in use. agy 1.4.7's report has a third group, "Gemini 4 Argon" (weekly 14-15% used), and the agy default model is `Gemini 4 Argon (High)`; the shared Gemini group was unused (`remaining_fraction` 1). See the D-018 amendment.
+- Validation: Debug and Release built with `-warnaserror` (0 warnings) and passed 362 tests each. The republished `publish/latest` fetched the live report: the cache gained `WeeklyArgon` (15%), the popup showed "週次 (Argon)" 15% under the shared rows, and the widget's Gemini weekly slot showed 15%.
 
 ## Release v1.6.1 (2026-10-16)
 

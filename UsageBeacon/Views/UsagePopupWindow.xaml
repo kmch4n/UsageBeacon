@@ -380,6 +380,16 @@
                             <ctrl:UsageBar x:Name="AgyWeeklyBar"/>
                             <TextBlock x:Name="AgyWeeklyReset" Style="{StaticResource Tiny}" Margin="0,3,0,0"/>
                         </StackPanel>
+
+                        <StackPanel x:Name="AgyArgonRow" Margin="0,8,0,0">
+                            <Grid Margin="0,0,0,3">
+                                <TextBlock x:Name="AgyArgonLabel" Style="{StaticResource Label}"/>
+                                <TextBlock x:Name="AgyArgonPct" HorizontalAlignment="Right"
+                                           FontSize="13" FontWeight="Bold"/>
+                            </Grid>
+                            <ctrl:UsageBar x:Name="AgyArgonBar"/>
+                            <TextBlock x:Name="AgyArgonReset" Style="{StaticResource Tiny}" Margin="0,3,0,0"/>
+                        </StackPanel>
                     </StackPanel>
 
                     <Border x:Name="AgyError" Visibility="Collapsed"

@@ -22,6 +22,7 @@
   <data name="UsageFiveHour" xml:space="preserve"><value>5時間</value></data>
   <data name="UsageWeekly" xml:space="preserve"><value>週次 (7日)</value></data>
   <data name="UsageWeeklySonnet" xml:space="preserve"><value>週次 (Sonnet)</value></data>
+  <data name="UsageWeeklyArgon" xml:space="preserve"><value>週次 (Argon)</value></data>
   <data name="ErrorWaitingTitle" xml:space="preserve"><value>⏳ 更新待機中</value></data>
   <data name="ErrorFailureTitle" xml:space="preserve"><value>⚠ 取得失敗</value></data>
   <data name="UsageFetched" xml:space="preserve"><value>取得: {0} / {1}</value></data>
@@ -150,6 +151,7 @@
   <data name="AccessibleLabelValue" xml:space="preserve"><value>{0}：{1}</value></data>
   <data name="PeriodFiveHourShort" xml:space="preserve"><value>5時間</value></data>
   <data name="PeriodWeeklyShort" xml:space="preserve"><value>7日</value></data>
+  <data name="PeriodArgonWeeklyShort" xml:space="preserve"><value>Argon 7日</value></data>
   <data name="CountdownDaysHours" xml:space="preserve"><value>{0}日{1}時間</value></data>
   <data name="CountdownHoursMinutes" xml:space="preserve"><value>{0}時間{1}分</value></data>
   <data name="CountdownMinutes" xml:space="preserve"><value>{0}分</value></data>

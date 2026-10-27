@@ -162,6 +162,8 @@ The 2026-09-12 amendment for #18 covers recognized credential keys in quoted str
 
 ## D-018: Show only the Antigravity Gemini quota, through the agy usage report
 
+- Amendment (2026-10-27): agy 1.4.7 added a separate "Gemini 4 Argon" group (bucket `gemini-argon-wtu-weekly`, weekly only) that also matches the Gemini checks. The parser now identifies it first (name contains "Argon" or a bucket id contains `argon`) and stores its weekly bucket in `ServiceUsage.WeeklyArgon`; the shared group still fills `FiveHour`/`Weekly`. The popup shows a separate "Weekly (Argon)" row, the widget's single Gemini weekly slot shows the higher of the two weekly utilizations, the widget tooltip lists both, and alerts track `UsageAlertPeriod.ArgonWeekly` separately (key `Agy.ArgonWeekly`) so the two windows never re-arm each other. A report with only an Argon group is accepted. Reason: the maintainer's agy default model is Gemini 4 Argon, so all usage landed in that group and UsageBeacon showed 0%. Unused windows report a reset time of now + window on every fetch, so a 0% row's countdown does not move.
+
 - Date: 2026-10-03
 - Status: Active
 - Decision: Read Antigravity quota from `agy -p /usage --output-format json` and keep only the group whose bucket ids start with `gemini` (fallback: group name contains "Gemini"). Ignore the separate "Claude and GPT models" group. The feature is behind the persisted `showAgyUsage` setting, which defaults off. Verify `agy --version` >= 1.1.11 before running the report, and re-verify when the executable's write time changes.

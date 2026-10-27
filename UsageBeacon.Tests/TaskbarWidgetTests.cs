@@ -142,6 +142,57 @@ public sealed class TaskbarWidgetTests
     }
 
     [Fact]
+    public void GeminiWeekly_ShowsTheFullerOfSharedAndArgonQuotas_AndTooltipListsArgon()
+    {
+        RunOnStaThread(() =>
+        {
+            using var fixture = new WidgetFixture(new AppSettings
+            {
+                ShowAgyUsage = true,
+                ShowWeeklyInWidget = true,
+            });
+            var now = DateTime.UtcNow;
+            typeof(UsageViewModel).GetProperty(nameof(UsageViewModel.Snapshot))!
+                .SetValue(fixture.ViewModel, new UsageSnapshot
+                {
+                    AgyUsage = new ServiceUsage(
+                        new RateLimit(0, now.AddHours(5)),
+                        new RateLimit(0.03, now.AddDays(7)), null)
+                    {
+                        WeeklyArgon = new RateLimit(0.14, now.AddDays(6).AddHours(7).AddSeconds(30)),
+                    },
+                });
+
+            var agyWeekly = Assert.IsType<System.Windows.Controls.TextBlock>(
+                fixture.Widget.FindName("AgyWeeklyLabel"));
+            Assert.Equal("14%", agyWeekly.Text);
+            var gemini = fixture.Widget.BuildUsageTooltip(now).Split(Environment.NewLine)[2];
+            Assert.StartsWith("Gemini", gemini);
+            Assert.Contains("3%", gemini);
+            Assert.Contains("Argon", gemini);
+            Assert.Contains("14%", gemini);
+        });
+    }
+
+    [Theory]
+    [InlineData(0.2, 0.5, 0.5)]
+    [InlineData(0.6, 0.1, 0.6)]
+    [InlineData(null, 0.3, 0.3)]
+    [InlineData(0.4, null, 0.4)]
+    [InlineData(null, null, null)]
+    public void HigherWeeklyUtilization_PicksTheFullerWeeklyQuota(
+        double? shared, double? argon, double? expected)
+    {
+        var usage = new ServiceUsage(null,
+            shared is { } s ? new RateLimit(s, DateTime.UnixEpoch) : null, null)
+        {
+            WeeklyArgon = argon is { } a ? new RateLimit(a, DateTime.UnixEpoch) : null,
+        };
+
+        Assert.Equal(expected, TaskbarWidget.HigherWeeklyUtilization(usage));
+    }
+
+    [Fact]
     public void Suppress_HidesUntilRestored()
     {
         RunOnStaThread(() =>
@@ -371,10 +422,11 @@ public sealed class TaskbarWidgetTests
         public TaskbarWidget Widget { get; }
         public UsageViewModel ViewModel => _vm;
 
-        public WidgetFixture()
+        public WidgetFixture(AppSettings? settings = null)
         {
             _vm = new UsageViewModel(new StubUsageProvider(), new StubUsageProvider(),
-                new StubSettingsStore(), new StubStartupManager(), _directory.FullName);
+                new StubSettingsStore(settings), new StubStartupManager(), _directory.FullName,
+                agy: new StubUsageProvider());
             Widget = new TaskbarWidget(_vm);
         }
 
@@ -440,9 +492,9 @@ public sealed class TaskbarWidgetTests
             Task.FromResult(new ServiceUsage(null, null, null));
     }
 
-    private sealed class StubSettingsStore : IAppSettingsStore
+    private sealed class StubSettingsStore(AppSettings? settings = null) : IAppSettingsStore
     {
-        public AppSettings Load() => new();
+        public AppSettings Load() => settings ?? new();
 
         public void Save(AppSettings settings)
         {

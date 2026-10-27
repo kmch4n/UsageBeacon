@@ -34,7 +34,7 @@ what that usage would have cost at API prices.
 - **Taskbar widget** with Claude Code and Codex utilization at a glance, plus optional weekly percentages
 - **Detailed usage windows** — five-hour and weekly limits with reset countdowns, also in the widget tooltip
 - **Usage alerts** at 80% and 95% of each limit, once per limit window
-- **Optional Antigravity (Gemini) quota** with five-hour and weekly limits, read from the Antigravity CLI
+- **Optional Antigravity (Gemini) quota** with five-hour and weekly limits, plus the separate Gemini 4 Argon weekly limit, read from the Antigravity CLI
 - **Native Claude Code integration** that reads rate limits from the status line, with no extra usage API requests
 - **Usage dashboard** estimating API-price-equivalent costs from your local session logs
 - **English and Japanese** interface, switchable at runtime, following your Windows language by default
@@ -193,8 +193,8 @@ See [the dashboard documentation](docs/DASHBOARD.md) for data sources, retention
   never parsed or stored.
 - When enabled, Antigravity quota is read by running the local `agy -p /usage --output-format json`
   report in an empty temporary directory, at most every two minutes unless you refresh manually.
-  The report does not send a prompt or create a conversation. Only the Gemini group's percentages
-  and reset times are kept; Antigravity credentials are never read by UsageBeacon.
+  The report does not send a prompt or create a conversation. Only the Gemini groups' percentages
+  and reset times (the shared Flash/Pro limits and the Gemini 4 Argon weekly limit) are kept; Antigravity credentials are never read by UsageBeacon.
 - Settings and usage caches live in `%APPDATA%\UsageBeacon`. The dashboard parse cache, the optional
   price override, and crash logs live in `%LOCALAPPDATA%\UsageBeacon`.
 - There is no telemetry and no analytics. Unhandled exceptions go only to

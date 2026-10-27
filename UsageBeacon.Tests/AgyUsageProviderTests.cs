@@ -32,6 +32,68 @@ public sealed class AgyUsageProviderTests
     }
 
     [Fact]
+    public void Parse_ReadsSeparateArgonWeeklyQuota_WithoutMixingItIntoSharedGeminiLimits()
+    {
+        // Shape captured from agy 1.4.7, where Gemini 4 Argon follows the shared groups.
+        const string report = """
+            {"status":"SUCCESS","command":{"name":"usage","data":{"groups":[
+              {"name":"Gemini Models","buckets":[
+                {"id":"gemini-weekly","window":"weekly","remaining_fraction":1,"reset_time":"2026-11-03T07:46:05Z"},
+                {"id":"gemini-5h","window":"5h","remaining_fraction":1,"reset_time":"2026-10-27T12:46:05Z"}]},
+              {"name":"Claude and GPT models","buckets":[
+                {"id":"3p-weekly","window":"weekly","remaining_fraction":0.5,"reset_time":"2026-11-03T07:46:05Z"}]},
+              {"name":"Gemini 4 Argon","buckets":[
+                {"id":"gemini-argon-wtu-weekly","name":"Gemini 4 Argon Weekly Limit","window":"weekly",
+                 "remaining_fraction":0.8553337454795837,"reset_time":"2026-11-02T15:18:20Z"}]}]}}}
+            """;
+
+        var usage = AgyUsageParser.Parse(report);
+
+        Assert.Equal(0.0, usage.FiveHour?.Utilization);
+        Assert.Equal(0.0, usage.Weekly?.Utilization);
+        Assert.Equal(14, usage.WeeklyArgon?.Percent);
+        Assert.Equal(new DateTime(2026, 11, 2, 15, 18, 20, DateTimeKind.Utc), usage.WeeklyArgon?.ResetsAt);
+    }
+
+    [Fact]
+    public void Parse_ReadsArgonById_WhenItIsTheOnlyGeminiQuota()
+    {
+        const string report = """
+            {"status":"SUCCESS","command":{"data":{"groups":[
+              {"name":"Pro plan","buckets":[{"id":"gemini-argon-weekly","window":"weekly","remaining_fraction":0.4,"reset_time":"2026-11-02T00:00:00Z"}]}]}}}
+            """;
+
+        var usage = AgyUsageParser.Parse(report);
+
+        Assert.Null(usage.FiveHour);
+        Assert.Null(usage.Weekly);
+        Assert.Equal(0.6, usage.WeeklyArgon!.Utilization, precision: 6);
+    }
+
+    [Fact]
+    public void Parse_LeavesArgonEmpty_WhenReportHasNoArgonGroup()
+    {
+        Assert.Null(AgyUsageParser.Parse(UsageReport).WeeklyArgon);
+    }
+
+    [Fact]
+    public void ServiceUsage_KeepsArgonQuota_ThroughCacheSerialization()
+    {
+        var usage = new ServiceUsage(null, new RateLimit(0.1, DateTime.UnixEpoch), null)
+        {
+            WeeklyArgon = new RateLimit(0.14, new DateTime(2026, 11, 2, 15, 18, 20, DateTimeKind.Utc)),
+        };
+
+        var restored = System.Text.Json.JsonSerializer.Deserialize<ServiceUsage>(
+            System.Text.Json.JsonSerializer.Serialize(usage));
+        var legacy = System.Text.Json.JsonSerializer.Deserialize<ServiceUsage>(
+            """{"FiveHour":null,"Weekly":null,"WeeklySonnet":null}""");
+
+        Assert.Equal(usage, restored);
+        Assert.Null(legacy!.WeeklyArgon);
+    }
+
+    [Fact]
     public void Parse_IdentifiesGeminiGroupByBucketId_WhenGroupNameChanges()
     {
         const string report = """

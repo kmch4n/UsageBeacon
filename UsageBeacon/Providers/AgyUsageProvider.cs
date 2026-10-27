@@ -16,7 +16,8 @@ public sealed record AgyCommandResult(int ExitCode, string Output);
 /// does not start an agent turn, spend quota, or create a conversation.
 /// Older releases forward <c>/usage</c> to the model as a literal prompt, so the
 /// provider refuses to run the report until the installed version is verified.
-/// Only the Gemini group is reported; the separate quota for third-party models
+/// Only the Gemini groups (the shared Flash/Pro group and the separate Gemini 4
+/// Argon weekly quota) are reported; the separate quota for third-party models
 /// (Claude and GPT through Antigravity) is intentionally ignored.
 /// </summary>
 public sealed class AgyUsageProvider : IUsageProvider
@@ -199,7 +200,8 @@ public sealed class AgyUsageProvider : IUsageProvider
 
 /// <summary>
 /// Parses the JSON report printed by <c>agy -p /usage --output-format json</c>
-/// and returns the shared quota of the Gemini model group.
+/// and returns the shared quota of the Gemini model group, plus the separate
+/// Gemini 4 Argon weekly quota when the report includes it.
 /// </summary>
 public static class AgyUsageParser
 {
@@ -219,12 +221,20 @@ public static class AgyUsageParser
             groups.ValueKind != JsonValueKind.Array)
             throw DomainError.Decoding("agy usage report has no quota groups");
 
+        ServiceUsage? gemini = null;
+        RateLimit? argonWeekly = null;
         foreach (var group in groups.EnumerateArray())
         {
-            if (IsGeminiGroup(group) && ParseGroup(group) is { } usage)
-                return usage;
+            // The Argon group also matches the Gemini checks, so test it first.
+            if (IsArgonGroup(group))
+                argonWeekly ??= ParseGroup(group)?.Weekly;
+            else if (IsGeminiGroup(group))
+                gemini ??= ParseGroup(group);
         }
-        throw DomainError.Decoding("agy usage report has no Gemini quota");
+
+        if (gemini == null && argonWeekly == null)
+            throw DomainError.Decoding("agy usage report has no Gemini quota");
+        return (gemini ?? new ServiceUsage(null, null, null)) with { WeeklyArgon = argonWeekly };
     }
 
     private static JsonDocument ParseDocument(string output)
@@ -244,6 +254,17 @@ public static class AgyUsageParser
             try { return JsonDocument.Parse(line); }
             catch (JsonException e) { throw DomainError.Decoding(e.Message); }
         }
+    }
+
+    // Gemini 4 Argon has its own group ("gemini-argon-wtu-weekly" in agy 1.4.7).
+    private static bool IsArgonGroup(JsonElement group)
+    {
+        if ((GetString(group, "name") ?? "").Contains("Argon", StringComparison.OrdinalIgnoreCase))
+            return true;
+        return group.TryGetProperty("buckets", out var buckets) &&
+               buckets.ValueKind == JsonValueKind.Array &&
+               buckets.EnumerateArray().Any(bucket =>
+                   (GetString(bucket, "id") ?? "").Contains("argon", StringComparison.OrdinalIgnoreCase));
     }
 
     // Bucket ids ("gemini-5h", "gemini-weekly") are stable; the display name is a fallback.

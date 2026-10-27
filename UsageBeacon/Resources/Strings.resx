@@ -22,6 +22,7 @@
   <data name="UsageFiveHour" xml:space="preserve"><value>5 hours</value></data>
   <data name="UsageWeekly" xml:space="preserve"><value>Weekly (7 days)</value></data>
   <data name="UsageWeeklySonnet" xml:space="preserve"><value>Weekly (Sonnet)</value></data>
+  <data name="UsageWeeklyArgon" xml:space="preserve"><value>Weekly (Argon)</value></data>
   <data name="ErrorWaitingTitle" xml:space="preserve"><value>⏳ Waiting to refresh</value></data>
   <data name="ErrorFailureTitle" xml:space="preserve"><value>⚠ Retrieval failed</value></data>
   <data name="UsageFetched" xml:space="preserve"><value>Retrieved: {0} / {1}</value></data>
@@ -150,6 +151,7 @@
   <data name="AccessibleLabelValue" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="PeriodFiveHourShort" xml:space="preserve"><value>5h</value></data>
   <data name="PeriodWeeklyShort" xml:space="preserve"><value>7d</value></data>
+  <data name="PeriodArgonWeeklyShort" xml:space="preserve"><value>Argon 7d</value></data>
   <data name="CountdownDaysHours" xml:space="preserve"><value>{0}d {1}h</value></data>
   <data name="CountdownHoursMinutes" xml:space="preserve"><value>{0}h {1}m</value></data>
   <data name="CountdownMinutes" xml:space="preserve"><value>{0}m</value></data>

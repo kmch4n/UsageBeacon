@@ -4,6 +4,10 @@ All notable user-visible changes to UsageBeacon will be documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- Antigravity usage now includes the separate Gemini 4 Argon weekly quota that agy 1.4 reports. The popup adds a "Weekly (Argon)" row, the widget's Gemini weekly value shows whichever of the shared Gemini and Argon weekly limits is fuller, the widget tooltip lists both, and usage alerts cover Argon. Previously only the shared Flash/Pro limits were read, so Gemini showed 0% while Argon was in use.
+
 ## 1.6.1 - 2026-10-16
 
 ### Fixed

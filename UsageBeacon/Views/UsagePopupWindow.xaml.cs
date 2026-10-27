@@ -76,6 +76,7 @@ public partial class UsagePopupWindow : Window
         ClaudeWeeklyLabel.Text = LocalizationService.Get("UsageWeekly");
         CodexWeeklyLabel.Text = LocalizationService.Get("UsageWeekly");
         AgyWeeklyLabel.Text = LocalizationService.Get("UsageWeekly");
+        AgyArgonLabel.Text = LocalizationService.Get("UsageWeeklyArgon");
         ClaudeSonnetLabel.Text = LocalizationService.Get("UsageWeeklySonnet");
         PollingIntervalLabel.Text = LocalizationService.Get("SettingsPollingInterval");
         PollingIntervalNote.Text = LocalizationService.Get("SettingsPollingNote");
@@ -392,6 +393,16 @@ public partial class UsagePopupWindow : Window
             AgyWeeklyReset.Text     = LocalizedText.ResetTime(w.ResetsAt);
         }
         else { AgyWeeklyRow.Visibility = Visibility.Collapsed; }
+
+        if (usage.WeeklyArgon is { } argon)
+        {
+            AgyArgonRow.Visibility = Visibility.Visible;
+            AgyArgonPct.Text       = $"{argon.Percent}%";
+            AgyArgonPct.Foreground = UtilBrush(argon.Utilization);
+            AgyArgonBar.Value      = argon.Utilization;
+            AgyArgonReset.Text     = LocalizedText.ResetTime(argon.ResetsAt);
+        }
+        else { AgyArgonRow.Visibility = Visibility.Collapsed; }
     }
 
     private void RefreshFooter()

@@ -8,7 +8,14 @@ public sealed record RateLimit(double Utilization, DateTime ResetsAt)
 public sealed record ServiceUsage(
     RateLimit? FiveHour,
     RateLimit? Weekly,
-    RateLimit? WeeklySonnet);
+    RateLimit? WeeklySonnet)
+{
+    /// <summary>
+    /// Antigravity's separate weekly quota for Gemini 4 Argon. It is not part of
+    /// the shared Gemini limits above, and other services leave it null.
+    /// </summary>
+    public RateLimit? WeeklyArgon { get; init; }
+}
 
 public enum UsageDataSource
 {

@@ -307,11 +307,11 @@ public partial class TaskbarWidget : Window
             (_vm.ShowWeeklyInWidget ? null : snap.ClaudeUsage?.Weekly?.Utilization);
         var codexUtil = snap.CodexUsage?.FiveHour?.Utilization ??
             (_vm.ShowWeeklyInWidget ? null : snap.CodexUsage?.Weekly?.Utilization);
+        var agyWeekly = HigherWeeklyUtilization(snap.AgyUsage);
         var agyUtil = snap.AgyUsage?.FiveHour?.Utilization ??
-            (_vm.ShowWeeklyInWidget ? null : snap.AgyUsage?.Weekly?.Utilization);
+            (_vm.ShowWeeklyInWidget ? null : agyWeekly);
         var claudeWeekly = snap.ClaudeUsage?.Weekly?.Utilization;
         var codexWeekly = snap.CodexUsage?.Weekly?.Utilization;
-        var agyWeekly = snap.AgyUsage?.Weekly?.Utilization;
 
         ClaudeLabel.Text       = claudeUtil.HasValue ? $"{(int)(claudeUtil.Value * 100)}%" : "--%";
         ClaudeLabel.Foreground = UtilBrush(claudeUtil);
@@ -339,6 +339,17 @@ public partial class TaskbarWidget : Window
             agyUtil, agyWeekly);
         if (IsLoaded)
             PositionOnSelectedTaskbar(_vm.WidgetPlacement);
+    }
+
+    /// <summary>
+    /// The widget has one weekly slot per service, so for Gemini it shows the
+    /// shared Flash/Pro limit or the separate Argon limit, whichever is fuller.
+    /// </summary>
+    internal static double? HigherWeeklyUtilization(Models.ServiceUsage? usage)
+    {
+        var shared = usage?.Weekly?.Utilization;
+        var argon = usage?.WeeklyArgon?.Utilization;
+        return shared.HasValue && argon.HasValue ? Math.Max(shared.Value, argon.Value) : shared ?? argon;
     }
 
     private void UpdateAccessibleDescription(double? claudeFiveHour, double? claudeWeekly,
@@ -388,6 +399,8 @@ public partial class TaskbarWidget : Window
                 periods.Add(Period("PeriodFiveHourShort", fiveHour));
             if (usage?.Weekly is { } weekly)
                 periods.Add(Period("PeriodWeeklyShort", weekly));
+            if (usage?.WeeklyArgon is { } argon)
+                periods.Add(Period("PeriodArgonWeeklyShort", argon));
             return LocalizationService.Format("WidgetTooltipService", service,
                 periods.Count > 0
                     ? string.Join(" · ", periods)

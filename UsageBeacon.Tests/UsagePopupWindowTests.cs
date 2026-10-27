@@ -67,6 +67,45 @@ public sealed class UsagePopupWindowTests
     }
 
     [Fact]
+    public void AgySection_ShowsArgonWeeklyRow_OnlyWhenTheReportHasIt()
+    {
+        RunSta(() =>
+        {
+            using var directory = new TempDirectory();
+            var vm = new UsageViewModel(new StubUsageProvider(), new StubUsageProvider(),
+                new FailingSettingsStore { Initial = new AppSettings { ShowAgyUsage = true } },
+                new StubStartupManager(), directory.Path, agy: new StubUsageProvider());
+            var popup = new UsagePopupWindow(vm);
+            try
+            {
+                var shared = new ServiceUsage(null, new RateLimit(0.03, DateTime.UtcNow.AddDays(7)), null);
+                SetSnapshot(vm, new UsageSnapshot
+                {
+                    AgyUsage = shared with { WeeklyArgon = new RateLimit(0.14, DateTime.UtcNow.AddDays(6)) },
+                });
+
+                var row = Assert.IsType<StackPanel>(popup.FindName("AgyArgonRow"));
+                Assert.Equal(Visibility.Visible, row.Visibility);
+                Assert.Equal("14%", Assert.IsType<TextBlock>(popup.FindName("AgyArgonPct")).Text);
+                Assert.Contains("Argon", Assert.IsType<TextBlock>(popup.FindName("AgyArgonLabel")).Text);
+                Assert.Equal("3%", Assert.IsType<TextBlock>(popup.FindName("AgyWeeklyPct")).Text);
+
+                SetSnapshot(vm, new UsageSnapshot { AgyUsage = shared });
+
+                Assert.Equal(Visibility.Collapsed, row.Visibility);
+            }
+            finally
+            {
+                popup.Close();
+                DisposeViewModel(vm);
+            }
+        });
+    }
+
+    private static void SetSnapshot(UsageViewModel vm, UsageSnapshot snapshot)
+        => typeof(UsageViewModel).GetProperty(nameof(UsageViewModel.Snapshot))!.SetValue(vm, snapshot);
+
+    [Fact]
     public void WeeklyWidgetCheckbox_RestoresAcceptedValueAfterSaveFailure()
     {
         RunSta(() =>
@@ -291,7 +330,9 @@ public sealed class UsagePopupWindowTests
         public bool ThrowOnSave { get; set; }
         public int SaveCount { get; private set; }
 
-        public AppSettings Load() => new();
+        public AppSettings? Initial { get; init; }
+
+        public AppSettings Load() => Initial ?? new();
 
         public void Save(AppSettings settings)
         {

@@ -7,7 +7,7 @@ namespace UsageBeacon.Services;
 
 public enum UsageAlertService { Claude, Codex, Agy }
 
-public enum UsageAlertPeriod { FiveHour, Weekly }
+public enum UsageAlertPeriod { FiveHour, Weekly, ArgonWeekly }
 
 public sealed record UsageAlert(
     UsageAlertService Service,
@@ -56,6 +56,7 @@ public sealed class UsageAlertTracker
         {
             CheckLimit(service, UsageAlertPeriod.FiveHour, usage?.FiveHour);
             CheckLimit(service, UsageAlertPeriod.Weekly, usage?.Weekly);
+            CheckLimit(service, UsageAlertPeriod.ArgonWeekly, usage?.WeeklyArgon);
         }
 
         void CheckLimit(UsageAlertService service, UsageAlertPeriod period, RateLimit? limit)
