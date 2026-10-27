@@ -14,7 +14,7 @@
 
 [Features](#features) • [Install](#install) • [Usage](#usage) • [Dashboard](#usage-dashboard) • [Privacy](#data-and-privacy)
 
-<img src="docs/images/popup.png" alt="UsageBeacon popup showing Claude Code, Codex, and Antigravity (Gemini) usage windows" width="340">
+<img src="docs/images/popup.png" alt="UsageBeacon popup showing Claude Code, Codex, and Antigravity (Gemini) usage windows, including the Gemini 4 Argon weekly limit" width="340">
 
 </div>
 
@@ -59,7 +59,7 @@ percentage on the right:
 Hovering the widget shows each service's five-hour and weekly percentages with the time left until
 each resets:
 
-<img src="docs/images/widget-tooltip.png" alt="Widget tooltip listing Claude, Codex, and Gemini percentages with reset countdowns" width="346">
+<img src="docs/images/widget-tooltip.png" alt="Widget tooltip listing Claude, Codex, and Gemini percentages, including Gemini 4 Argon, with reset countdowns" width="497">
 
 If the selected taskbar has no safe space, the widget hides until a space becomes available;
 the notification-area icon remains available. The tray menu can also hide the widget for an hour
