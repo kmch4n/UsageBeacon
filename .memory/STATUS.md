@@ -2,7 +2,13 @@
 
 Last verified: 2026-10-27
 
-## Gemini 4 Argon quota (2026-10-27, unreleased)
+## Release v1.6.2 (2026-10-27)
+
+- v1.6.2 contains only the Gemini 4 Argon quota fix below. The README popup and widget tooltip screenshots were recaptured (English, Dark, opaque; real usage) so they show the Argon row and tooltip entry.
+- Tag `v1.6.2` at `9cf6af5`: CI run 40470476070 and release run 40470712785 succeeded. The release (not a draft or prerelease) attaches `UsageBeacon.exe` (162,450,626 bytes) and `UsageBeacon.exe.sha256`; the downloaded executable (product version `1.6.2+9cf6af5`) hashes to `10230bcd...6734`, matching both the checksum file and GitHub's asset digest.
+- `publish/latest` was rebuilt as 1.6.2 from the tagged commit and restarted; its local checksum file was regenerated (local builds differ from the release asset).
+
+## Gemini 4 Argon quota (2026-10-27, released in v1.6.2)
 
 - Symptom: Gemini showed 0%/0% although Antigravity was in use. agy 1.4.7's report has a third group, "Gemini 4 Argon" (weekly 14-15% used), and the agy default model is `Gemini 4 Argon (High)`; the shared Gemini group was unused (`remaining_fraction` 1). See the D-018 amendment.
 - Validation: Debug and Release built with `-warnaserror` (0 warnings) and passed 362 tests each. The republished `publish/latest` fetched the live report: the cache gained `WeeklyArgon` (15%), the popup showed "週次 (Argon)" 15% under the shared rows, and the widget's Gemini weekly slot showed 15%.
